@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+*.venv/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Data (sqlite db, scraped job data)
+data/
+*.db
+*.db-journal
+
+# Selenium Chrome profile (session cookies, browsing data)
+scraper/.chrome-profile/
+
+# Personal documents
+nasi_v3.pdf
+
+# Frontend (Vite + React, once built)
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
