@@ -2,13 +2,18 @@
 LinkedIn job search scraper.
 
 Architecture: LinkedIn renders all 25 job_id wrappers
-(li[data-occludable-job-id]) in the DOM immediately on page load — no
-scrolling needed to discover which jobs are on a given results page. Only
-the *inner* card content (title/company/logo) lazy-renders as you scroll,
-and we don't need that at all: for genuinely new job_ids, we fetch the full
-two-pane detail view instead (title, company, location, industry, company
-size, raw JD text, posted date, applicant stats, salary — all from one page
-load), which is both more complete and avoids scrolling entirely.
+(li[data-occludable-job-id]) in the DOM immediately on page load, but the
+list itself is virtualized — a card's title text only renders once that
+card has scrolled near the viewport at least once (confirmed via direct
+inspection, 2026-07-06: the first ~7 cards have a title on load, the rest
+come back with an empty <strong> until scrolled to; once rendered a
+title stays populated even after scrolling past it). get_job_cards_on_page()
+scrolls the whole list to the bottom, then pulls job_id + title for all 25
+cards, so callers can filter out off-track titles (analysis/title_filter.py)
+before ever spending a full detail-page fetch on a job. Only for titles
+that pass that filter do we fetch the full two-pane detail view (company,
+location, industry, company size, raw JD text, posted date, applicant
+stats, salary — all from one page load).
 
 Run:
     python scraper/linkedin_scraper.py "machine learning"
@@ -31,6 +36,10 @@ from selenium.webdriver.support.ui import WebDriverWait           # explicit "wa
 
 PROFILE_DIR = Path(__file__).parent / ".chrome-profile"   # the dedicated Chrome profile dir from setup_chrome_profile.py
 OUTPUT_FILE = Path(__file__).parent / "sample_output.json"  # where this test run's results get saved
+
+SORT_BY_MOST_RECENT = "DD"    # LinkedIn's sortBy param for newest-posted-first (default "R" = relevance, which reshuffles between page loads)
+TIME_RANGE_DAY = "r86400"     # f_TPR: last 24 hours — routine daily scrape
+TIME_RANGE_MONTH = "r2592000"  # f_TPR: last 30 days — one-time initial backfill
 
 
 class LinkedInBlockedError(Exception):
@@ -89,6 +98,54 @@ def simulate_reading(driver: webdriver.Chrome, min_seconds: float = 3.0, max_sec
         elapsed += pause
 
 
+def simulate_list_browsing(driver: webdriver.Chrome) -> None:
+    """Scroll the results list all the way to the bottom so every one of
+    this page's 25 cards renders its title. Confirmed via direct inspection
+    (2026-07-06): LinkedIn's job-card list is virtualized — only cards near
+    the viewport have title text in the DOM at all (cards further down come
+    back with an empty <strong>) — but once a card has rendered, its title
+    stays populated even after scrolling past it, so a single top-to-bottom
+    pass is enough; no need to re-check earlier cards.
+
+    The actual scrollable element is the <ul>'s parent div, not
+    div.scaffold-layout__list itself (that one reported scrollHeight ==
+    clientHeight — not scrollable — while scrolling it silently did
+    nothing). Ember gives the real scrollable div a hashed, unstable class
+    name each session, so it's located structurally (ul.parentElement)
+    rather than by class.
+
+    Movement is randomized (direction/distance/pauses), like
+    simulate_reading(), just biased more strongly downward since the goal
+    here is full coverage of the page's cards, not idle browsing.
+    """
+    container = driver.execute_script(
+        "const ul = document.querySelector('div.scaffold-layout__list ul'); "
+        "return ul ? ul.parentElement : null;"
+    )
+    if container is None:
+        print("  WARNING: list scroll container not found — card titles may not render.")
+        return
+
+    max_scroll = driver.execute_script(
+        "return arguments[0].scrollHeight - arguments[0].clientHeight;", container
+    )
+    if max_scroll <= 0:
+        return  # fewer cards than fit on one screen — nothing to scroll
+
+    scrolled = 0
+    iterations = 0
+    while scrolled < max_scroll and iterations < 40:  # iteration cap is just a safety backstop against an unexpected page state
+        direction = 1 if random.random() < 0.85 else -1   # mostly down, occasional up — same anti-detection idea as simulate_reading()
+        step = direction * random.randint(250, 400)       # smaller steps than a first pass at this — more overlap between steps gives each card's async render more of a chance to finish before we move past it
+        driver.execute_script("arguments[0].scrollTop += arguments[1];", container, step)
+        scrolled = driver.execute_script("return arguments[0].scrollTop;", container)
+        time.sleep(random.uniform(0.9, 1.8))              # longer than the original 0.6-1.4s — that pace still occasionally scrolled past a card before its title finished rendering (see retry_missing_titles for the backstop)
+        iterations += 1
+
+    driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight;", container)  # guarantee the last card rendered even if the jittered loop undershot
+    time.sleep(1.0)
+
+
 def build_driver() -> webdriver.Chrome:
     options = Options()                                                        # container for Chrome launch flags
     options.add_argument(f"--user-data-dir={PROFILE_DIR.resolve()}")            # point Chrome at our dedicated profile (has the LinkedIn login)
@@ -103,13 +160,43 @@ def text_or_none(el) -> str | None:
     return " ".join(el.get_text(strip=True).split()) or None    # get all text, collapse whitespace/newlines to single spaces
 
 
-def get_job_ids_on_page(driver: webdriver.Chrome, keyword: str, start: int) -> list[str]:
-    """Fetch just the job IDs for one page of results — no scrolling needed.
-    Confirmed directly: LinkedIn renders all 25 li[data-occludable-job-id]
-    wrappers in the DOM immediately on page load; only the inner card content
-    (title/company/logo) lazy-renders on scroll, which we skip entirely since
-    scrape_job_detail() gets everything for genuinely new jobs anyway."""
-    search_url = f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT=2&start={start}"
+def parse_job_card(li) -> dict:
+    """Extract job_id + title from one list-page card. The list is
+    virtualized (confirmed via direct inspection, 2026-07-06) — a card's
+    title is only in the DOM once that card has scrolled near the viewport
+    at least once (see simulate_list_browsing), so title comes back None
+    for any card not yet rendered. Pulled from the <strong> inside
+    a.job-card-list__title--link rather than that link's aria-label or
+    sibling visually-hidden span, both of which append a " with
+    verification" suffix for LinkedIn-verified postings that <strong>'s own
+    text doesn't have."""
+    job_id = li.get("data-occludable-job-id")
+    title = None
+    title_link = li.select_one("a.job-card-list__title--link")
+    if title_link:
+        strong = title_link.select_one("strong")
+        title = text_or_none(strong) if strong else text_or_none(title_link)
+    return {"job_id": job_id, "title": title}
+
+
+def get_job_cards_on_page(driver: webdriver.Chrome, keyword: str, start: int, time_range: str = TIME_RANGE_DAY) -> list[dict]:
+    """Fetch job_id + title for one page of results. All 25
+    li[data-occludable-job-id] wrappers are in the DOM immediately on page
+    load, but the list is virtualized — a card's title text only renders
+    once that card has scrolled near the viewport at least once (confirmed
+    via direct inspection, 2026-07-06), so simulate_list_browsing() scrolls
+    all the way to the bottom before parsing, not just a light jitter.
+    Returning title here (not just the id) is what lets the caller drop
+    off-track jobs (analysis/title_filter.py) before ever spending a full
+    detail-page fetch on them. `sortBy=DD` (newest first) + `f_TPR` (time
+    window) keep this page's results scoped to a small, newest-first slice
+    instead of LinkedIn's whole relevance-ranked pool — the fix for
+    already-seen jobs reappearing on later pages as that pool shifts mid-run.
+    """
+    search_url = (
+        f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT=2"
+        f"&sortBy={SORT_BY_MOST_RECENT}&f_TPR={time_range}&start={start}"
+    )
     print(f"Navigating to: {search_url}")
     driver.get(search_url)
     check_not_blocked(driver)
@@ -121,7 +208,20 @@ def get_job_ids_on_page(driver: webdriver.Chrome, keyword: str, start: int) -> l
     except Exception:
         print("  WARNING: job list didn't appear within 15s — page may need manual inspection.")
 
-    jitter()                                              # brief human-like pause before reading the DOM
+    # The wait above only confirms the card *wrappers* exist — their title
+    # text is a separate async render that can lag behind. Waiting for the
+    # first card's title specifically (not just presence of the <li>s) gives
+    # that render pipeline a moment to warm up before we start scrolling
+    # away from it, which cuts down on how often retry_missing_titles has
+    # to run at all.
+    try:
+        WebDriverWait(driver, 6).until(
+            lambda d: d.find_element(By.CSS_SELECTOR, "a.job-card-list__title--link strong").text.strip() != ""
+        )
+    except Exception:
+        print("  WARNING: first card's title didn't populate within 6s — list may be rendering slower than usual this run.")
+
+    simulate_list_browsing(driver)                        # scrolls to the bottom — required to render every card's title, see docstring
 
     soup = BeautifulSoup(driver.page_source, "lxml")
     ul = soup.select_one("div.scaffold-layout__list-detail-inner div.scaffold-layout__list ul")  # exact container path, confirmed via direct inspection
@@ -129,19 +229,72 @@ def get_job_ids_on_page(driver: webdriver.Chrome, keyword: str, start: int) -> l
         print("  Results list container not found.")
         return []
 
-    job_ids = [li.get("data-occludable-job-id") for li in ul.select("li[data-occludable-job-id]")]
-    return [jid for jid in job_ids if jid]                  # drop any None values, just in case
+    cards = [parse_job_card(li) for li in ul.select("li[data-occludable-job-id]")]
+    cards = [card for card in cards if card["job_id"]]        # drop any None job_ids, just in case
+    return retry_missing_titles(driver, cards)
 
 
-def scrape_keyword(driver: webdriver.Chrome, keyword: str, max_pages: int | None = None) -> list[str]:
-    """Page through &start=0, 25, 50, ... collecting job_ids until LinkedIn
-    returns an empty page (i.e. genuinely out of results for this
-    keyword+filter), rather than stopping at an arbitrary result count.
+def retry_missing_titles(driver: webdriver.Chrome, cards: list[dict], max_attempts: int = 2) -> list[dict]:
+    """A card occasionally still comes back with no title even after the
+    full scroll pass — its async render just hadn't finished before we
+    scrolled past it. Left alone, that title=None would make
+    is_relevant_title() treat a possibly-relevant job as off-track and drop
+    it, so retry rather than accept the loss: scroll that specific card
+    back into view directly (scrollIntoView, not the general list scroll).
+
+    Parses each card's title immediately after scrolling to it, one at a
+    time — NOT scroll-to-everything-then-snapshot-once. Confirmed via real
+    scrape logs (2026-07-07): the list only keeps a small window of cards
+    mounted at a time, so scrolling to card #2 can evict card #1's
+    just-rendered title before a single end-of-loop snapshot would ever
+    see it — a whole batch of retries can silently fail together this way
+    if the missing cards are spread across a wide scroll range.
+    """
+    cards_by_id = {card["job_id"]: card for card in cards}
+    for attempt in range(max_attempts):
+        missing_ids = [c["job_id"] for c in cards if c["title"] is None]
+        if not missing_ids:
+            break
+        print(f"  {len(missing_ids)} card(s) missing a title — retrying (attempt {attempt + 1}/{max_attempts})...")
+        for job_id in missing_ids:
+            selector = f'li[data-occludable-job-id="{job_id}"]'
+            outer_html = driver.execute_script(
+                "const li = document.querySelector(arguments[0]); "
+                "if (!li) return null; "
+                "li.scrollIntoView({block: 'center'}); "
+                "return li.outerHTML;",
+                selector,
+            )
+            time.sleep(1.0)
+            if outer_html is None:
+                continue
+            # re-read straight after the wait (not the outer_html captured
+            # before it) so the pause has a chance to let the render finish
+            outer_html = driver.execute_script(
+                "const li = document.querySelector(arguments[0]); return li ? li.outerHTML : null;", selector
+            )
+            if outer_html:
+                li_soup = BeautifulSoup(outer_html, "lxml").select_one("li")
+                if li_soup:
+                    cards_by_id[job_id]["title"] = parse_job_card(li_soup)["title"]
+
+    still_missing = [c["job_id"] for c in cards if c["title"] is None]
+    if still_missing:
+        print(f"  WARNING: {len(still_missing)} card(s) still have no title after {max_attempts} retries: {still_missing}")
+    return cards
+
+
+def scrape_keyword(
+    driver: webdriver.Chrome, keyword: str, max_pages: int | None = None, time_range: str = TIME_RANGE_DAY
+) -> list[dict]:
+    """Page through &start=0, 25, 50, ... collecting job cards (id + title)
+    until LinkedIn returns an empty page (i.e. genuinely out of results for
+    this keyword+filter), rather than stopping at an arbitrary result count.
     `max_pages` is an optional safety ceiling for later (e.g. a smaller cap
     for routine daily runs, once that cadence is decided) — leave it None
     for "run until exhausted", which is what the initial backfill run wants.
     """
-    all_job_ids: list[str] = []
+    all_cards: list[dict] = []
     start = 0
     page_num = 1
     while True:
@@ -150,19 +303,19 @@ def scrape_keyword(driver: webdriver.Chrome, keyword: str, max_pages: int | None
             break
 
         print(f"\n--- Page {page_num} (start={start}) ---")
-        job_ids = get_job_ids_on_page(driver, keyword, start)
-        if not job_ids:
+        cards = get_job_cards_on_page(driver, keyword, start, time_range)
+        if not cards:
             print(f"  Page {page_num} returned no job ids — end of results for this keyword.")
             break
 
-        print(f"  Page {page_num}: {len(job_ids)} job ids")
-        all_job_ids.extend(job_ids)
+        print(f"  Page {page_num}: {len(cards)} job ids")
+        all_cards.extend(cards)
 
         start += 25          # LinkedIn's confirmed per-page increment
         page_num += 1
         jitter(3.0, 6.0)      # longer pause between page loads than the brief pause within a page
 
-    return all_job_ids
+    return all_cards
 
 
 # Matches salary ranges like "$119K/yr - $173K/yr" or "$80/hr - $95/hr" —
@@ -217,7 +370,7 @@ def parse_salary(soup: BeautifulSoup) -> str | None:
     return None
 
 
-def scrape_job_detail(driver: webdriver.Chrome, keyword: str, job_id: str) -> dict:
+def scrape_job_detail(driver: webdriver.Chrome, keyword: str, job_id: str, time_range: str = TIME_RANGE_DAY) -> dict:
     """Fetch everything for one job — title, company, location, industry,
     company size, full JD text, posted date, applicant stats, salary — from
     a single page load of the search-results two-pane view (by adding
@@ -227,10 +380,13 @@ def scrape_job_detail(driver: webdriver.Chrome, keyword: str, job_id: str) -> di
     two-pane view renders the same content with stable, semantic class names
     (jobs-company, job-details, jobs-company__inline-information, etc).
     """
-    url = f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT=2&currentJobId={job_id}"
+    url = (
+        f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT=2"
+        f"&sortBy={SORT_BY_MOST_RECENT}&f_TPR={time_range}&currentJobId={job_id}"
+    )
     driver.get(url)                                        # load the search page with this specific job pre-selected in the right-hand pane
     check_not_blocked(driver)                                # same block/challenge check as the list scrape
-    simulate_reading(driver)                                 # 5-20s of human-like scrolling instead of a short fixed jitter — this is the page we actually "read"
+    simulate_reading(driver)                                 # 3-15s of human-like scrolling instead of a short fixed jitter — this is the page we actually "read"
 
     soup = BeautifulSoup(driver.page_source, "lxml")
 
@@ -283,7 +439,7 @@ def main() -> None:
         # NOTE: max_pages=2 here is just to keep this manual test run quick.
         # scrape_keyword's real default is max_pages=None (page until
         # LinkedIn is exhausted) — that's what the actual backfill run uses.
-        job_ids = scrape_keyword(driver, keyword, max_pages=2)
+        cards = scrape_keyword(driver, keyword, max_pages=2)
     except LinkedInBlockedError as e:
         # note: no driver.quit() here — the `finally` below always runs next
         # and handles it, even though we're about to sys.exit()
@@ -296,19 +452,23 @@ def main() -> None:
     finally:
         driver.quit()                                                    # always close Chrome, even if scraping raised an error
 
-    print(f"\nFound {len(job_ids)} job ids for '{keyword}': {job_ids}")
+    print(f"\nFound {len(cards)} job cards for '{keyword}':")
+    for card in cards:
+        print(f"  {card['job_id']}: {card['title']!r}")
 
-    # Proof-of-concept: fetch full detail for the first 2 job_ids found. In
+    # Proof-of-concept: fetch full detail for the first 2 cards found. In
     # the real pipeline (once the DB exists), this step only runs for
-    # job_ids NOT already stored — that's the "quickly scan ids, skip if
-    # already known" check. Here, without a DB yet, just capped to 2 jobs
-    # for a quick manual test (each one now takes 5-20s of simulated reading).
+    # job_ids NOT already stored and whose title passed the relevance filter
+    # — that's the "quickly scan ids, skip if already known or off-track"
+    # check. Here, without a DB yet, just capped to 2 jobs for a quick manual
+    # test (each one now takes 3-15s of simulated reading).
     results = []
     driver2 = build_driver()
     try:
-        for job_id in job_ids[:2]:
-            print(f"\n--- Fetching detail for job_id={job_id} ---")
-            detail = scrape_job_detail(driver2, keyword, job_id)
+        for card in cards[:2]:
+            job_id = card["job_id"]
+            print(f"\n--- Fetching detail for job_id={job_id} ({card['title']!r}) ---")
+            detail = scrape_job_detail(driver2, keyword, job_id, TIME_RANGE_DAY)
             results.append(detail)
             print(f"  title: {detail['title']!r} @ {detail['company']!r}")
             print(f"  location: {detail['location']}")

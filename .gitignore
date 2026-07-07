@@ -20,6 +20,9 @@ data/
 # Selenium Chrome profile (session cookies, browsing data)
 scraper/.chrome-profile/
 
+# Scrape run logs
+scraper/logs/
+
 # Personal documents
 nasi_v3.pdf
 
