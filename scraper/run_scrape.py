@@ -12,6 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))  # so `db.` / `analysis.` imports resolve when run directly
 
+from analysis.salary_parser import parse_salary_range
 from analysis.skills_extractor import extract_skills
 from analysis.title_filter import is_relevant_title
 from db.models import Company, Job, JobSkill, ScrapeRun, track_for_keyword, utcnow
@@ -140,6 +141,7 @@ def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -
     job.track = track
     job.raw_text = detail["raw_text"]
     job.salary_text = detail["salary_text"]
+    job.salary_min, job.salary_max = parse_salary_range(detail["salary_text"])
     job.posted_date = detail["posted_date"]
     job.applicant_stats = detail["applicant_stats"]
     job.detail_fetched = True

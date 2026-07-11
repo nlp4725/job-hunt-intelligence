@@ -24,7 +24,7 @@ scraper/.chrome-profile/
 scraper/logs/
 
 # Personal documents
-nasi_v3.pdf
+nasi_v*.pdf
 
 # Frontend (Vite + React, once built)
 frontend/node_modules/

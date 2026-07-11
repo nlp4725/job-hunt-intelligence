@@ -21,15 +21,14 @@ import re
 SKILL_TAXONOMY: dict[str, list[str]] = {
     # --- Programming languages ---
     "Python": ["python"],
-    "SQL": ["sql"],
+    "SQL": [r"\bsql\b"],
     "R": ["r programming", r"\br\b"],
     "Java": ["java(?!script)"],
     "C#": [r"\bc#", "c-sharp"],
     "JavaScript": ["javascript", r"\bjs\b"],
     "TypeScript": ["typescript"],
     "C++": [r"c\+\+"],
-    "Go": ["golang", r"\bgo\b"],
-    "Scala": ["scala"],
+    "Scala": [r"\bscala\b"],
     "Julia": ["julia"],
 
     # --- ML / DL frameworks ---
@@ -154,7 +153,7 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Hadoop": ["hadoop"],
     "Kafka": ["kafka"],
     "Airflow": ["airflow"],
-    "ETL": ["etl", "elt"],
+    "ETL": [r"\betl\b", r"\belt\b"],
     "dbt": [r"\bdbt\b"],
     "Snowflake": ["snowflake"],
     "Databricks": ["databricks"],
@@ -170,7 +169,7 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "DynamoDB": ["dynamodb"],
 
     # --- Cloud / infra ---
-    "AWS": ["aws", "amazon web services"],
+    "AWS": [r"\baws\b", "amazon web services"],
     "GCP": ["gcp", "google cloud"],
     "Azure": ["azure"],
     "Docker": ["docker"],
@@ -197,7 +196,7 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Feature Store": ["feature store"],
 
     # --- Version control / collaboration ---
-    "Git": ["git", "github", "gitlab"],
+    "Git": [r"\bgit\b", "github", "gitlab"],
     "Jira": ["jira"],
     "Confluence": ["confluence"],
 
@@ -227,7 +226,7 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
 # to correctly count each job once even if it matched multiple tags in the theme.
 SKILL_CATEGORIES: dict[str, list[str]] = {
     "Programming Languages": [
-        "Python", "SQL", "R", "Java", "C#", "JavaScript", "TypeScript", "C++", "Go", "Scala", "Julia",
+        "Python", "SQL", "R", "Java", "C#", "JavaScript", "TypeScript", "C++", "Scala", "Julia",
     ],
     "ML / DL Frameworks": [
         "PyTorch", "TensorFlow", "Keras", "scikit-learn", "XGBoost", "LightGBM", "JAX",

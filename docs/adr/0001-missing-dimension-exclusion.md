@@ -1,0 +1,5 @@
+# Missing Company Research dimensions are excluded, not zero-filled
+
+The Company Research Score averages three web-search-derived dimensions (Reputation, Stability, Momentum). Early design would have zero-filled any dimension the search couldn't find data for, but that systematically penalizes companies for being small, new, or quiet rather than for being bad — e.g. an established, profitable-but-press-shy company would lose points on "Momentum" just for not chasing funding news, and a hot early-stage startup would lose points on "Reputation" just for being too new to have Glassdoor reviews yet. Since the explicit goal is to let small-but-exciting startups compete with large established companies, we instead average only the dimensions where data was actually found, and treat a company with zero dimensions found as having no score at all (excluded from the total, flagged for manual review) rather than a neutral default.
+
+Considered and rejected: zero-fill (penalizes invisibility as if it were badness); neutral default like 50/100 for all-missing companies (dresses up "we don't know" as "we checked and it's average").

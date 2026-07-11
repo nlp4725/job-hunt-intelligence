@@ -44,6 +44,9 @@ class Company(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     analyzed_at: Mapped[datetime | None]
 
+    research_report: Mapped[str | None] = mapped_column(Text)              # Company Research Agent's markdown findings (Reputation/Stability/Momentum) — cached per company, reused across every job there
+    research_report_generated_at: Mapped[datetime | None]
+
     jobs: Mapped[list["Job"]] = relationship(back_populates="company")
 
 
@@ -63,7 +66,7 @@ class Job(Base):
 
     raw_text: Mapped[str | None] = mapped_column(Text)
     salary_text: Mapped[str | None]                                   # raw text as scraped, e.g. "$119K/yr - $173K/yr"
-    salary_min: Mapped[float | None]                                  # future: parsed via LLM from raw_text/salary_text
+    salary_min: Mapped[float | None]                                  # annualized, parsed from salary_text (see analysis/salary_parser.py)
     salary_max: Mapped[float | None]
 
     posted_date: Mapped[str | None]                                   # raw text, e.g. "1 week ago" — not parsed to a real date yet
@@ -81,7 +84,7 @@ class Job(Base):
 
     company: Mapped[Company | None] = relationship(back_populates="jobs")
     skills: Mapped[list["JobSkill"]] = relationship(back_populates="job", cascade="all, delete-orphan")
-    analysis: Mapped["JobAnalysis"] = relationship(back_populates="job", uselist=False, cascade="all, delete-orphan")
+    judge_result: Mapped["JudgeResult"] = relationship(back_populates="job", uselist=False, cascade="all, delete-orphan")
 
 
 class JobSkill(Base):
@@ -118,20 +121,49 @@ class Resume(Base):
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
 
-class JobAnalysis(Base):
-    __tablename__ = "job_analysis"
+class CareerGoals(Base):
+    """Stated career preferences (e.g. "goal: technical PM, want full
+    product-cycle exposure, prefer building/shipping systems over
+    deep-learning research") — distinct from Resume, which records work
+    history, not preference. Fed to the Judge Agent to score
+    career_narrative. Single-row table, same shape as Resume."""
+
+    __tablename__ = "career_goals"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), unique=True)   # one analysis per job — re-analyzing overwrites
-    keyword_score: Mapped[float | None]
-    semantic_score: Mapped[float | None]
-    overall_score: Mapped[float | None]
-    matched_skills: Mapped[list | None] = mapped_column(JSON)
-    gap_skills: Mapped[list | None] = mapped_column(JSON)
-    narrative: Mapped[str | None] = mapped_column(Text)
-    analyzed_at: Mapped[datetime | None]
+    content: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
-    job: Mapped[Job] = relationship(back_populates="analysis")
+
+class JudgeResult(Base):
+    """One row per job: the Judge Agent's rubric output. company_research_score
+    is nullable — the Missing-Dimension Rule can leave it unscored (excluded
+    from total_score) when company_report.md had no usable data at all."""
+
+    __tablename__ = "judge_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), unique=True)   # one judgment per job — re-judging overwrites
+
+    skill_score: Mapped[float | None]                       # max 70
+    skill_analysis: Mapped[str | None] = mapped_column(Text)
+
+    seniority_score: Mapped[float | None]                   # max 70
+    seniority_analysis: Mapped[str | None] = mapped_column(Text)
+
+    domain_transferability_score: Mapped[float | None]      # max 30
+    domain_transferability_analysis: Mapped[str | None] = mapped_column(Text)
+
+    career_narrative_score: Mapped[float | None]            # max 60
+    career_narrative_analysis: Mapped[str | None] = mapped_column(Text)
+
+    company_research_score: Mapped[float | None]            # max 70; None if company_report.md had zero usable dimensions
+    company_research_analysis: Mapped[str | None] = mapped_column(Text)
+
+    total_score: Mapped[float | None]                       # max 300; renormalized if company_research_score is None
+    judged_at: Mapped[datetime | None]
+
+    job: Mapped[Job] = relationship(back_populates="judge_result")
 
 
 class ChatMessage(Base):
