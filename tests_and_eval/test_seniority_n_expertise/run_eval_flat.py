@@ -7,9 +7,8 @@ expertise_match sub-objects.
 Exists to isolate whether CombinedFit's ~10-13% parse-failure rate (the
 model splitting one tool call into two, each missing the other's required
 field — confirmed by inspecting the raw LangSmith trace) was a schema-shape
-problem, fixable the same way judge_agent.py avoids it (one flat tool,
-no nesting), or genuine cross-rubric interference that a schema change
-can't fix.
+problem, fixable with one flat tool call (no nesting), or genuine
+cross-rubric interference that a schema change can't fix.
 
 Same models, same dataset, same repetitions as run_eval.py, so the two
 experiments are directly comparable in LangSmith.

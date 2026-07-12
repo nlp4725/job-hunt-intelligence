@@ -59,8 +59,16 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Agents": ["ai agent", "agentic"],
     "Transformers": ["transformer model", "transformers library"],
     "Generative AI": ["generative ai", r"\bgenai\b", "gen ai"],
-    "Multi-Agent Systems": ["multi-agent", "multiagent", "multi agent"],
-    "Agent Orchestration": ["agent orchestration", "orchestration framework"],
+    # Merged from a separate "Agent Orchestration" entry — same underlying
+    # competency (coordinating multiple agents/tools), was double-counting
+    # one requirement as 2 skills (confirmed on real postings that matched
+    # both "Multi-Agent Systems" and "Agent Orchestration" for one
+    # multi-agent JD requirement). "Agents" stays separate — that's a
+    # different granularity (any agent work, including single-agent).
+    "Multi-Agent Systems": [
+        "multi-agent", "multiagent", "multi agent",
+        "agent orchestration", "orchestration framework",
+    ],
     "Tool Use / Function Calling": ["function calling", "tool calling", "tool use"],
     "AutoGen": [r"\bautogen\b"],
     "CrewAI": ["crewai", "crew ai"],
@@ -81,7 +89,18 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Azure OpenAI": ["azure openai"],
 
     # --- AI evaluation & safety ---
-    "AI Evals": ["ai evals", r"\bevals?\b", "evaluation harness"],
+    # Merged from a separate "AI Evals" entry — same underlying competency,
+    # was being double-counted as 2 skills for one JD requirement (e.g. a
+    # job titled "AI Evals" itself listed both as missing). "ai evals" is
+    # kept as a variant for coverage, but real postings say "evaluation
+    # framework"/"model evaluation" ~75x more often (151/128 vs 2 in the
+    # corpus), so LLM Evaluation is the canonical name, not AI Evals.
+    "LLM Evaluation": [
+        "llm evaluation", "model evaluation", "ai evals",
+        r"\bevals?\b", "evaluation harness",
+        r"eval(?:uation)?\s+(?:framework|pipeline|suite|metrics?)",
+        "automated evaluation", "human evaluation", "golden dataset",
+    ],
     "LLM-as-a-Judge": ["llm-as-a-judge", "llm as a judge"],
     "Red-teaming": ["red-teaming", "red teaming"],
     "Hallucination Detection": ["hallucination"],
@@ -90,6 +109,10 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Human-in-the-Loop": ["human-in-the-loop", "human in the loop"],
     "PII": [r"\bpii\b", "personally identifiable information"],
     "Differential Privacy": ["differential privacy"],
+    "LangSmith": ["langsmith"],
+    "Ragas": [r"\bragas\b"],
+    "DeepEval": ["deepeval"],
+    "Arize": [r"\barize\b"],
 
     # --- Computer vision / NLP ---
     "Computer Vision": ["computer vision", r"\bcv\b(?!\.)"],
@@ -149,7 +172,10 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Collaborative Filtering": ["collaborative filtering"],
 
     # --- Data engineering / big data ---
-    "Spark": ["apache spark", r"\bspark\b"],
+    # PySpark merged in — it's Spark's own Python API, not a different
+    # technology, same class of bug as the AI Evals/LLM Evaluation and
+    # Agent Orchestration/Multi-Agent Systems merges above.
+    "Spark": ["apache spark", r"\bspark\b", r"\bpyspark\b"],
     "Hadoop": ["hadoop"],
     "Kafka": ["kafka"],
     "Airflow": ["airflow"],
@@ -158,7 +184,6 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Snowflake": ["snowflake"],
     "Databricks": ["databricks"],
     "BigQuery": ["bigquery"],
-    "PySpark": [r"\bpyspark\b"],
 
     # --- Databases ---
     "PostgreSQL": ["postgresql", "postgres"],
@@ -201,7 +226,14 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Confluence": ["confluence"],
 
     # --- Product management ---
-    "Roadmapping": ["roadmap", "roadmapping"],
+    # Tightened from a bare "roadmap" match, which over-triggered on ml_ai
+    # JDs that mention "technical roadmap" once in passing (296 of 856
+    # matches were ml_ai-track, not the PM roles this skill is meant for).
+    # Now requires ownership language, not just any mention of the word.
+    "Roadmapping": [
+        "roadmapping", "roadmap ownership",
+        r"(?:own|drive|define|set|build|shape)(?:s|ed|ing)?\s+(?:the\s+|a\s+|our\s+)?(?:product\s+|technical\s+)?roadmap",
+    ],
     "User Research": ["user research", "user interviews"],
     "Agile": ["agile"],
     "Scrum": ["scrum"],
@@ -238,14 +270,15 @@ SKILL_CATEGORIES: dict[str, list[str]] = {
         "Embeddings", "Semantic Search",
     ],
     "Agentic AI": [
-        "Agents", "Multi-Agent Systems", "Agent Orchestration", "Tool Use / Function Calling",
+        "Agents", "Multi-Agent Systems", "Tool Use / Function Calling",
         "AutoGen", "CrewAI", "LangGraph", "MCP", "Semantic Kernel", "Claude Agent SDK",
         "A2A Protocol", "Agent Skills", "Copilot",
     ],
     "Enterprise LLM Platforms": ["Gemini", "AWS Bedrock", "Vertex AI", "Azure OpenAI"],
     "AI Evaluation & Safety": [
-        "AI Evals", "LLM-as-a-Judge", "Red-teaming", "Hallucination Detection", "Observability",
+        "LLM Evaluation", "LLM-as-a-Judge", "Red-teaming", "Hallucination Detection", "Observability",
         "Responsible AI", "Human-in-the-Loop", "PII", "Differential Privacy",
+        "LangSmith", "Ragas", "DeepEval", "Arize",
     ],
     "Computer Vision / NLP": [
         "Computer Vision", "NLP", "OpenCV", "Scikit-image", "Speech Recognition",
@@ -263,7 +296,7 @@ SKILL_CATEGORIES: dict[str, list[str]] = {
     ],
     "Data Engineering / Big Data": [
         "Spark", "Hadoop", "Kafka", "Airflow", "ETL", "dbt", "Snowflake", "Databricks",
-        "BigQuery", "PySpark",
+        "BigQuery",
     ],
     "Databases": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "DynamoDB", "NoSQL"],
     "Cloud / Infra": [
@@ -294,6 +327,50 @@ if _categorized != _taxonomy_keys:
         f"Missing category for: {sorted(missing_categories)}. "
         f"Unknown skill names in SKILL_CATEGORIES: {sorted(unknown_skills)}."
     )
+
+# Sibling skills specific/interchangeable enough that having ANY one of them
+# counts as covering a JD's ask for a different one — e.g. a JD wanting GCP
+# is substantially satisfied by AWS experience, the way a real ATS/skills
+# taxonomy (Lightcast, O*NET) groups specific tools under a shared parent
+# competency instead of treating them as unrelated strings. Deliberately NOT
+# exhaustive — e.g. Docker/Kubernetes are excluded on purpose: knowing Docker
+# doesn't mean you know K8s orchestration at scale, so grouping them would
+# overstate the substitution. See analysis/skill_match.py for how this is
+# used (binary credit — group membership either counts or it doesn't, no
+# fractional weight, since no fractional number here is more justified than
+# any other without real calibration data).
+SKILL_GROUPS: dict[str, list[str]] = {
+    "Cloud Platform": ["AWS", "GCP", "Azure"],
+    "Deep Learning Framework": ["PyTorch", "TensorFlow", "Keras", "JAX"],
+    "Tree Ensemble Method": ["Random Forest", "Gradient Boosting", "XGBoost", "LightGBM"],
+    "Enterprise LLM Platform": ["Gemini", "AWS Bedrock", "Vertex AI", "Azure OpenAI"],
+    "LLM Provider API": ["OpenAI API", "Anthropic API"],
+    "LLM Eval/Observability Tool": ["LangSmith", "Ragas", "DeepEval", "Arize"],
+    "LLM Orchestration Framework": [
+        "LangChain", "LangGraph", "LlamaIndex", "Semantic Kernel", "AutoGen", "CrewAI", "Claude Agent SDK",
+    ],
+    "Data Warehouse/Lakehouse": ["Snowflake", "Databricks", "BigQuery"],
+    "Relational Database": ["PostgreSQL", "MySQL"],
+    "NLP Library": ["NLTK", "SpaCy", "Gensim"],
+    "Time Series Model": ["ARIMA", "SARIMA", "Time Series Forecasting"],
+    "Data Visualization Library": ["Data Visualization", "Matplotlib", "Seaborn"],
+    "Clustering Method": ["K-means", "Hierarchical Clustering", "DBSCAN", "Clustering"],
+}
+
+_grouped_skills = {name for names in SKILL_GROUPS.values() for name in names}
+_unknown_group_members = _grouped_skills - _taxonomy_keys
+if _unknown_group_members:
+    raise ValueError(f"SKILL_GROUPS references skills not in SKILL_TAXONOMY: {sorted(_unknown_group_members)}")
+
+_SKILL_TO_GROUP: dict[str, str] = {
+    name: group for group, names in SKILL_GROUPS.items() for name in names
+}
+
+
+def skill_group_of(skill_name: str) -> str | None:
+    """Which SKILL_GROUPS group a given canonical skill name belongs to, or
+    None if it's not part of any group."""
+    return _SKILL_TO_GROUP.get(skill_name)
 
 
 def skills_in_category(category: str) -> list[str]:

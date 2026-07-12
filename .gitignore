@@ -16,6 +16,7 @@ venv/
 data/
 *.db
 *.db-journal
+*.csv
 
 # Selenium Chrome profile (session cookies, browsing data)
 scraper/.chrome-profile/

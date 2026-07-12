@@ -25,6 +25,10 @@ def init_db() -> None:
     _migrate_companies_research_report()
     _drop_legacy_job_analysis_table()
     _migrate_resume_schema()
+    _drop_legacy_judge_results_table()
+    _drop_legacy_screen_results_table()
+    _migrate_screening_results_total_score()
+    _migrate_screening_results_skill_group_matched()
 
 
 def _migrate_jobs_detail_fetched() -> None:
@@ -60,7 +64,7 @@ def _migrate_jobs_is_relevant_column() -> None:
 def _migrate_companies_research_report() -> None:
     """Adds companies.research_report / research_report_generated_at if this
     DB predates the Company Research Agent — both nullable, so existing rows
-    just start out un-researched (cache miss on first Judge Agent run)."""
+    just start out un-researched (cache miss on first company-research run)."""
     with engine.connect() as conn:
         columns = {row[1] for row in conn.execute(text("PRAGMA table_info(companies)"))}
         if "research_report" not in columns:
@@ -71,9 +75,9 @@ def _migrate_companies_research_report() -> None:
 
 
 def _drop_legacy_job_analysis_table() -> None:
-    """job_analysis was the pre-Judge-Agent resume-match design (keyword_score/
+    """job_analysis was the pre-Screening-Agent resume-match design (keyword_score/
     semantic_score/overall_score) and was never wired up or populated —
-    superseded by judge_results (see docs/adr/0003). Safe to drop outright
+    superseded by screening_results (see docs/adr/0003). Safe to drop outright
     rather than carry as dead schema."""
     with engine.connect() as conn:
         conn.execute(text("DROP TABLE IF EXISTS job_analysis"))
@@ -94,6 +98,55 @@ def _migrate_resume_schema() -> None:
         conn.execute(text("DROP TABLE IF EXISTS resume"))
         conn.commit()
     Base.metadata.create_all(engine)
+
+
+def _drop_legacy_judge_results_table() -> None:
+    """judge_results was the old Judge Agent's single-call, 4-dimension
+    output table (judge/judge_agent.py, now deleted — see CONTEXT.md
+    "Job Judge"). Superseded by screening_results (db.models.ScreeningResult),
+    a new table create_all already creates on its own — this just clears
+    out the old, differently-shaped table rather than leaving it as dead
+    schema. The table was never populated (judge_job() never ran against
+    real jobs), so dropping it loses nothing."""
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS judge_results"))
+        conn.commit()
+
+
+def _drop_legacy_screen_results_table() -> None:
+    """screen_results was ScreeningResult's table under an earlier name
+    (Screen Agent, renamed to Screening Agent) — dropped so the correctly-
+    named screening_results table (created by create_all) is the only one
+    left. Only ever held one test row (job 188, from stage1_screen.py's
+    own smoke test), so nothing real is lost."""
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS screen_results"))
+        conn.commit()
+
+
+def _migrate_screening_results_total_score() -> None:
+    """Adds screening_results.total_score if this DB predates it (plain sum
+    of skill/seniority/expertise scores, added for dashboard ranking).
+    Additive/nullable, so existing rows just start out unscored until the
+    next screen_job() run recomputes them."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(screening_results)"))}
+        if not columns or "total_score" in columns:
+            return
+        conn.execute(text("ALTER TABLE screening_results ADD COLUMN total_score INTEGER"))
+        conn.commit()
+
+
+def _migrate_screening_results_skill_group_matched() -> None:
+    """Adds screening_results.skill_group_matched if this DB predates it —
+    JD skills satisfied via a SKILL_GROUPS sibling rather than a direct
+    resume match (see analysis/skill_match.py). Additive/nullable."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(screening_results)"))}
+        if not columns or "skill_group_matched" in columns:
+            return
+        conn.execute(text("ALTER TABLE screening_results ADD COLUMN skill_group_matched JSON"))
+        conn.commit()
 
 
 def get_session() -> Session:

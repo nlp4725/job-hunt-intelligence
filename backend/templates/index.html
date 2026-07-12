@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Screening Dashboard</title>
+<style>
+  :root {
+    --page:            #f9f9f7;
+    --surface-1:       #fcfcfb;
+    --surface-2:       #f3f2ef;
+    --text-primary:    #0b0b0b;
+    --text-secondary:  #52514e;
+    --text-muted:      #898781;
+    --gridline:        #e1e0d9;
+    --border:          rgba(11,11,11,0.10);
+    --accent:          #2a78d6;
+    --accent-wash:     rgba(42,120,214,0.10);
+    --good:            #0ca30c;
+    --good-wash:       rgba(12,163,12,0.12);
+    --warning:         #c98500;
+    --warning-wash:    rgba(250,178,25,0.16);
+    --serious:         #d9662f;
+    --serious-wash:    rgba(236,131,90,0.16);
+    --critical:        #d03b3b;
+    --critical-wash:   rgba(208,59,59,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page:            #0d0d0d;
+      --surface-1:       #1a1a19;
+      --surface-2:       #212120;
+      --text-primary:    #ffffff;
+      --text-secondary:  #c3c2b7;
+      --text-muted:      #898781;
+      --gridline:        #2c2c2a;
+      --border:          rgba(255,255,255,0.10);
+      --accent:          #3987e5;
+      --accent-wash:     rgba(57,135,229,0.16);
+      --good:            #0ca30c;
+      --good-wash:       rgba(12,163,12,0.18);
+      --warning:         #fab219;
+      --warning-wash:    rgba(250,178,25,0.16);
+      --serious:         #ec835a;
+      --serious-wash:    rgba(236,131,90,0.18);
+      --critical:        #e66767;
+      --critical-wash:   rgba(230,103,103,0.18);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 32px 28px 64px;
+  }
+
+  .wrap { max-width: 1280px; margin: 0 auto; }
+
+  header.head { margin-bottom: 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  h1 { font-size: 21px; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--text-secondary); margin: 0; }
+  .sub b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+  .controls {
+    display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .search {
+    flex: 1; min-width: 220px; max-width: 360px;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 12px; font-size: 13.5px; color: var(--text-primary);
+    font-family: inherit;
+  }
+  .search:focus { outline: none; border-color: var(--accent); }
+  .search::placeholder { color: var(--text-muted); }
+
+  .check-filter {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12.5px; color: var(--text-secondary); cursor: pointer; user-select: none;
+  }
+  .check-filter input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+
+  .hint { font-size: 11.5px; color: var(--text-muted); }
+
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-1);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px; }
+
+  thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--surface-2);
+    text-align: left;
+    font-size: 10.5px; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gridline);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+  thead th:hover { color: var(--text-primary); }
+  thead th.sorted { color: var(--accent); }
+  thead th .arrow { margin-left: 3px; opacity: 0.7; font-size: 9px; }
+  thead th.num, td.num { text-align: center; }
+
+  tbody tr { border-bottom: 1px solid var(--gridline); transition: background 0.1s ease; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--accent-wash); }
+  tbody tr.applied-row { opacity: 0.5; }
+  tbody tr.applied-row:hover { opacity: 0.8; }
+
+  td { padding: 9px 12px; color: var(--text-secondary); vertical-align: middle; }
+  td.rank { color: var(--text-muted); font-variant-numeric: tabular-nums; width: 1%; }
+
+  .applied-checkbox { width: 16px; height: 16px; accent-color: var(--good); cursor: pointer; }
+
+  .job-title { color: var(--text-primary); font-weight: 600; text-decoration: none; }
+  .job-title:hover { text-decoration: underline; }
+  .job-title:after { content: " ↗"; font-size: 10px; opacity: 0.5; font-weight: 400; }
+  .company-name { color: var(--text-secondary); font-size: 12px; margin-top: 1px; }
+
+  .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 26px; padding: 2px 6px;
+    border-radius: 5px; font-size: 12px; font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    background: var(--surface-2); color: var(--text-secondary);
+  }
+  .badge.total {
+    min-width: 34px; font-size: 13px; padding: 3px 8px; border-radius: 6px;
+  }
+  .badge.good      { background: var(--good-wash);     color: var(--good); }
+  .badge.warning   { background: var(--warning-wash);  color: var(--warning); }
+  .badge.serious   { background: var(--serious-wash);  color: var(--serious); }
+  .badge.critical  { background: var(--critical-wash); color: var(--critical); }
+
+  .muted { color: var(--text-muted); }
+
+  .empty-state {
+    padding: 60px 20px; text-align: center; color: var(--text-muted); font-size: 13.5px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="head">
+      <div>
+        <h1>Job Screening Dashboard</h1>
+        <p class="sub" id="subtitle">Loading…</p>
+      </div>
+    </header>
+
+    <div class="controls">
+      <input class="search" id="search" type="text" placeholder="Filter by title or company…">
+      <label class="check-filter"><input type="checkbox" id="hideApplied"> Hide applied</label>
+      <span class="hint">Click a column header to sort</span>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="num">#</th>
+            <th class="num" data-sort="total_score">Total<span class="arrow"></span></th>
+            <th class="num" data-sort="skill_score">Skill<span class="arrow"></span></th>
+            <th class="num" data-sort="seniority_score">Seniority<span class="arrow"></span></th>
+            <th class="num" data-sort="expertise_score">Expertise<span class="arrow"></span></th>
+            <th data-sort="title">Job<span class="arrow"></span></th>
+            <th data-sort="company_industry">Industry<span class="arrow"></span></th>
+            <th data-sort="company_size">Size<span class="arrow"></span></th>
+            <th data-sort="posted_at">Posted<span class="arrow"></span></th>
+            <th class="num" data-sort="applied">Applied<span class="arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var allJobs = [];
+  var sortKey = "total_score";
+  var sortDir = -1; // -1 = desc, 1 = asc
+
+  var tbody = document.getElementById("tbody");
+  var subtitle = document.getElementById("subtitle");
+  var searchInput = document.getElementById("search");
+
+  function scoreBand(total) {
+    if (total >= 12) return "good";
+    if (total >= 8) return "warning";
+    if (total >= 4) return "serious";
+    return "critical";
+  }
+
+  var DATE_FMT = { month: "short", day: "numeric", year: "numeric" };
+  function formatPostedDate(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString(undefined, DATE_FMT);
+  }
+
+  function render(jobs) {
+    tbody.innerHTML = "";
+    if (jobs.length === 0) {
+      var tr = document.createElement("tr");
+      var td = document.createElement("td");
+      td.colSpan = 10;
+      td.className = "empty-state";
+      td.textContent = "No jobs match.";
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    jobs.forEach(function (job, i) {
+      var tr = document.createElement("tr");
+
+      var rankTd = document.createElement("td");
+      rankTd.className = "rank";
+      rankTd.textContent = i + 1;
+      tr.appendChild(rankTd);
+
+      var totalTd = document.createElement("td");
+      totalTd.className = "num";
+      var totalBadge = document.createElement("span");
+      totalBadge.className = "badge total " + scoreBand(job.total_score);
+      totalBadge.textContent = job.total_score;
+      totalTd.appendChild(totalBadge);
+      tr.appendChild(totalTd);
+
+      [job.skill_score, job.seniority_score, job.expertise_score].forEach(function (v) {
+        var td = document.createElement("td");
+        td.className = "num";
+        var badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = v;
+        td.appendChild(badge);
+        tr.appendChild(td);
+      });
+
+      var jobTd = document.createElement("td");
+      var link = document.createElement("a");
+      link.className = "job-title";
+      link.href = job.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = job.title || "(untitled)";
+      var companyDiv = document.createElement("div");
+      companyDiv.className = "company-name";
+      companyDiv.textContent = job.company_name || "";
+      jobTd.appendChild(link);
+      jobTd.appendChild(companyDiv);
+      tr.appendChild(jobTd);
+
+      var industryTd = document.createElement("td");
+      industryTd.textContent = job.company_industry || "";
+      if (!job.company_industry) industryTd.className = "muted";
+      tr.appendChild(industryTd);
+
+      var sizeTd = document.createElement("td");
+      sizeTd.textContent = job.company_size || "";
+      if (!job.company_size) sizeTd.className = "muted";
+      tr.appendChild(sizeTd);
+
+      var postedTd = document.createElement("td");
+      postedTd.textContent = formatPostedDate(job.posted_at);
+      if (!job.posted_at) postedTd.className = "muted";
+      if (job.posted_date_raw) postedTd.title = "As scraped: \"" + job.posted_date_raw + "\"";
+      tr.appendChild(postedTd);
+
+      if (job.applied) tr.classList.add("applied-row");
+
+      var appliedTd = document.createElement("td");
+      appliedTd.className = "num";
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "applied-checkbox";
+      checkbox.checked = !!job.applied;
+      checkbox.setAttribute("aria-label", "Mark as applied: " + (job.title || ""));
+      checkbox.addEventListener("change", function () {
+        toggleApplied(job, checkbox.checked, tr, checkbox);
+      });
+      appliedTd.appendChild(checkbox);
+      tr.appendChild(appliedTd);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function toggleApplied(job, applied, tr, checkbox) {
+    checkbox.disabled = true;
+    fetch("/api/jobs/" + job.id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applied: applied }),
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("request failed");
+        return r.json();
+      })
+      .then(function () {
+        job.applied = applied;
+        tr.classList.toggle("applied-row", applied);
+        checkbox.disabled = false;
+        updateSubtitle();
+      })
+      .catch(function (err) {
+        checkbox.checked = !applied; // revert on failure
+        checkbox.disabled = false;
+        console.error("Failed to update applied status:", err);
+        alert("Couldn't save — check that the server is running and try again.");
+      });
+  }
+
+  function updateSubtitle(filteredCount) {
+    var appliedCount = allJobs.filter(function (j) { return j.applied; }).length;
+    var shown = filteredCount === undefined ? allJobs.length : filteredCount;
+    subtitle.innerHTML = "<b>" + shown + "</b> of <b>" + allJobs.length + "</b> screened jobs, ranked by fit"
+      + " · <b>" + appliedCount + "</b> applied";
+  }
+
+  function applySortAndFilter() {
+    var query = searchInput.value.trim().toLowerCase();
+    var hideApplied = document.getElementById("hideApplied").checked;
+    var filtered = allJobs.filter(function (j) {
+      if (hideApplied && j.applied) return false;
+      if (!query) return true;
+      return (j.title || "").toLowerCase().indexOf(query) !== -1
+          || (j.company_name || "").toLowerCase().indexOf(query) !== -1;
+    });
+
+    filtered.sort(function (a, b) {
+      var av = a[sortKey], bv = b[sortKey];
+      if (av === null || av === undefined) av = sortKey.indexOf("score") !== -1 ? -1 : "";
+      if (bv === null || bv === undefined) bv = sortKey.indexOf("score") !== -1 ? -1 : "";
+      if (typeof av === "string") av = av.toLowerCase();
+      if (typeof bv === "string") bv = bv.toLowerCase();
+      if (av < bv) return -1 * sortDir;
+      if (av > bv) return 1 * sortDir;
+      return 0;
+    });
+
+    render(filtered);
+    updateSubtitle(filtered.length);
+
+    document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+      th.classList.toggle("sorted", th.dataset.sort === sortKey);
+      var arrow = th.querySelector(".arrow");
+      arrow.textContent = th.dataset.sort === sortKey ? (sortDir === -1 ? "▼" : "▲") : "";
+    });
+  }
+
+  document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+    th.addEventListener("click", function () {
+      var key = th.dataset.sort;
+      if (sortKey === key) {
+        sortDir *= -1;
+      } else {
+        sortKey = key;
+        sortDir = key.indexOf("score") !== -1 ? -1 : 1;
+      }
+      applySortAndFilter();
+    });
+  });
+
+  searchInput.addEventListener("input", applySortAndFilter);
+  document.getElementById("hideApplied").addEventListener("change", applySortAndFilter);
+
+  fetch("/api/jobs")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      allJobs = data.jobs;
+      applySortAndFilter();
+    })
+    .catch(function (err) {
+      subtitle.textContent = "Failed to load jobs.";
+      console.error(err);
+    });
+})();
+</script>
+</body>
+</html>

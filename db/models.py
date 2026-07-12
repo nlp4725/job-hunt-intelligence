@@ -84,7 +84,7 @@ class Job(Base):
 
     company: Mapped[Company | None] = relationship(back_populates="jobs")
     skills: Mapped[list["JobSkill"]] = relationship(back_populates="job", cascade="all, delete-orphan")
-    judge_result: Mapped["JudgeResult"] = relationship(back_populates="job", uselist=False, cascade="all, delete-orphan")
+    screening_result: Mapped["ScreeningResult"] = relationship(back_populates="job", uselist=False, cascade="all, delete-orphan")
 
 
 class JobSkill(Base):
@@ -125,8 +125,10 @@ class CareerGoals(Base):
     """Stated career preferences (e.g. "goal: technical PM, want full
     product-cycle exposure, prefer building/shipping systems over
     deep-learning research") — distinct from Resume, which records work
-    history, not preference. Fed to the Judge Agent to score
-    career_narrative. Single-row table, same shape as Resume."""
+    history, not preference. Not currently fed to the Judge Agent — the
+    long_term_career_alignment rubric dimension this once fed was dropped
+    (too thin a spec, no calibration built) rather than developed further.
+    Kept for potential future use. Single-row table, same shape as Resume."""
 
     __tablename__ = "career_goals"
 
@@ -135,35 +137,46 @@ class CareerGoals(Base):
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
 
-class JudgeResult(Base):
-    """One row per job: the Judge Agent's rubric output. company_research_score
-    is nullable — the Missing-Dimension Rule can leave it unscored (excluded
-    from total_score) when company_report.md had no usable data at all."""
+class ScreeningResult(Base):
+    """One row per job: the Screening Agent's Stage 1 output (judge/stage1_screen.py)
+    — skill_score is deterministic (analysis/skill_match.py, no LLM), seniority_score
+    and expertise_score are each a separate calibrated LLM call (judge/seniority_fit.py,
+    judge/expertise_match.py). Deliberately excludes company research — too
+    slow/expensive to run on every job in this fast first-pass screen; see
+    CONTEXT.md "Job Judge". total_score is a plain unweighted sum of the three
+    0-5 dimensions (0-15) for dashboard ranking — each dimension stays
+    independently visible too, rather than only the blended number."""
 
-    __tablename__ = "judge_results"
+    __tablename__ = "screening_results"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), unique=True)   # one judgment per job — re-judging overwrites
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), unique=True)   # one screen per job — re-screening overwrites
 
-    skill_score: Mapped[float | None]                       # max 70
-    skill_analysis: Mapped[str | None] = mapped_column(Text)
+    skill_score: Mapped[int | None]                          # 0-5, floor(matched/total * 5); 0 if JD names no taxonomy skill
+    skill_ratio: Mapped[float | None]                        # raw overlap ratio behind skill_score
+    skill_matched: Mapped[list | None] = mapped_column(JSON)          # direct resume<->JD skill matches
+    skill_group_matched: Mapped[list | None] = mapped_column(JSON)    # JD skills satisfied via a SKILL_GROUPS sibling, not a direct match
+    skill_missing: Mapped[list | None] = mapped_column(JSON)
 
-    seniority_score: Mapped[float | None]                   # max 70
-    seniority_analysis: Mapped[str | None] = mapped_column(Text)
+    seniority_score: Mapped[int | None]                      # 0-5
+    seniority_evidence: Mapped[str | None] = mapped_column(Text)
+    seniority_years_required: Mapped[int | None]
+    seniority_inferred: Mapped[bool | None]
+    seniority_confidence: Mapped[str | None]
+    seniority_note: Mapped[str | None] = mapped_column(Text)
 
-    domain_transferability_score: Mapped[float | None]      # max 30
-    domain_transferability_analysis: Mapped[str | None] = mapped_column(Text)
+    expertise_score: Mapped[int | None]                      # 0-5
+    expertise_evidence: Mapped[str | None] = mapped_column(Text)
+    expertise_matched_domains: Mapped[list | None] = mapped_column(JSON)
+    expertise_matched_capabilities: Mapped[list | None] = mapped_column(JSON)
+    expertise_matched_weaknesses: Mapped[list | None] = mapped_column(JSON)
+    expertise_confidence: Mapped[str | None]
+    expertise_note: Mapped[str | None] = mapped_column(Text)
 
-    career_narrative_score: Mapped[float | None]            # max 60
-    career_narrative_analysis: Mapped[str | None] = mapped_column(Text)
+    total_score: Mapped[int | None]                          # 0-15, plain sum of skill_score + seniority_score + expertise_score
+    screened_at: Mapped[datetime | None]
 
-    company_research_score: Mapped[float | None]            # max 70; None if company_report.md had zero usable dimensions
-    company_research_analysis: Mapped[str | None] = mapped_column(Text)
-
-    total_score: Mapped[float | None]                       # max 300; renormalized if company_research_score is None
-    judged_at: Mapped[datetime | None]
-
-    job: Mapped[Job] = relationship(back_populates="judge_result")
+    job: Mapped[Job] = relationship(back_populates="screening_result")
 
 
 class ChatMessage(Base):

@@ -5,8 +5,9 @@ and output schemas as tests_and_eval/test_seniority/common.py and
 tests_and_eval/test_expertise/common.py unchanged — only the wrapper prompt
 and the nested output schema are new here. Exists to check whether combining
 (cheaper, one call instead of two) costs any accuracy versus scoring each
-rubric in its own dedicated call, mirroring how judge_agent.py already
-combines multiple rubric dimensions into one call.
+rubric in its own dedicated call, the way a single flat tool call can
+combine multiple rubric dimensions into one call (see the flat-schema
+variant below).
 """
 
 from typing import Literal
