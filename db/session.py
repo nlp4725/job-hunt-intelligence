@@ -29,6 +29,7 @@ def init_db() -> None:
     _drop_legacy_screen_results_table()
     _migrate_screening_results_total_score()
     _migrate_screening_results_skill_group_matched()
+    _migrate_jobs_expired_not_interested()
 
 
 def _migrate_jobs_detail_fetched() -> None:
@@ -146,6 +147,21 @@ def _migrate_screening_results_skill_group_matched() -> None:
         if not columns or "skill_group_matched" in columns:
             return
         conn.execute(text("ALTER TABLE screening_results ADD COLUMN skill_group_matched JSON"))
+        conn.commit()
+
+
+def _migrate_jobs_expired_not_interested() -> None:
+    """Adds jobs.expired / not_interested / not_interested_note if this DB
+    predates them — dashboard-only user-marked status, distinct from the
+    existing scrape-detected `status` (active/stale) column. Additive."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
+        if "expired" not in columns:
+            conn.execute(text("ALTER TABLE jobs ADD COLUMN expired BOOLEAN DEFAULT 0"))
+        if "not_interested" not in columns:
+            conn.execute(text("ALTER TABLE jobs ADD COLUMN not_interested BOOLEAN DEFAULT 0"))
+        if "not_interested_note" not in columns:
+            conn.execute(text("ALTER TABLE jobs ADD COLUMN not_interested_note TEXT"))
         conn.commit()
 
 

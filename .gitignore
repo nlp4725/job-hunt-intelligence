@@ -26,6 +26,7 @@ scraper/logs/
 
 # Personal documents
 nasi_v*.pdf
+nasi_resume*.pdf
 
 # Frontend (Vite + React, once built)
 frontend/node_modules/

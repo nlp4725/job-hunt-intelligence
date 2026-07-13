@@ -75,6 +75,9 @@ class Job(Base):
     match_score: Mapped[float | None]                                 # placeholder for future resume-match scoring
 
     applied: Mapped[bool] = mapped_column(default=False)
+    expired: Mapped[bool] = mapped_column(default=False)              # user-marked: listing is dead/filled, not scrape-detected staleness (see `status` below)
+    not_interested: Mapped[bool] = mapped_column(default=False)       # user-marked: decided not to apply
+    not_interested_note: Mapped[str | None] = mapped_column(Text)     # why, only meaningful when not_interested is True
     status: Mapped[str] = mapped_column(default="active")            # active/stale — set stale if a scrape stops seeing it
     detail_fetched: Mapped[bool] = mapped_column(default=False)       # False = placeholder row (id only, saved during phase-1 id collection) still awaiting phase-2 detail fetch
     is_relevant: Mapped[bool] = mapped_column(default=True)           # False = title didn't match its track's curated terms (see analysis/title_filter.py) — LinkedIn's keyword search matches full JD text, not just title, so noisy off-track matches slip through

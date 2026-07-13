@@ -5,8 +5,9 @@ Company + ScreeningResult joined) ranked by total_score descending; sorting
 beyond the default happens client-side in the UI (see templates/index.html)
 since the whole result set is small enough (thousands of rows, not
 millions) to ship in one response and sort in the browser rather than
-building server-side sort/pagination params. PATCH /api/jobs/<id> toggles
-Job.applied — the only mutation this API exposes.
+building server-side sort/pagination params. PATCH /api/jobs/<id> updates
+the user-marked status fields (applied, expired, not_interested,
+not_interested_note) — the only mutations this API exposes.
 """
 
 from flask import Flask, jsonify, render_template, request
@@ -18,6 +19,8 @@ from db.session import get_session
 
 app = Flask(__name__)
 CORS(app)
+
+_PATCHABLE_BOOL_FIELDS = ("applied", "expired", "not_interested")
 
 
 @app.route("/")
@@ -55,6 +58,9 @@ def api_jobs():
                 "expertise_score": result.expertise_score,
                 "total_score": result.total_score,
                 "applied": job.applied,
+                "expired": job.expired,
+                "not_interested": job.not_interested,
+                "not_interested_note": job.not_interested_note,
             })
 
         return jsonify({"count": len(jobs), "jobs": jobs})
@@ -65,17 +71,37 @@ def api_jobs():
 @app.route("/api/jobs/<int:job_id>", methods=["PATCH"])
 def api_update_job(job_id):
     body = request.get_json(silent=True) or {}
-    if "applied" not in body or not isinstance(body["applied"], bool):
-        return jsonify({"error": "body must include boolean 'applied'"}), 400
+    updates = {k: v for k, v in body.items() if k in _PATCHABLE_BOOL_FIELDS}
+    for field in updates:
+        if not isinstance(updates[field], bool):
+            return jsonify({"error": f"'{field}' must be a boolean"}), 400
+
+    note_provided = "not_interested_note" in body
+    if note_provided and body["not_interested_note"] is not None and not isinstance(body["not_interested_note"], str):
+        return jsonify({"error": "'not_interested_note' must be a string or null"}), 400
+
+    if not updates and not note_provided:
+        return jsonify({"error": f"body must include at least one of {_PATCHABLE_BOOL_FIELDS + ('not_interested_note',)}"}), 400
 
     session = get_session()
     try:
         job = session.get(Job, job_id)
         if job is None:
             return jsonify({"error": "job not found"}), 404
-        job.applied = body["applied"]
+
+        for field, value in updates.items():
+            setattr(job, field, value)
+        if note_provided:
+            job.not_interested_note = body["not_interested_note"]
+
         session.commit()
-        return jsonify({"id": job.id, "applied": job.applied})
+        return jsonify({
+            "id": job.id,
+            "applied": job.applied,
+            "expired": job.expired,
+            "not_interested": job.not_interested,
+            "not_interested_note": job.not_interested_note,
+        })
     finally:
         session.close()
 

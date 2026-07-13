@@ -116,9 +116,23 @@
   tbody tr:hover { background: var(--accent-wash); }
   tbody tr.applied-row { opacity: 0.5; }
   tbody tr.applied-row:hover { opacity: 0.8; }
+  tbody tr.expired-row { opacity: 0.4; }
+  tbody tr.expired-row:hover { opacity: 0.7; }
+  tbody tr.expired-row .job-title { text-decoration: line-through; }
+  tbody tr.not-interested-row { opacity: 0.4; }
+  tbody tr.not-interested-row:hover { opacity: 0.7; }
 
   td { padding: 9px 12px; color: var(--text-secondary); vertical-align: middle; }
   td.rank { color: var(--text-muted); font-variant-numeric: tabular-nums; width: 1%; }
+
+  .note-input {
+    width: 130px; font-size: 12px; font-family: inherit; color: var(--text-primary);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 8px;
+  }
+  .note-input:disabled { background: transparent; border-color: transparent; color: var(--text-muted); cursor: not-allowed; }
+  .note-input:not(:disabled):focus { outline: none; border-color: var(--accent); }
+  .note-input::placeholder { color: var(--text-muted); }
 
   .applied-checkbox { width: 16px; height: 16px; accent-color: var(--good); cursor: pointer; }
 
@@ -161,6 +175,8 @@
     <div class="controls">
       <input class="search" id="search" type="text" placeholder="Filter by title or company…">
       <label class="check-filter"><input type="checkbox" id="hideApplied"> Hide applied</label>
+      <label class="check-filter"><input type="checkbox" id="hideExpired"> Hide expired</label>
+      <label class="check-filter"><input type="checkbox" id="hideNotInterested"> Hide not interested</label>
       <span class="hint">Click a column header to sort</span>
     </div>
 
@@ -178,6 +194,9 @@
             <th data-sort="company_size">Size<span class="arrow"></span></th>
             <th data-sort="posted_at">Posted<span class="arrow"></span></th>
             <th class="num" data-sort="applied">Applied<span class="arrow"></span></th>
+            <th class="num" data-sort="expired">Expired<span class="arrow"></span></th>
+            <th class="num" data-sort="not_interested">Not Interested<span class="arrow"></span></th>
+            <th>Note</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -215,7 +234,7 @@
     if (jobs.length === 0) {
       var tr = document.createElement("tr");
       var td = document.createElement("td");
-      td.colSpan = 10;
+      td.colSpan = 13;
       td.className = "empty-state";
       td.textContent = "No jobs match.";
       tr.appendChild(td);
@@ -280,61 +299,102 @@
       tr.appendChild(postedTd);
 
       if (job.applied) tr.classList.add("applied-row");
+      if (job.expired) tr.classList.add("expired-row");
+      if (job.not_interested) tr.classList.add("not-interested-row");
 
-      var appliedTd = document.createElement("td");
-      appliedTd.className = "num";
-      var checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.className = "applied-checkbox";
-      checkbox.checked = !!job.applied;
-      checkbox.setAttribute("aria-label", "Mark as applied: " + (job.title || ""));
-      checkbox.addEventListener("change", function () {
-        toggleApplied(job, checkbox.checked, tr, checkbox);
+      function statusCheckbox(field, label) {
+        var cellTd = document.createElement("td");
+        cellTd.className = "num";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.className = "applied-checkbox";
+        cb.checked = !!job[field];
+        cb.setAttribute("aria-label", label + ": " + (job.title || ""));
+        cb.addEventListener("change", function () {
+          var updates = {};
+          updates[field] = cb.checked;
+          patchJob(job, updates, cb, function () {
+            tr.classList.toggle(field.replace(/_/g, "-") + "-row", cb.checked);
+            if (field === "not_interested") noteInput.disabled = !cb.checked;
+            updateSubtitle();
+          });
+        });
+        cellTd.appendChild(cb);
+        return cellTd;
+      }
+
+      tr.appendChild(statusCheckbox("applied", "Mark as applied"));
+      tr.appendChild(statusCheckbox("expired", "Mark as expired"));
+      tr.appendChild(statusCheckbox("not_interested", "Mark as not interested"));
+
+      var noteTd = document.createElement("td");
+      var noteInput = document.createElement("input");
+      noteInput.type = "text";
+      noteInput.className = "note-input";
+      noteInput.placeholder = "Why not?";
+      noteInput.value = job.not_interested_note || "";
+      noteInput.disabled = !job.not_interested;
+      noteInput.addEventListener("change", function () {
+        patchJob(job, { not_interested_note: noteInput.value || null }, noteInput, null);
       });
-      appliedTd.appendChild(checkbox);
-      tr.appendChild(appliedTd);
+      noteTd.appendChild(noteInput);
+      tr.appendChild(noteTd);
 
       tbody.appendChild(tr);
     });
   }
 
-  function toggleApplied(job, applied, tr, checkbox) {
-    checkbox.disabled = true;
+  function patchJob(job, updates, element, onSuccess) {
+    element.disabled = true;
+    var previous = {};
+    Object.keys(updates).forEach(function (k) { previous[k] = job[k]; });
+
     fetch("/api/jobs/" + job.id, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ applied: applied }),
+      body: JSON.stringify(updates),
     })
       .then(function (r) {
         if (!r.ok) throw new Error("request failed");
         return r.json();
       })
       .then(function () {
-        job.applied = applied;
-        tr.classList.toggle("applied-row", applied);
-        checkbox.disabled = false;
-        updateSubtitle();
+        Object.keys(updates).forEach(function (k) { job[k] = updates[k]; });
+        element.disabled = false;
+        if (onSuccess) onSuccess();
       })
       .catch(function (err) {
-        checkbox.checked = !applied; // revert on failure
-        checkbox.disabled = false;
-        console.error("Failed to update applied status:", err);
+        Object.keys(previous).forEach(function (k) {
+          job[k] = previous[k];
+          if (element.type === "checkbox") element.checked = !!previous[k];
+          else element.value = previous[k] || "";
+        });
+        element.disabled = false;
+        console.error("Failed to save:", err);
         alert("Couldn't save — check that the server is running and try again.");
       });
   }
 
   function updateSubtitle(filteredCount) {
     var appliedCount = allJobs.filter(function (j) { return j.applied; }).length;
+    var expiredCount = allJobs.filter(function (j) { return j.expired; }).length;
+    var notInterestedCount = allJobs.filter(function (j) { return j.not_interested; }).length;
     var shown = filteredCount === undefined ? allJobs.length : filteredCount;
     subtitle.innerHTML = "<b>" + shown + "</b> of <b>" + allJobs.length + "</b> screened jobs, ranked by fit"
-      + " · <b>" + appliedCount + "</b> applied";
+      + " · <b>" + appliedCount + "</b> applied"
+      + " · <b>" + expiredCount + "</b> expired"
+      + " · <b>" + notInterestedCount + "</b> not interested";
   }
 
   function applySortAndFilter() {
     var query = searchInput.value.trim().toLowerCase();
     var hideApplied = document.getElementById("hideApplied").checked;
+    var hideExpired = document.getElementById("hideExpired").checked;
+    var hideNotInterested = document.getElementById("hideNotInterested").checked;
     var filtered = allJobs.filter(function (j) {
       if (hideApplied && j.applied) return false;
+      if (hideExpired && j.expired) return false;
+      if (hideNotInterested && j.not_interested) return false;
       if (!query) return true;
       return (j.title || "").toLowerCase().indexOf(query) !== -1
           || (j.company_name || "").toLowerCase().indexOf(query) !== -1;
@@ -376,6 +436,8 @@
 
   searchInput.addEventListener("input", applySortAndFilter);
   document.getElementById("hideApplied").addEventListener("change", applySortAndFilter);
+  document.getElementById("hideExpired").addEventListener("change", applySortAndFilter);
+  document.getElementById("hideNotInterested").addEventListener("change", applySortAndFilter);
 
   fetch("/api/jobs")
     .then(function (r) { return r.json(); })
