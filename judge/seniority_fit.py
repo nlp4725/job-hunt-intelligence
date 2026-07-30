@@ -25,16 +25,17 @@ load_dotenv()
 MODEL = "deepseek-v4-pro"
 
 SENIORITY_PROMPT = """## SENIORITY FIT (0–5)
-Score how well the role's seniority matches my profile (~3 years
-hands-on ML/AI experience, targeting mid-level). Judge by the LEVEL
+Score how well the role's seniority matches my profile (limited
+formal on-title experience despite a strong technical background —
+prioritizing entry-level and early-career roles). Judge by the LEVEL
 OF RESPONSIBILITY the posting describes, not by job title strings.
 
 | Score | Level | Years (half-open) | What the role actually expects |
 |-------|-------|-------------------|--------------------------------|
-| 5 | Mid-level | [2, 5) | Works independently, owns features end-to-end, collaborates across teams. Expected to ship, not to lead. |
-| 4 | Senior (lower) | [5, 7) | Owns whole projects, makes technical decisions. Mentorship is a plus, not a duty. |
-| 3 | Senior (upper) | [7, 9) | Mentoring and cross-team technical leadership are core responsibilities. Sets technical direction for a team. |
-| 2 | New Grad / Entry | [0, 2) | Executes well-defined tasks under supervision. Posting caps experience or targets recent graduates. |
+| 5 | New Grad / Entry | [0, 2) | Executes well-defined tasks under supervision. Posting caps experience or targets recent graduates. |
+| 4 | Mid-level | [2, 5) | Works independently, owns features end-to-end, collaborates across teams. Expected to ship, not to lead. |
+| 3 | Senior (lower) | [5, 7) | Owns whole projects, makes technical decisions. Mentorship is a plus, not a duty. |
+| 2 | Senior (upper) | [7, 9) | Mentoring and cross-team technical leadership are core responsibilities. Sets technical direction for a team. |
 | 1 | Staff / Lead | [9, 12) | Drives architecture across multiple teams. Influences roadmap. Deep specialization assumed. |
 | 0 | Principal / Director / Intern / Contract | [12, ∞) or internship or contract | Org-wide technical strategy, manages managers — OR an internship — OR an explicitly contract/temporary/fixed-term position (not full-time), even at a direct employer with a real product/team description. Hard non-fit either way, regardless of years or responsibilities stated. |
 
@@ -73,7 +74,7 @@ with product and data teams."
 → {"criterion": "seniority_fit",
    "evidence": "ML Engineer | 3+ years experience | own our ranking model pipeline",
    "years_required": 3, "inferred": false, "confidence": "high",
-   "note": null, "score": 5}
+   "note": null, "score": 4}
 
 Posting: "Senior Machine Learning Engineer. You have 3+ years of
 experience building production ML systems."
@@ -81,7 +82,7 @@ experience building production ML systems."
 → {"criterion": "seniority_fit",
    "evidence": "Senior Machine Learning Engineer | 3+ years of experience",
    "years_required": 3, "inferred": false, "confidence": "high",
-   "note": "title inflated relative to stated years", "score": 5}
+   "note": "title inflated relative to stated years", "score": 4}
 
 Posting: "Founding AI Engineer at a seed-stage startup. You'll build
 our LLM product from scratch, wear many hats, and ship fast. No
@@ -90,7 +91,7 @@ specific experience requirement, but you've built real systems."
 → {"criterion": "seniority_fit",
    "evidence": "Founding AI Engineer | build our LLM product from scratch | built real systems",
    "years_required": null, "inferred": true, "confidence": "medium",
-   "note": null, "score": 5}
+   "note": null, "score": 4}
 
 Posting: "ML Engineer II at [large tech co]. Collaborate with
 scientists to productionize models; participate in design reviews."
@@ -98,7 +99,7 @@ scientists to productionize models; participate in design reviews."
 → {"criterion": "seniority_fit",
    "evidence": "ML Engineer II | productionize models | participate in design reviews",
    "years_required": null, "inferred": true, "confidence": "high",
-   "note": null, "score": 5}
+   "note": null, "score": 4}
 
 Posting: "Machine Learning Engineer. You will define the technical
 vision for ML across the organization, mentor senior engineers, and
@@ -116,17 +117,17 @@ candidates graduating between Dec 2026 and Jun 2027."
 → {"criterion": "seniority_fit",
    "evidence": "2027 New Graduate Program | graduating between Dec 2026 and Jun 2027",
    "years_required": null, "inferred": false, "confidence": "high",
-   "note": null, "score": 2}
+   "note": null, "score": 5}
 
 Posting: "Applied Scientist — recommendation systems. PhD required
 or MS with 4+ years. You'll lead projects and mentor junior scientists;
 mentoring is encouraged but not required for promotion."
 → years=4 → band [2,5), top edge; senior-flavored optional duties.
-   Years govern → 5, flag the ambiguity.
+   Years govern → 4, flag the ambiguity.
 → {"criterion": "seniority_fit",
    "evidence": "MS with 4+ years | lead projects | mentoring is encouraged",
    "years_required": 4, "inferred": false, "confidence": "medium",
-   "note": "4 yrs = top of mid band; senior-flavored duties", "score": 5}
+   "note": "4 yrs = top of mid band; senior-flavored duties", "score": 4}
 
 Posting: "Title: Data Scientist. Duration: 12 Months. *** W2 - USC or GC
 only ***. Top skills required: Python or R, time series forecasting,

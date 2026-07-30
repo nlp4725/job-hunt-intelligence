@@ -45,3 +45,22 @@ def is_relevant_title(title: str | None, track: str) -> bool:
     if pattern is None:
         return True
     return bool(pattern.search(title))
+
+
+# Director-level, Staff-level, and Principal-level (and above) roles are a
+# seniority mismatch for the candidate's actual band (~3 years, mid-level —
+# see judge/seniority_fit.py's bands) regardless of track, so this is
+# checked independently of TITLE_TERMS_BY_TRACK rather than folded into it:
+# a title can be track-relevant ("Director, Data Science") and still be the
+# wrong seniority. Deterministic and applied at the same list-page stage as
+# is_relevant_title, before a job ever gets a placeholder row or a full
+# detail fetch — cheaper than waiting for Seniority Fit to score it 0/5
+# after a full Screening Agent call.
+_SENIOR_TITLE_PATTERN = re.compile(r"(?:\bdirector\b|\bstaff\b|\bprincipal\b)", re.IGNORECASE)
+
+
+def is_too_senior_title(title: str | None) -> bool:
+    """True if `title` reads as Director-level, Staff-level, Principal-level, or above."""
+    if not title:
+        return False
+    return bool(_SENIOR_TITLE_PATTERN.search(title))

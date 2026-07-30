@@ -85,6 +85,17 @@
 
   .hint { font-size: 11.5px; color: var(--text-muted); }
 
+  .tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .tab {
+    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    background: transparent; border: 1px solid transparent; border-radius: 8px;
+    padding: 7px 14px; cursor: pointer; font-family: inherit;
+  }
+  .tab:hover { color: var(--text-primary); background: var(--surface-2); }
+  .tab.active { color: var(--accent); background: var(--accent-wash); border-color: var(--border); }
+  .tab .count { color: var(--text-muted); font-weight: 500; margin-left: 5px; font-variant-numeric: tabular-nums; }
+  .tab.active .count { color: var(--accent); opacity: 0.75; }
+
   .table-scroll {
     overflow-x: auto;
     border: 1px solid var(--border);
@@ -121,6 +132,8 @@
   tbody tr.expired-row .job-title { text-decoration: line-through; }
   tbody tr.not-interested-row { opacity: 0.4; }
   tbody tr.not-interested-row:hover { opacity: 0.7; }
+  tbody tr.duplicate-row { opacity: 0.55; }
+  tbody tr.duplicate-row:hover { opacity: 0.85; }
 
   td { padding: 9px 12px; color: var(--text-secondary); vertical-align: middle; }
   td.rank { color: var(--text-muted); font-variant-numeric: tabular-nums; width: 1%; }
@@ -140,6 +153,8 @@
   .job-title:hover { text-decoration: underline; }
   .job-title:after { content: " ↗"; font-size: 10px; opacity: 0.5; font-weight: 400; }
   .company-name { color: var(--text-secondary); font-size: 12px; margin-top: 1px; }
+  .duplicate-note { color: var(--warning); font-size: 11.5px; margin-top: 2px; }
+  .badge.dup { background: var(--warning-wash); color: var(--warning); }
 
   .badge {
     display: inline-flex; align-items: center; justify-content: center;
@@ -172,11 +187,46 @@
       </div>
     </header>
 
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-track="ml_ai">AI/ML<span class="count" id="countMlAi"></span></button>
+      <button class="tab" data-track="pm">Product<span class="count" id="countPm"></span></button>
+    </div>
+
     <div class="controls">
       <input class="search" id="search" type="text" placeholder="Filter by title or company…">
-      <label class="check-filter"><input type="checkbox" id="hideApplied"> Hide applied</label>
-      <label class="check-filter"><input type="checkbox" id="hideExpired"> Hide expired</label>
-      <label class="check-filter"><input type="checkbox" id="hideNotInterested"> Hide not interested</label>
+      <select class="search" id="postedWithin" style="flex: 0 0 auto; max-width: 180px; cursor: pointer;" title="Jobs older than 2 weeks are always hidden">
+        <option value="14">Posted: within 2 weeks</option>
+        <option value="7">Within 1 week</option>
+        <option value="3">Within 3 days</option>
+        <option value="1">Within 1 day</option>
+      </select>
+      <select class="search" id="seniorityFilter" style="flex: 0 0 auto; max-width: 180px; cursor: pointer;" title="Buckets by seniority_score per judge/seniority_fit.py's bands">
+        <option value="">Seniority: any</option>
+        <option value="5">Entry / New Grad (&lt;2 yrs)</option>
+        <option value="4">Mid-level (2-5 yrs)</option>
+        <option value="3">Senior, lower (5-7 yrs)</option>
+        <option value="2">Senior, upper (7-9 yrs)</option>
+        <option value="1">Staff / Lead (9-12 yrs)</option>
+        <option value="0">Principal+ (12+ yrs) / disqualified</option>
+      </select>
+      <select class="search" id="companySizeFilter" style="flex: 0 0 auto; max-width: 160px; cursor: pointer;" title="Buckets by companies.size (LinkedIn's employee-count bands)">
+        <option value="">Company size: any</option>
+        <option value="500+">500+ employees</option>
+        <option value="20-500">20-500 employees</option>
+        <option value="<20">&lt;20 employees</option>
+      </select>
+      <select class="search" id="workplaceTypeFilter" style="flex: 0 0 auto; max-width: 160px; cursor: pointer;" title="LinkedIn's own workplace-type badge on the job (jobs scraped before this field existed show as Unknown)">
+        <option value="">Workplace: any</option>
+        <option value="Remote">Remote</option>
+        <option value="Hybrid">Hybrid</option>
+        <option value="On-site">On-site</option>
+        <option value="unknown">Unknown</option>
+      </select>
+      <label class="check-filter"><input type="checkbox" id="softwareOnly"> Software companies only</label>
+      <label class="check-filter"><input type="checkbox" id="top500Only"> Top 500 tech companies only</label>
+      <label class="check-filter" id="toCOnlyLabel" style="display: none;"><input type="checkbox" id="toCOnly"> Customer-facing (to-C) product only</label>
+      <label class="check-filter"><input type="checkbox" id="showCrossedOff"> Show crossed off (applied / expired / not interested)</label>
+      <label class="check-filter"><input type="checkbox" id="hideDuplicates"> Hide duplicates (reposts of an already-seen job)</label>
       <span class="hint">Click a column header to sort</span>
     </div>
 
@@ -192,11 +242,15 @@
             <th data-sort="title">Job<span class="arrow"></span></th>
             <th data-sort="company_industry">Industry<span class="arrow"></span></th>
             <th data-sort="company_size">Size<span class="arrow"></span></th>
+            <th data-sort="workplace_type">Workplace<span class="arrow"></span></th>
+            <th class="num" data-sort="top500_tech">Top 500<span class="arrow"></span></th>
+            <th class="num" data-sort="to_c_product_pm">To-C<span class="arrow"></span></th>
             <th data-sort="posted_at">Posted<span class="arrow"></span></th>
             <th class="num" data-sort="applied">Applied<span class="arrow"></span></th>
             <th class="num" data-sort="expired">Expired<span class="arrow"></span></th>
             <th class="num" data-sort="not_interested">Not Interested<span class="arrow"></span></th>
-            <th>Note</th>
+            <th>Why Not</th>
+            <th>Notes</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -209,6 +263,7 @@
   var allJobs = [];
   var sortKey = "total_score";
   var sortDir = -1; // -1 = desc, 1 = asc
+  var activeTrack = "ml_ai";
 
   var tbody = document.getElementById("tbody");
   var subtitle = document.getElementById("subtitle");
@@ -234,7 +289,7 @@
     if (jobs.length === 0) {
       var tr = document.createElement("tr");
       var td = document.createElement("td");
-      td.colSpan = 13;
+      td.colSpan = 17;
       td.className = "empty-state";
       td.textContent = "No jobs match.";
       tr.appendChild(td);
@@ -250,11 +305,19 @@
       rankTd.textContent = i + 1;
       tr.appendChild(rankTd);
 
+      var isDuplicate = !!job.duplicate_of_job_id;
+
       var totalTd = document.createElement("td");
       totalTd.className = "num";
       var totalBadge = document.createElement("span");
-      totalBadge.className = "badge total " + scoreBand(job.total_score);
-      totalBadge.textContent = job.total_score;
+      if (isDuplicate) {
+        totalBadge.className = "badge total dup";
+        totalBadge.textContent = "DUP";
+        totalBadge.title = "Not screened — near-exact repost of an already-scraped job";
+      } else {
+        totalBadge.className = "badge total " + scoreBand(job.total_score);
+        totalBadge.textContent = job.total_score;
+      }
       totalTd.appendChild(totalBadge);
       tr.appendChild(totalTd);
 
@@ -263,7 +326,7 @@
         td.className = "num";
         var badge = document.createElement("span");
         badge.className = "badge";
-        badge.textContent = v;
+        badge.textContent = isDuplicate ? "—" : v;
         td.appendChild(badge);
         tr.appendChild(td);
       });
@@ -280,6 +343,14 @@
       companyDiv.textContent = job.company_name || "";
       jobTd.appendChild(link);
       jobTd.appendChild(companyDiv);
+      if (isDuplicate) {
+        var dupDiv = document.createElement("div");
+        dupDiv.className = "duplicate-note";
+        dupDiv.textContent = "🔁 Duplicate of: " + (job.duplicate_of_title || "(untitled)")
+          + (job.duplicate_of_applied ? " — already applied" : "")
+          + (job.duplicate_of_total_score != null ? " (score " + job.duplicate_of_total_score + ")" : "");
+        jobTd.appendChild(dupDiv);
+      }
       tr.appendChild(jobTd);
 
       var industryTd = document.createElement("td");
@@ -292,6 +363,37 @@
       if (!job.company_size) sizeTd.className = "muted";
       tr.appendChild(sizeTd);
 
+      var workplaceTd = document.createElement("td");
+      workplaceTd.textContent = job.workplace_type || "Unknown";
+      if (!job.workplace_type) workplaceTd.className = "muted";
+      tr.appendChild(workplaceTd);
+
+      var top500Td = document.createElement("td");
+      top500Td.className = "num";
+      if (job.top500_tech) {
+        var top500Badge = document.createElement("span");
+        top500Badge.className = "badge good";
+        top500Badge.textContent = "Yes";
+        top500Td.appendChild(top500Badge);
+      } else {
+        top500Td.className = "num muted";
+        top500Td.textContent = "—";
+      }
+      tr.appendChild(top500Td);
+
+      var toCTd = document.createElement("td");
+      toCTd.className = "num";
+      if (job.to_c_product_pm) {
+        var toCBadge = document.createElement("span");
+        toCBadge.className = "badge good";
+        toCBadge.textContent = "Yes";
+        toCTd.appendChild(toCBadge);
+      } else {
+        toCTd.className = "num muted";
+        toCTd.textContent = "—";
+      }
+      tr.appendChild(toCTd);
+
       var postedTd = document.createElement("td");
       postedTd.textContent = formatPostedDate(job.posted_at);
       if (!job.posted_at) postedTd.className = "muted";
@@ -301,6 +403,7 @@
       if (job.applied) tr.classList.add("applied-row");
       if (job.expired) tr.classList.add("expired-row");
       if (job.not_interested) tr.classList.add("not-interested-row");
+      if (isDuplicate) tr.classList.add("duplicate-row");
 
       function statusCheckbox(field, label) {
         var cellTd = document.createElement("td");
@@ -311,13 +414,21 @@
         cb.checked = !!job[field];
         cb.setAttribute("aria-label", label + ": " + (job.title || ""));
         cb.addEventListener("change", function () {
+          if (field === "not_interested" && cb.checked) {
+            var reason = window.prompt("Why not interested?", job.not_interested_note || "");
+            if (reason === null) {
+              cb.checked = false;   // cancelled — don't mark it, nothing to save
+              return;
+            }
+            // re-render (not a manual DOM patch) so this row actually disappears
+            // when "show crossed off" is off, rather than just restyling in place
+            patchJob(job, { not_interested: true, not_interested_note: reason || null }, cb, applySortAndFilter);
+            return;
+          }
+
           var updates = {};
           updates[field] = cb.checked;
-          patchJob(job, updates, cb, function () {
-            tr.classList.toggle(field.replace(/_/g, "-") + "-row", cb.checked);
-            if (field === "not_interested") noteInput.disabled = !cb.checked;
-            updateSubtitle();
-          });
+          patchJob(job, updates, cb, applySortAndFilter);
         });
         cellTd.appendChild(cb);
         return cellTd;
@@ -339,6 +450,18 @@
       });
       noteTd.appendChild(noteInput);
       tr.appendChild(noteTd);
+
+      var generalNoteTd = document.createElement("td");
+      var generalNoteInput = document.createElement("input");
+      generalNoteInput.type = "text";
+      generalNoteInput.className = "note-input";
+      generalNoteInput.placeholder = "Add a note...";
+      generalNoteInput.value = job.note || "";
+      generalNoteInput.addEventListener("change", function () {
+        patchJob(job, { note: generalNoteInput.value || null }, generalNoteInput, null);
+      });
+      generalNoteTd.appendChild(generalNoteInput);
+      tr.appendChild(generalNoteTd);
 
       tbody.appendChild(tr);
     });
@@ -366,8 +489,8 @@
       .catch(function (err) {
         Object.keys(previous).forEach(function (k) {
           job[k] = previous[k];
-          if (element.type === "checkbox") element.checked = !!previous[k];
-          else element.value = previous[k] || "";
+          if (element.type === "checkbox" && typeof previous[k] === "boolean") element.checked = previous[k];
+          else if (element.type !== "checkbox" && typeof previous[k] !== "boolean") element.value = previous[k] || "";
         });
         element.disabled = false;
         console.error("Failed to save:", err);
@@ -375,12 +498,16 @@
       });
   }
 
-  function updateSubtitle(filteredCount) {
-    var appliedCount = allJobs.filter(function (j) { return j.applied; }).length;
-    var expiredCount = allJobs.filter(function (j) { return j.expired; }).length;
-    var notInterestedCount = allJobs.filter(function (j) { return j.not_interested; }).length;
-    var shown = filteredCount === undefined ? allJobs.length : filteredCount;
-    subtitle.innerHTML = "<b>" + shown + "</b> of <b>" + allJobs.length + "</b> screened jobs, ranked by fit"
+  function updateSubtitle(filteredCount, trackTotal) {
+    var trackJobs = allJobs.filter(function (j) { return j.track === activeTrack; });
+    var appliedCount = trackJobs.filter(function (j) { return j.applied; }).length;
+    var expiredCount = trackJobs.filter(function (j) { return j.expired; }).length;
+    var notInterestedCount = trackJobs.filter(function (j) { return j.not_interested; }).length;
+    var duplicateCount = trackJobs.filter(function (j) { return j.duplicate_of_job_id; }).length;
+    var shown = filteredCount === undefined ? trackJobs.length : filteredCount;
+    var total = trackTotal === undefined ? trackJobs.length : trackTotal;
+    subtitle.innerHTML = "<b>" + shown + "</b> of <b>" + total + "</b> screened jobs, ranked by fit"
+      + " · <b>" + duplicateCount + "</b> duplicates"
       + " · <b>" + appliedCount + "</b> applied"
       + " · <b>" + expiredCount + "</b> expired"
       + " · <b>" + notInterestedCount + "</b> not interested";
@@ -388,17 +515,80 @@
 
   function applySortAndFilter() {
     var query = searchInput.value.trim().toLowerCase();
-    var hideApplied = document.getElementById("hideApplied").checked;
-    var hideExpired = document.getElementById("hideExpired").checked;
-    var hideNotInterested = document.getElementById("hideNotInterested").checked;
-    var filtered = allJobs.filter(function (j) {
-      if (hideApplied && j.applied) return false;
-      if (hideExpired && j.expired) return false;
-      if (hideNotInterested && j.not_interested) return false;
+    var showCrossedOff = document.getElementById("showCrossedOff").checked;
+    var hideDuplicates = document.getElementById("hideDuplicates").checked;
+    // Hard cap: jobs older than 2 weeks (or with an unknown posted date)
+    // never show, regardless of dropdown selection — the dropdown only
+    // narrows further within that window, it can't widen past it.
+    var postedWithinDays = parseInt(document.getElementById("postedWithin").value, 10);
+    var cutoff = Date.now() - postedWithinDays * 86400000;
+    var top500Only = document.getElementById("top500Only").checked;
+    var softwareOnly = document.getElementById("softwareOnly").checked;
+    var seniorityFilter = document.getElementById("seniorityFilter").value;
+    function matchesSeniority(j) {
+      if (!seniorityFilter) return true;
+      return j.seniority_score === parseInt(seniorityFilter, 10);
+    }
+
+    var companySizeFilter = document.getElementById("companySizeFilter").value;
+    // LinkedIn's fixed set of size strings (see companies.size) — bucketed
+    // at the 20 and 500 boundaries the user asked for, which don't line up
+    // exactly with LinkedIn's own band edges (e.g. "11-50" straddles 20;
+    // grouped into 20-500 since most of that band sits above 20).
+    var SIZE_BUCKET = {
+      "0-1 employees": "<20",
+      "2-10 employees": "<20",
+      "11-50 employees": "20-500",
+      "51-200 employees": "20-500",
+      "201-500 employees": "20-500",
+      "501-1,000 employees": "500+",
+      "1,001-5,000 employees": "500+",
+      "5,001-10,000 employees": "500+",
+      "10,001+ employees": "500+",
+    };
+    function matchesCompanySize(j) {
+      if (!companySizeFilter) return true;
+      return SIZE_BUCKET[j.company_size || ""] === companySizeFilter;
+    }
+    function isSoftwareCompany(j) {
+      return /software/i.test(j.company_industry || "");
+    }
+    var workplaceTypeFilter = document.getElementById("workplaceTypeFilter").value;
+    function matchesWorkplaceType(j) {
+      if (!workplaceTypeFilter) return true;
+      if (workplaceTypeFilter === "unknown") return !j.workplace_type;
+      return j.workplace_type === workplaceTypeFilter;
+    }
+    var toCOnlyChecked = document.getElementById("toCOnly").checked;
+    document.getElementById("toCOnlyLabel").style.display = activeTrack === "pm" ? "" : "none";
+
+    // Shared by both the visible table and the tab-count badges, so the
+    // badges reflect every active filter (not just the track split) —
+    // toC only applies for pm-track jobs, meaningless on ml_ai per the
+    // Job model's to_c_product_pm comment.
+    function passesFilters(j) {
+      if (!showCrossedOff && (j.applied || j.expired || j.not_interested)) return false;
+      if (hideDuplicates && j.duplicate_of_job_id) return false;
+      if (top500Only && !j.top500_tech) return false;
+      if (softwareOnly && !isSoftwareCompany(j)) return false;
+      if (!matchesSeniority(j)) return false;
+      if (!matchesCompanySize(j)) return false;
+      if (!matchesWorkplaceType(j)) return false;
+      if (j.track === "pm" && toCOnlyChecked && !j.to_c_product_pm) return false;
+      if (!j.posted_at) return false;   // unknown posted date — always excluded now that the 2-week cap is unconditional
+      if (new Date(j.posted_at).getTime() < cutoff) return false;
       if (!query) return true;
       return (j.title || "").toLowerCase().indexOf(query) !== -1
           || (j.company_name || "").toLowerCase().indexOf(query) !== -1;
-    });
+    }
+
+    document.getElementById("countMlAi").textContent =
+      " " + allJobs.filter(function (j) { return j.track === "ml_ai" && passesFilters(j); }).length;
+    document.getElementById("countPm").textContent =
+      " " + allJobs.filter(function (j) { return j.track === "pm" && passesFilters(j); }).length;
+
+    var trackJobs = allJobs.filter(function (j) { return j.track === activeTrack; });
+    var filtered = trackJobs.filter(passesFilters);
 
     filtered.sort(function (a, b) {
       var av = a[sortKey], bv = b[sortKey];
@@ -412,7 +602,7 @@
     });
 
     render(filtered);
-    updateSubtitle(filtered.length);
+    updateSubtitle(filtered.length, trackJobs.length);
 
     document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
       th.classList.toggle("sorted", th.dataset.sort === sortKey);
@@ -434,10 +624,27 @@
     });
   });
 
+  document.querySelectorAll("#tabs .tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      if (tab.dataset.track === activeTrack) return;
+      activeTrack = tab.dataset.track;
+      document.querySelectorAll("#tabs .tab").forEach(function (t) {
+        t.classList.toggle("active", t === tab);
+      });
+      applySortAndFilter();
+    });
+  });
+
   searchInput.addEventListener("input", applySortAndFilter);
-  document.getElementById("hideApplied").addEventListener("change", applySortAndFilter);
-  document.getElementById("hideExpired").addEventListener("change", applySortAndFilter);
-  document.getElementById("hideNotInterested").addEventListener("change", applySortAndFilter);
+  document.getElementById("showCrossedOff").addEventListener("change", applySortAndFilter);
+  document.getElementById("hideDuplicates").addEventListener("change", applySortAndFilter);
+  document.getElementById("softwareOnly").addEventListener("change", applySortAndFilter);
+  document.getElementById("top500Only").addEventListener("change", applySortAndFilter);
+  document.getElementById("seniorityFilter").addEventListener("change", applySortAndFilter);
+  document.getElementById("companySizeFilter").addEventListener("change", applySortAndFilter);
+  document.getElementById("workplaceTypeFilter").addEventListener("change", applySortAndFilter);
+  document.getElementById("toCOnly").addEventListener("change", applySortAndFilter);
+  document.getElementById("postedWithin").addEventListener("change", applySortAndFilter);
 
   fetch("/api/jobs")
     .then(function (r) { return r.json(); })

@@ -1,34 +1,70 @@
 """
-Real orchestrator: scrape all 4 keywords, dedup against the DB, only fetch
-full detail for genuinely new jobs, extract skills, and persist everything.
+Real orchestrator: scrape every configured search (see SEARCHES), dedup
+against the DB, only fetch full detail for genuinely new jobs, extract
+skills, and persist everything.
 
 This is the script launchd will eventually call on a schedule. Run directly
 for now:
     python scraper/run_scrape.py
 """
 
+import queue
 import sys
+import threading
+from datetime import timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))  # so `db.` / `analysis.` imports resolve when run directly
 
+from selenium.common.exceptions import TimeoutException
+
 from analysis.salary_parser import parse_salary_range
+from analysis.duplicate_detector import find_duplicate_job
 from analysis.skills_extractor import extract_skills
-from analysis.title_filter import is_relevant_title
+from analysis.title_filter import is_relevant_title, is_too_senior_title
 from db.models import Company, Job, JobSkill, ScrapeRun, track_for_keyword, utcnow
 from db.session import get_session, init_db
+from judge.agency_blocklist import delete_agency_jobs, is_agency_company_name
+from judge.eligibility import load_resumes, resume_for_screening
+from judge.screening_run import run_screening, screen_one
 from scraper.linkedin_scraper import (
     LinkedInBlockedError,
     PROFILE_DIR,
     TIME_RANGE_DAY,
     TIME_RANGE_MONTH,
+    TIME_RANGE_WEEK,
+    WORK_TYPE_HYBRID_ONSITE,
+    WORK_TYPE_REMOTE,
     build_driver,
     get_job_cards_on_page,
     jitter,
+    maybe_take_a_break,
     scrape_job_detail,
 )
 
-KEYWORDS = ["machine learning", "ai engineer", "ai scientist", "product manager"]
+KEYWORDS = ["machine learning", "ai engineer", "ai scientist", "product manager in software"]
+
+# geoId captured directly from LinkedIn's own location-autocomplete URL
+# (origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE), not guessed.
+GEO_ID_CALIFORNIA = "102095887"   # California, United States
+
+# (geo_id, work_type, run_label_suffix). None geo_id = remote, nationwide, no
+# location filter (unchanged original behavior). The other = hybrid/on-site,
+# scoped to California.
+LOCATIONS = [
+    (None, WORK_TYPE_REMOTE, None),
+    (GEO_ID_CALIFORNIA, WORK_TYPE_HYBRID_ONSITE, "CA"),
+]
+
+# Every keyword x every location — 4 keywords x 2 locations = 8 searches per
+# run. run_label distinguishes each keyword's location variants in ScrapeRun
+# history; None (the remote variant) logs under the keyword itself, matching
+# original behavior.
+SEARCHES = [
+    (keyword, geo_id, work_type, f"{keyword} ({suffix})" if suffix else None)
+    for keyword in KEYWORDS
+    for geo_id, work_type, suffix in LOCATIONS
+]
 
 LOG_DIR = Path(__file__).parent / "logs"
 
@@ -69,7 +105,43 @@ def setup_file_logging(mode: str) -> None:
 # caps are a hard backstop in case that signal doesn't fire.
 CONSECUTIVE_EMPTY_PAGES_LIMIT = 2
 MAX_PAGES_DAILY = 60       # TIME_RANGE_DAY pool is small (hundreds of jobs) — 60*25 = 1500 is already generous
+MAX_PAGES_WEEK = 100       # TIME_RANGE_WEEK pool is bigger than a day but smaller than a month — 100*25 = 2500
 MAX_PAGES_BACKFILL = 200   # TIME_RANGE_MONTH pool is much larger, but still needs a hard ceiling
+
+SCREENING_WORKERS = 8  # same concurrency level as judge/screening_run.py's own batch pool — see that file's docstring on why 8
+
+
+def _screening_worker(job_queue: queue.Queue) -> None:
+    """Runs for the whole scrape, on its own thread — pulls one (job_id,
+    resume_content) pair at a time off the queue and screens it immediately,
+    so scoring keeps pace with the scraper instead of only starting once
+    every keyword is done. A pool of these (see main()) is what makes this
+    concurrent: whichever thread is free grabs the next item, same pattern
+    as judge/screening_run.py's own worker pool, just fed live instead of
+    from one big upfront batch query.
+
+    The scraper and these screening workers commit to the same SQLite file
+    from different threads at once — no different in kind from
+    judge/screening_run.py's existing 8-way concurrent screening (each
+    screen_one() call already opens its own session), just now overlapping
+    with the scraper's own commits too. SQLite's default busy-timeout
+    absorbs the resulting contention; screen_one() already logs rather than
+    raises on failure, so a lock timeout here is a skipped job, not a
+    crashed run.
+
+    None is the shutdown sentinel — one is pushed per worker once the
+    scraper has no more jobs to enqueue (see main())."""
+    while True:
+        item = job_queue.get()
+        try:
+            if item is None:
+                return
+            job_id, resume_content = item
+            _, error = screen_one(job_id, resume_content)
+            if error:
+                print(f"  [screening] job {job_id} FAILED: {error}")
+        finally:
+            job_queue.task_done()
 
 
 def get_or_create_company(session, name: str | None, industry: str | None, size: str | None) -> Company | None:
@@ -111,7 +183,7 @@ def create_placeholder_job(session, keyword: str, track: str, job_id: str) -> No
     session.commit()
 
 
-def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -> None:
+def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -> Job:
     """Insert or complete a job row with full scraped detail, and commit
     immediately — if a block hits mid-run, everything saved so far survives.
     Upserts rather than always inserting because a placeholder row (id only,
@@ -137,6 +209,7 @@ def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -
     job.company_name = detail["company"]
     job.company_id = company.id if company else None
     job.location = detail["location"]
+    job.workplace_type = detail["workplace_type"]
     job.keyword_matched = keyword
     job.track = track
     job.raw_text = detail["raw_text"]
@@ -152,31 +225,65 @@ def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -
         for skill_name in extract_skills(detail["raw_text"]):
             session.add(JobSkill(job_id=job.id, skill_name=skill_name))
 
+    job.duplicate_of_job_id = find_duplicate_job(session, job.company_name, job.raw_text, exclude_job_id=job.id)
+
     session.commit()
+    return job
+
+
+REPOST_GAP_DAYS = 7  # an already-known job reappearing in a TIME_RANGE_DAY (f_TPR=r86400, "past 24h") search after this long a gap since last_seen_at can only mean LinkedIn just reposted/rebumped it — that's the sole way it re-qualifies for a 24h-window search. A shorter gap is more likely routine day-to-day scrape overlap than a genuine new repost cycle, so it's not counted.
 
 
 def dedup_page(session, job_ids: list[str]) -> tuple[list[str], set[str]]:
     """One batch query for the whole page instead of 25 individual ones.
-    Splits job_ids into "already have full detail" (bump last_seen_at,
-    skip) vs "still needs detail" — either a genuinely new id (no row at
-    all yet) or a placeholder row left by a run that was interrupted before
-    phase 2 finished. Returns (needs_detail_ids, brand_new_ids) so the
-    caller knows which ids still need a placeholder row created."""
-    rows = session.query(Job.job_id, Job.detail_fetched).filter(Job.job_id.in_(job_ids)).all()
-    existing = dict(rows)
+    Splits job_ids into "already have full detail" (bump last_seen_at, check
+    for a repost) vs "still needs detail" — either a genuinely new id (no
+    row at all yet) or a placeholder row left by a run that was interrupted
+    before phase 2 finished. Returns (needs_detail_ids, brand_new_ids) so the
+    caller knows which ids still need a placeholder row created.
 
-    fully_known_ids = [jid for jid, fetched in existing.items() if fetched]
-    session.query(Job).filter(Job.job_id.in_(fully_known_ids)).update(
-        {Job.last_seen_at: utcnow()}, synchronize_session=False
-    )
+    Repost detection piggybacks on this same batch query rather than
+    needing its own detail-page re-fetch: a job only reappears in a
+    TIME_RANGE_DAY search if it was posted or reposted within that window,
+    so an already-known id showing up here again after a >REPOST_GAP_DAYS
+    gap is itself the signal. Only counted for jobs still open — `applied`
+    or `not_interested` means the case is closed and shouldn't keep
+    collecting signal. `expired` gets cleared on a detected repost, since
+    that flag means "looked dead last time I checked" and a repost is
+    direct evidence that's no longer true."""
+    rows = session.query(Job).filter(Job.job_id.in_(job_ids)).all()
+    existing = {job.job_id: job for job in rows}
+
+    now = utcnow()
+    now_naive = now.replace(tzinfo=None)  # SQLite has no real timezone-aware datetime type, so a last_seen_at read back from the DB always comes back naive even though utcnow() (used to write it) is tz-aware — compare naive-to-naive
+    fully_known_ids = []
+    reposted = []
+    for jid, job in existing.items():
+        if not job.detail_fetched:
+            continue
+        fully_known_ids.append(jid)
+        if (
+            not job.applied
+            and not job.not_interested
+            and now_naive - job.last_seen_at > timedelta(days=REPOST_GAP_DAYS)
+        ):
+            job.repost_count += 1
+            job.expired = False
+            reposted.append((jid, job.title))
+        job.last_seen_at = now
     session.commit()
 
-    needs_detail_ids = [jid for jid in job_ids if jid not in existing or not existing[jid]]
+    needs_detail_ids = [jid for jid in job_ids if jid not in existing or not existing[jid].detail_fetched]
     brand_new_ids = {jid for jid in needs_detail_ids if jid not in existing}
     resumed = len(needs_detail_ids) - len(brand_new_ids)
 
     print(f"  {len(fully_known_ids)} already known, {len(needs_detail_ids)} need detail"
           + (f" ({resumed} resumed placeholders)" if resumed else ""))
+    if reposted:
+        print(f"  {len(reposted)} known job(s) reposted (reappeared after {REPOST_GAP_DAYS}+ days) "
+              f"— repost_count bumped, expired cleared:")
+        for jid, title in reposted:
+            print(f"    {jid}: {title!r}")
     return needs_detail_ids, brand_new_ids
 
 
@@ -184,56 +291,122 @@ def filter_relevant_ids(
     session, track: str, cards_by_id: dict, needs_detail_ids: list[str], brand_new_ids: set[str]
 ) -> list[str]:
     """Drops any id whose title doesn't match `track`'s curated terms
-    (analysis/title_filter.py) before it gets a placeholder row or a full
-    detail fetch — LinkedIn's keyword search matches a posting's whole text,
-    not just its title, so plenty of off-track noise (e.g. "Accounting Paid
-    Consultant" for a "machine learning" search) shows up in the raw id
-    list. A resumed placeholder (already in the DB from an earlier
+    (analysis/title_filter.py), whose title reads as Director/Staff/Principal-
+    level or above (is_too_senior_title — a seniority mismatch regardless of
+    track), or whose company is a known agency/staffing posting
+    (judge/agency_blocklist.py, matched by company name off the same
+    list-page card — see parse_job_card), before it gets a placeholder row
+    or a full detail fetch. LinkedIn's keyword search matches a posting's
+    whole text, not just its title, so plenty of off-track noise (e.g.
+    "Accounting Paid Consultant" for a "machine learning" search) shows up in
+    the raw id list; agency/gig platforms (Turing, Braintrust, micro1, ...)
+    show up as genuinely on-track titles but were previously only caught
+    after a full detail fetch, by delete_agency_jobs() at the end of the
+    run. A resumed placeholder (already in the DB from an earlier
     interrupted run) that turns out irrelevant gets deleted outright rather
-    than left to be retried forever — brand-new ids that fail the filter
+    than left to be retried forever — brand-new ids that fail a filter
     were never saved in the first place, so there's nothing to clean up."""
     relevant_ids = []
     dropped_titles = []
+    dropped_senior = []
+    dropped_agencies = []
     for job_id in needs_detail_ids:
-        title = cards_by_id.get(job_id, {}).get("title")
-        # a still-None title here already got its own WARNING from
+        card = cards_by_id.get(job_id, {})
+        title = card.get("title")
+        company = card.get("company")
+        # a still-None title/company here already got its own WARNING from
         # linkedin_scraper.retry_missing_titles() — no need to repeat it
-        if is_relevant_title(title, track):
-            relevant_ids.append(job_id)
-        else:
+        if not is_relevant_title(title, track):
             dropped_titles.append((job_id, title))
             if job_id not in brand_new_ids:
                 session.query(Job).filter(Job.job_id == job_id).delete(synchronize_session=False)
+        elif is_too_senior_title(title):
+            dropped_senior.append((job_id, title))
+            if job_id not in brand_new_ids:
+                session.query(Job).filter(Job.job_id == job_id).delete(synchronize_session=False)
+        elif is_agency_company_name(session, company):
+            dropped_agencies.append((job_id, company))
+            if job_id not in brand_new_ids:
+                session.query(Job).filter(Job.job_id == job_id).delete(synchronize_session=False)
+        else:
+            relevant_ids.append(job_id)
 
     if dropped_titles:
         print(f"  {len(dropped_titles)} dropped as off-track (title didn't match {track!r} terms):")
         for job_id, title in dropped_titles:
             print(f"    {job_id}: {title!r}")
+    if dropped_senior:
+        print(f"  {len(dropped_senior)} dropped as too senior (Director/Staff/Principal-level title):")
+        for job_id, title in dropped_senior:
+            print(f"    {job_id}: {title!r}")
+    if dropped_agencies:
+        print(f"  {len(dropped_agencies)} dropped as agency/staffing postings (company blocklist):")
+        for job_id, company in dropped_agencies:
+            print(f"    {job_id}: {company!r}")
     session.commit()
     return relevant_ids
 
 
-def process_keyword_backfill(driver, session, keyword: str, time_range: str) -> None:
-    """One-time initial-backfill path: pages through results, processing each
-    page's dedup check + full detail fetch immediately after that page
-    loads, rather than collecting every page's job_ids first and only then
-    starting detail work. That's fine for a single backfill run (progress
-    shows up page by page instead of a long silent stretch), and pairs with
-    TIME_RANGE_MONTH — the pool is large enough that a fully two-phase
-    collect-then-fetch split isn't worth the extra bookkeeping here.
+def process_keyword(
+    driver,
+    session,
+    keyword: str,
+    time_range: str,
+    max_pages: int,
+    screening_queue: queue.Queue,
+    resumes_by_track: dict[str, str],
+    default_content: str | None,
+    geo_id: str | None = None,
+    work_type: str = WORK_TYPE_REMOTE,
+    run_label: str | None = None,
+) -> None:
+    """Pages through results one page at a time, running each page's dedup
+    check + full detail fetch immediately after that page loads, rather than
+    collecting every page's job_ids first and only then starting detail
+    work. Used for both the initial backfill (TIME_RANGE_MONTH,
+    MAX_PAGES_BACKFILL) and the routine daily run (TIME_RANGE_DAY,
+    MAX_PAGES_DAILY) — a prior two-phase split for the daily run (collect
+    every keyword's ids first, fetch detail second) was meant to minimize
+    wall-clock time per keyword and so limit how much LinkedIn's live feed
+    could drift mid-pagination, but proved unreliable in practice; this
+    single interleaved pass is simpler and matches the backfill path that
+    already works.
     """
     track = track_for_keyword(keyword)
-    print(f"\n=== Processing keyword: {keyword!r} (track={track}) ===")
+    run_label = run_label or keyword
+    print(f"\n=== Processing keyword: {keyword!r} (track={track}, run_label={run_label!r}) ===")
 
     num_found = 0
     num_new = 0
     start = 0
     page_num = 1
     consecutive_empty_pages = 0
+    consecutive_page_timeouts = 0
+    PAGE_TIMEOUT_LIMIT = 3  # a couple of one-off hangs (LinkedIn slow to load a single page) shouldn't cost the rest of the keyword; this many *in a row* is a real signal something's wrong with the whole run, not just one page
 
     while True:
         print(f"\n--- Page {page_num} (start={start}) ---")
-        cards = get_job_cards_on_page(driver, keyword, start, time_range)     # LinkedInBlockedError propagates up uncaught — see main()
+        try:
+            cards = get_job_cards_on_page(driver, keyword, start, time_range, geo_id=geo_id, work_type=work_type)  # LinkedInBlockedError propagates up uncaught — see main()
+        except TimeoutException:
+            # get_job_cards_on_page already retried once internally (safe_get)
+            # — treat this the same as one job's detail page timing out: skip
+            # this page, move to the next one, rather than giving up on the
+            # whole keyword over a single hang. Only stop the keyword if
+            # PAGE_TIMEOUT_LIMIT pages in a row fail this way — that's the
+            # actual signal of a systemic problem (LinkedIn throttling this
+            # run hard), not one slow page.
+            consecutive_page_timeouts += 1
+            print(f"  Page {page_num} load timed out twice — skipping this page "
+                  f"({consecutive_page_timeouts}/{PAGE_TIMEOUT_LIMIT} consecutive).")
+            if consecutive_page_timeouts >= PAGE_TIMEOUT_LIMIT:
+                print(f"  {consecutive_page_timeouts} consecutive page timeouts — stopping this keyword early.")
+                break
+            start += 25
+            page_num += 1
+            jitter(3.0, 6.0)
+            continue
+        consecutive_page_timeouts = 0
         if not cards:
             print(f"  Page {page_num} returned no job ids — end of results for this keyword.")
             break
@@ -247,9 +420,21 @@ def process_keyword_backfill(driver, session, keyword: str, time_range: str) -> 
 
         for job_id in relevant_ids:
             print(f"  New job {job_id} ({cards_by_id[job_id]['title']!r}) — fetching full detail...")
-            detail = scrape_job_detail(driver, keyword, job_id, time_range)
-            save_new_job(session, keyword, track, job_id, detail)
+            try:
+                detail = scrape_job_detail(driver, keyword, job_id, time_range, geo_id=geo_id, work_type=work_type)
+            except TimeoutException:
+                # Already retried once internally (safe_get) — one job's page
+                # hanging twice shouldn't cost the rest of the run; it has no
+                # Job row yet (create_placeholder_job isn't called on this
+                # path), so it's simply retried fresh on the next scrape.
+                print(f"  Job {job_id} detail page timed out twice — skipping, will retry next run.")
+                continue
+            job = save_new_job(session, keyword, track, job_id, detail)
             num_new += 1
+
+            resume_content = resume_for_screening(job, resumes_by_track, default_content)
+            if resume_content is not None:
+                screening_queue.put((job.id, resume_content))
 
             if num_new % 5 == 0:
                 print(f"  >>> Progress: {num_new} new jobs saved so far for {keyword!r}")
@@ -263,160 +448,32 @@ def process_keyword_backfill(driver, session, keyword: str, time_range: str) -> 
                       f"stopping (LinkedIn keeps serving pages past the real result set).")
                 break
 
-        if page_num >= MAX_PAGES_BACKFILL:
-            print(f"  Hit MAX_PAGES_BACKFILL={MAX_PAGES_BACKFILL} safety cap — stopping.")
+        if page_num >= max_pages:
+            print(f"  Hit max_pages={max_pages} safety cap — stopping.")
             break
 
         start += 25          # LinkedIn's confirmed per-page increment
         page_num += 1
         jitter(3.0, 6.0)      # longer pause between page loads than the brief pause within a page
+        maybe_take_a_break()  # occasional longer pause, on top of the routine jitter above — see linkedin_scraper.py
 
-    session.add(ScrapeRun(keyword=keyword, track=track, num_found=num_found, num_new=num_new, status="success"))
+    session.add(ScrapeRun(keyword=run_label, track=track, num_found=num_found, num_new=num_new, status="success"))
     session.commit()
     print(f"  Done: {num_found} found, {num_new} new")
 
 
-def collect_new_ids(driver, session, keyword: str, time_range: str, seen_this_run: set[str]) -> tuple[list[str], int]:
-    """Phase 1 of the daily run: page through list results only (id
-    discovery + DB dedup) with no detail fetch — no 3-15s simulated reading
-    per job slowing this loop down. Keeping this pass fast in wall-clock
-    time is what actually curbs LinkedIn's live feed shifting mid-scan and
-    pushing already-seen jobs into the next page's offset window; combined
-    with TIME_RANGE_DAY keeping the total pool small to begin with.
-
-    Every genuinely new id gets a placeholder row saved immediately (see
-    create_placeholder_job) — so it's recognized if it reappears on a later
-    page this run, and survives the process being killed before phase 2.
-
-    `seen_this_run` is shared across all 4 keywords' calls this run: a job
-    matching two keywords (e.g. "machine learning" and "ai engineer") would
-    otherwise get queued for phase 2 twice, once per keyword, since neither
-    placeholder is complete yet when the second keyword's pass runs.
-    """
-    track = track_for_keyword(keyword)
-    new_ids: list[str] = []
-    num_found = 0
-    start = 0
-    page_num = 1
-    consecutive_empty_pages = 0
-
-    while True:
-        print(f"\n--- [{keyword}] Page {page_num} (start={start}) ---")
-        cards = get_job_cards_on_page(driver, keyword, start, time_range)
-        if not cards:
-            print(f"  Page {page_num} returned no job ids — end of results for this keyword.")
-            break
-
-        job_ids = [card["job_id"] for card in cards]
-        cards_by_id = {card["job_id"]: card for card in cards}
-        print(f"  Page {page_num}: {len(job_ids)} job ids")
-        num_found += len(job_ids)
-        needs_detail_ids, brand_new_ids = dedup_page(session, job_ids)
-        relevant_ids = filter_relevant_ids(session, track, cards_by_id, needs_detail_ids, brand_new_ids)
-
-        for job_id in relevant_ids:
-            if job_id in brand_new_ids:
-                create_placeholder_job(session, keyword, track, job_id)
-
-        fresh_for_this_keyword = [jid for jid in relevant_ids if jid not in seen_this_run]
-        seen_this_run.update(fresh_for_this_keyword)
-        new_ids.extend(fresh_for_this_keyword)
-
-        if needs_detail_ids:
-            consecutive_empty_pages = 0
-        else:
-            consecutive_empty_pages += 1
-            if consecutive_empty_pages >= CONSECUTIVE_EMPTY_PAGES_LIMIT:
-                print(f"  {consecutive_empty_pages} consecutive pages with nothing new — "
-                      f"stopping (LinkedIn keeps serving pages past the real result set).")
-                break
-
-        if page_num >= MAX_PAGES_DAILY:
-            print(f"  Hit MAX_PAGES_DAILY={MAX_PAGES_DAILY} safety cap — stopping.")
-            break
-
-        start += 25
-        page_num += 1
-        jitter(3.0, 6.0)
-
-    return new_ids, num_found
-
-
-def run_daily(driver, session) -> None:
-    """Routine daily run: collect every keyword's new job ids first (fast —
-    list pages only, TIME_RANGE_DAY), then fetch full detail for all of them
-    one by one (slow — simulated reading per job). Splitting these into two
-    passes is what beats the drift/inconsistency the interleaved backfill
-    approach suffers from: the whole id-collection pass across all 4
-    keywords finishes in minutes rather than the tens of minutes it'd take
-    interleaved with detail fetches, leaving much less time for LinkedIn's
-    live feed to shift underneath the pagination.
-    """
-    run_started_at = utcnow()
-    print(f"\n=== Daily scrape run started at {run_started_at.isoformat()} ===")
-
-    new_ids_by_keyword: dict[str, list[str]] = {}
-    num_found_by_keyword: dict[str, int] = {kw: 0 for kw in KEYWORDS}
-    num_new_by_keyword: dict[str, int] = {kw: 0 for kw in KEYWORDS}
-    status = "success"
-    error_message = None
-
-    seen_this_run: set[str] = set()   # shared across keywords so a job matching 2+ keywords is only queued for phase 2 once
-
-    try:
-        print("\n--- Phase 1: collecting new ids for all keywords ---")
-        for keyword in KEYWORDS:
-            new_ids, num_found = collect_new_ids(driver, session, keyword, TIME_RANGE_DAY, seen_this_run)
-            new_ids_by_keyword[keyword] = new_ids
-            num_found_by_keyword[keyword] = num_found
-            print(f"  {keyword!r}: {num_found} found, {len(new_ids)} new")
-
-        total_new = sum(len(ids) for ids in new_ids_by_keyword.values())
-        print(f"\n=== Phase 1 done: {total_new} new jobs to fetch across {len(KEYWORDS)} keywords ===")
-
-        print("\n--- Phase 2: fetching full detail, one job at a time ---")
-        processed = 0
-        for keyword in KEYWORDS:
-            track = track_for_keyword(keyword)
-            for job_id in new_ids_by_keyword[keyword]:
-                print(f"  New job {job_id} ({keyword}) — fetching full detail...")
-                detail = scrape_job_detail(driver, keyword, job_id, TIME_RANGE_DAY)
-                save_new_job(session, keyword, track, job_id, detail)
-                num_new_by_keyword[keyword] += 1
-                processed += 1
-                if processed % 5 == 0:
-                    print(f"  >>> Progress: {processed}/{total_new} new jobs saved so far")
-
-    except LinkedInBlockedError as e:
-        status = "error"
-        error_message = f"blocked: {e.reason}"
-        if e.reason == "logged_out":
-            print("LinkedIn session expired — re-run setup_chrome_profile.py to log in again. Stopping this run.")
-        else:
-            print("LinkedIn served a security checkpoint. Stopping this run — do NOT retry immediately.")
-
-    finished_at = utcnow()
-    for keyword in KEYWORDS:
-        session.add(ScrapeRun(
-            keyword=keyword, track=track_for_keyword(keyword),
-            num_found=num_found_by_keyword[keyword], num_new=num_new_by_keyword[keyword],
-            status=status, error_message=error_message,
-        ))
-    session.commit()
-
-    total_new_saved = sum(num_new_by_keyword.values())
-    print(f"\n=== Daily scrape run finished at {finished_at.isoformat()} "
-          f"(started {run_started_at.isoformat()}) — {total_new_saved} new jobs saved ===")
-    for keyword in KEYWORDS:
-        print(f"  {keyword!r}: {num_found_by_keyword[keyword]} found, {num_new_by_keyword[keyword]} new")
-
-
 def main() -> None:
-    # No args = routine daily run (last 24h, two-phase) — what launchd calls
-    # on schedule. `--initial` = one-time backfill (last 30 days, single-phase
-    # interleaved) — run by hand once, not on the schedule.
+    # No args = routine daily run (last 24h). `--week` = one-off catch-up
+    # scrape (last 7 days) — run by hand when the daily schedule missed a
+    # stretch of days. `--initial` = one-time backfill (last 30 days) — run
+    # by hand once, not on the schedule. All three page through results one
+    # page at a time, fetching full detail for new jobs immediately (see
+    # process_keyword) — they only differ in time window and page-count
+    # ceiling.
     initial = "--initial" in sys.argv
-    setup_file_logging("initial" if initial else "daily")
+    week = "--week" in sys.argv
+    mode = "initial" if initial else "week" if week else "daily"
+    setup_file_logging(mode)
 
     if not PROFILE_DIR.exists():
         print(f"No Chrome profile found at {PROFILE_DIR}. Run setup_chrome_profile.py first.")
@@ -424,31 +481,80 @@ def main() -> None:
 
     init_db()
     session = get_session()
+
+    # Loaded once, up front, and handed down to every process_keyword() call
+    # (see judge/eligibility.py) — screening now starts the moment each job
+    # is saved rather than waiting for the whole scrape to finish, so this
+    # can't be loaded lazily inside run_screening() at the end anymore.
+    resumes_by_track, default_content = load_resumes(session)
+    if not resumes_by_track and default_content is None:
+        raise RuntimeError("No resume in DB — nothing to screen against.")
+
+    # A pool of persistent worker threads, started before scraping begins
+    # and fed live via screening_queue as process_keyword() saves new jobs
+    # (see _screening_worker's docstring) — screening keeps pace with the
+    # scraper instead of only starting after every keyword is done.
+    screening_queue: queue.Queue = queue.Queue()
+    screening_workers = [
+        threading.Thread(target=_screening_worker, args=(screening_queue,), daemon=True)
+        for _ in range(SCREENING_WORKERS)
+    ]
+    for w in screening_workers:
+        w.start()
+
     driver = build_driver()
 
+    time_range = {"initial": TIME_RANGE_MONTH, "week": TIME_RANGE_WEEK, "daily": TIME_RANGE_DAY}[mode]
+    max_pages = {"initial": MAX_PAGES_BACKFILL, "week": MAX_PAGES_WEEK, "daily": MAX_PAGES_DAILY}[mode]
+    label = {
+        "initial": "Initial backfill run (last 30 days)",
+        "week": "One-off catch-up run (last 7 days)",
+        "daily": "Daily scrape run (last 24h)",
+    }[mode]
+
     try:
-        if initial:
-            print("=== Initial backfill run (last 30 days) ===")
-            for keyword in KEYWORDS:
-                try:
-                    process_keyword_backfill(driver, session, keyword, TIME_RANGE_MONTH)
-                except LinkedInBlockedError as e:
-                    track = track_for_keyword(keyword)
-                    session.add(ScrapeRun(
-                        keyword=keyword, track=track, num_found=0, num_new=0,
-                        status="error", error_message=f"blocked: {e.reason}",
-                    ))
-                    session.commit()
-                    if e.reason == "logged_out":
-                        print("LinkedIn session expired — re-run setup_chrome_profile.py to log in again. Stopping this run.")
-                    else:
-                        print("LinkedIn served a security checkpoint. Stopping this run — do NOT retry immediately.")
-                    break   # stop processing remaining keywords too — a block affects the whole session, not just one keyword
-        else:
-            run_daily(driver, session)
+        print(f"=== {label} ===")
+        for keyword, geo_id, work_type, run_label in SEARCHES:
+            try:
+                process_keyword(
+                    driver, session, keyword, time_range, max_pages,
+                    screening_queue, resumes_by_track, default_content,
+                    geo_id=geo_id, work_type=work_type, run_label=run_label,
+                )
+            except LinkedInBlockedError as e:
+                track = track_for_keyword(keyword)
+                session.add(ScrapeRun(
+                    keyword=run_label or keyword, track=track, num_found=0, num_new=0,
+                    status="error", error_message=f"blocked: {e.reason}",
+                ))
+                session.commit()
+                if e.reason == "logged_out":
+                    print("LinkedIn session expired — re-run setup_chrome_profile.py to log in again. Stopping this run.")
+                else:
+                    print("LinkedIn served a security checkpoint. Stopping this run — do NOT retry immediately.")
+                break   # stop processing remaining keywords too — a block affects the whole session, not just one keyword
+
+        deleted = delete_agency_jobs(session)
+        print(f"\n=== Deleted {deleted} agency/staffing postings (blocklist cleanup) ===")
     finally:
         driver.quit()
         session.close()
+
+    print("\n=== Waiting for the screening queue to drain ===")
+    screening_queue.join()               # blocks until every enqueued job has been screened
+    for _ in screening_workers:
+        screening_queue.put(None)        # one sentinel per worker — see _screening_worker
+    for w in screening_workers:
+        w.join()
+
+    # Catches anything the live queue didn't cover — e.g. jobs left over
+    # from a run that was killed before its queue drained, or a DB that
+    # predates this live-screening path entirely. run_screening() re-queries
+    # for every job in the DB without a ScreeningResult yet, not just ones
+    # from this run, so it's a safe no-op sweep when the queue already got
+    # everything.
+    print("\n=== Catching up any jobs the live queue missed ===")
+    run_screening()
 
 
 if __name__ == "__main__":

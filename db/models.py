@@ -17,7 +17,7 @@ KEYWORD_TRACKS: dict[str, str] = {
     "machine learning": "ml_ai",
     "ai engineer": "ml_ai",
     "ai scientist": "ml_ai",
-    "product manager": "pm",
+    "product manager in software": "pm",
 }
 
 
@@ -60,6 +60,7 @@ class Job(Base):
     company_name: Mapped[str | None]                                  # raw string as scraped, before company_analyzer runs
     company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id"))
     location: Mapped[str | None]
+    workplace_type: Mapped[str | None]                                # "Remote" / "Hybrid" / "On-site" — the job's own displayed badge (job-details-fit-level-preferences), not derived from which f_WT filter the search used
 
     keyword_matched: Mapped[str]                                      # which search keyword found this job
     track: Mapped[str]                                                # "ml_ai" or "pm", derived from keyword_matched
@@ -75,12 +76,16 @@ class Job(Base):
     match_score: Mapped[float | None]                                 # placeholder for future resume-match scoring
 
     applied: Mapped[bool] = mapped_column(default=False)
+    applied_at: Mapped[datetime | None]                               # set when `applied` is switched to True via PATCH /api/jobs/<id> (backend/app.py); cleared if switched back to False. Existing applied=True rows predating this column stay NULL — no reliable way to back-date them.
     expired: Mapped[bool] = mapped_column(default=False)              # user-marked: listing is dead/filled, not scrape-detected staleness (see `status` below)
     not_interested: Mapped[bool] = mapped_column(default=False)       # user-marked: decided not to apply
     not_interested_note: Mapped[str | None] = mapped_column(Text)     # why, only meaningful when not_interested is True
+    note: Mapped[str | None] = mapped_column(Text)                    # general free-text note, independent of status (e.g. interview/assessment tracking)
     status: Mapped[str] = mapped_column(default="active")            # active/stale — set stale if a scrape stops seeing it
+    repost_count: Mapped[int] = mapped_column(default=0)             # bumped when an already-known, still-open job (not applied/not_interested) reappears in a TIME_RANGE_DAY search after a >REPOST_GAP_DAYS gap since last_seen_at — see scraper/run_scrape.py dedup_page()
     detail_fetched: Mapped[bool] = mapped_column(default=False)       # False = placeholder row (id only, saved during phase-1 id collection) still awaiting phase-2 detail fetch
     is_relevant: Mapped[bool] = mapped_column(default=True)           # False = title didn't match its track's curated terms (see analysis/title_filter.py) — LinkedIn's keyword search matches full JD text, not just title, so noisy off-track matches slip through
+    duplicate_of_job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"))  # set at scrape time (analysis/duplicate_detector.py) when a same-company job's JD text is a near-exact match to an earlier job — same underlying posting rescraped under a different LinkedIn job_id (a repost), not a same-company-different-role coincidence. Points at the earliest match, not necessarily the very first ever posted.
 
     first_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
@@ -120,6 +125,7 @@ class Resume(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     content: Mapped[str] = mapped_column(Text)
     original_filename: Mapped[str | None]
+    track: Mapped[str | None]                                         # "ml_ai" or "pm" — which track's jobs this resume scores against; NULL = default/fallback used when no track-specific row exists
     uploaded_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
@@ -175,6 +181,8 @@ class ScreeningResult(Base):
     expertise_matched_weaknesses: Mapped[list | None] = mapped_column(JSON)
     expertise_confidence: Mapped[str | None]
     expertise_note: Mapped[str | None] = mapped_column(Text)
+
+    to_c_product_pm: Mapped[bool] = mapped_column(default=False)  # PM track only: True when expertise_matched_domains includes "D2" (marketing & consumer/to-C products) — derived deterministically from that field, no separate LLM call. Meaningless/left False for ml_ai track jobs.
 
     total_score: Mapped[int | None]                          # 0-15, plain sum of skill_score + seniority_score + expertise_score
     screened_at: Mapped[datetime | None]

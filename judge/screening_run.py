@@ -1,8 +1,18 @@
 """
 Screening Run — batch process that runs the Screening Agent (judge/stage1_screen.py)
 against every job that doesn't have a ScreeningResult yet. See CONTEXT.md
-"Screening Run". Jobs on the Agency Blocklist (judge/agency_blocklist.py)
-are filtered out before screening — never sent to the Screening Agent at all.
+"Screening Run". Eligibility (agency/staffing postings, confirmed reposts,
+which resume to use) is decided by judge/eligibility.py, shared with the
+live per-job screening queue in scraper/run_scrape.py — a job is skipped by
+the exact same rule regardless of which path screens it. A duplicate stays
+unscored rather than inheriting its original's ScreeningResult, so it simply
+never appears in the dashboard's /api/jobs (an inner join on
+ScreeningResult) — the same never-screened-so-never-shown mechanism
+agency-blocked jobs already rely on.
+
+This script remains useful as a standalone catch-up pass — e.g. backfilling
+a DB that predates the live queue, or recovering from a run that was
+interrupted before its queue drained.
 
 Concurrency: screen_job() already runs seniority_fit + expertise_match
 concurrently for one job (2-way). This script adds an outer pool across
@@ -19,15 +29,15 @@ the other few thousand.
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from db.models import Job, Resume, ScreeningResult
+from db.models import Job, ScreeningResult
 from db.session import get_session
-from judge.agency_blocklist import is_agency_job
+from judge.eligibility import load_resumes, resume_for_screening
 from judge.stage1_screen import screen_job
 
 MAX_WORKERS = 8
 
 
-def _screen_one(job_id: int, resume_content: str) -> tuple[int, str | None]:
+def screen_one(job_id: int, resume_content: str) -> tuple[int, str | None]:
     """Runs in a worker thread — opens its own session (SQLAlchemy sessions
     aren't thread-safe to share) and a throwaway Resume-like object isn't
     needed since screen_job only reads resume.content."""
@@ -46,30 +56,43 @@ def _screen_one(job_id: int, resume_content: str) -> tuple[int, str | None]:
         session.close()
 
 
-def run_screening() -> None:
+def run_screening(track: str | None = None) -> None:
+    """track: if given ('ml_ai' or 'pm'), only screens jobs on that track.
+    Each job is scored against its own track's Resume row (Resume.track) so
+    ml_ai and pm jobs — which need genuinely different resume content to
+    score skill/expertise fit correctly — never get cross-matched against
+    the wrong resume. A Resume row with track=NULL is the fallback used for
+    any track that doesn't have its own row yet."""
     session = get_session()
     try:
-        resume = session.query(Resume).first()
-        if resume is None:
+        resumes_by_track, default_content = load_resumes(session)
+        if not resumes_by_track and default_content is None:
             raise RuntimeError("No resume in DB — nothing to screen against.")
-        resume_content = resume.content
 
         already_screened = {row[0] for row in session.query(ScreeningResult.job_id).all()}
-        candidates = (
+        query = (
             session.query(Job)
             .filter(Job.raw_text.isnot(None))
             .filter(~Job.id.in_(already_screened))
-            .all()
         )
-        job_ids = [job.id for job in candidates if not is_agency_job(job)]
-        blocked_count = len(candidates) - len(job_ids)
+        if track:
+            query = query.filter(Job.track == track)
+        candidates = query.all()
+
+        job_resume_pairs: list[tuple[int, str]] = []
+        for job in candidates:
+            resume_content = resume_for_screening(job, resumes_by_track, default_content)
+            if resume_content is None:
+                continue  # agency posting, confirmed duplicate/repost, or no resume for this job's track — see judge/eligibility.py
+            job_resume_pairs.append((job.id, resume_content))
+        blocked_count = len(candidates) - len(job_resume_pairs)
     finally:
         session.close()
 
-    total = len(job_ids)
+    total = len(job_resume_pairs)
     print(
         f"Screening {total} jobs ({len(already_screened)} already screened, "
-        f"{blocked_count} agency/staffing postings blocked, skipped)..."
+        f"{blocked_count} agency/staffing postings blocked or missing a track resume, skipped)..."
     )
 
     start = time.perf_counter()
@@ -77,7 +100,7 @@ def run_screening() -> None:
     errors = []
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(_screen_one, jid, resume_content): jid for jid in job_ids}
+        futures = {executor.submit(screen_one, jid, rc): jid for jid, rc in job_resume_pairs}
         for future in as_completed(futures):
             job_id, error = future.result()
             done += 1

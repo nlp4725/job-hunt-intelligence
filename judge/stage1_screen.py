@@ -64,6 +64,8 @@ def screen_job(job: Job, resume: Resume, session) -> ScreeningResult:
     result.expertise_confidence = expertise.confidence
     result.expertise_note = expertise.note
 
+    result.to_c_product_pm = job.track == "pm" and "D2" in expertise.matched_domains
+
     result.total_score = result.skill_score + result.seniority_score + result.expertise_score
     result.screened_at = datetime.now(timezone.utc)
 

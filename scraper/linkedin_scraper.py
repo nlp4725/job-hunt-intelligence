@@ -8,12 +8,14 @@ card has scrolled near the viewport at least once (confirmed via direct
 inspection, 2026-07-06: the first ~7 cards have a title on load, the rest
 come back with an empty <strong> until scrolled to; once rendered a
 title stays populated even after scrolling past it). get_job_cards_on_page()
-scrolls the whole list to the bottom, then pulls job_id + title for all 25
-cards, so callers can filter out off-track titles (analysis/title_filter.py)
-before ever spending a full detail-page fetch on a job. Only for titles
-that pass that filter do we fetch the full two-pane detail view (company,
-location, industry, company size, raw JD text, posted date, applicant
-stats, salary — all from one page load).
+scrolls the whole list to the bottom, then pulls job_id + title + company
+for all 25 cards, so callers can filter out off-track titles
+(analysis/title_filter.py) and known agency/staffing postings
+(judge/agency_blocklist.py, matched by company name substring) before ever
+spending a full detail-page fetch on a job. Only for jobs that pass both
+filters do we fetch the full two-pane detail view (company, location,
+industry, company size, raw JD text, posted date, applicant stats, salary
+— all from one page load).
 
 Run:
     python scraper/linkedin_scraper.py "machine learning"
@@ -27,8 +29,10 @@ import time                                     # time.sleep() for the jitter de
 from pathlib import Path                        # cross-platform file path handling
 from urllib.parse import quote                  # URL-encode the keyword (e.g. spaces -> %20)
 
+import undetected_chromedriver as uc            # patched chromedriver + navigator.webdriver/cdc_ suppression (see build_driver)
 from bs4 import BeautifulSoup                   # parses raw HTML into a searchable tree
 from selenium import webdriver                  # drives an actual Chrome browser
+from selenium.common.exceptions import TimeoutException  # raised by set_page_load_timeout() instead of a raw socket timeout
 from selenium.webdriver.chrome.options import Options   # Chrome launch flags (profile dir, window size)
 from selenium.webdriver.common.by import By      # "how to locate an element" enum (CSS, XPath, etc.)
 from selenium.webdriver.support import expected_conditions as EC  # wait-until conditions
@@ -39,7 +43,12 @@ OUTPUT_FILE = Path(__file__).parent / "sample_output.json"  # where this test ru
 
 SORT_BY_MOST_RECENT = "DD"    # LinkedIn's sortBy param for newest-posted-first (default "R" = relevance, which reshuffles between page loads)
 TIME_RANGE_DAY = "r86400"     # f_TPR: last 24 hours — routine daily scrape
+TIME_RANGE_WEEK = "r604800"   # f_TPR: last 7 days — one-off catch-up scrape (e.g. after missed daily runs)
 TIME_RANGE_MONTH = "r2592000"  # f_TPR: last 30 days — one-time initial backfill
+
+# f_WT: LinkedIn's work-type filter. 1=On-site, 2=Remote, 3=Hybrid — comma-separated for multi-select.
+WORK_TYPE_REMOTE = "2"
+WORK_TYPE_HYBRID_ONSITE = "1,3"
 
 
 class LinkedInBlockedError(Exception):
@@ -68,11 +77,55 @@ def jitter(a: float = 1.5, b: float = 5) -> None:
     time.sleep(random.uniform(a, b))        # sleep a random amount between a and b seconds — avoids robotic fixed-interval timing
 
 
-def simulate_reading(driver: webdriver.Chrome, min_seconds: float = 3.0, max_seconds: float = 15.0) -> None:
+# Chances/durations for maybe_take_a_break(). Scaled down from the original
+# tuning once simulate_reading() switched to a skewed per-job dwell (most
+# jobs get a 2-8s glance, a minority get a genuine 20-90s read, ~20s/job
+# average vs. the old flat ~9s/job) — that skew already supplies a lot of
+# the "this doesn't run at a constant pace" signal breaks were compensating
+# for, so stacking the original large break budget on top would push a
+# 500-job run well past the ~3h target. New expected value per page:
+# 0.05*avg(330) + 0.15*avg(75) ≈ 27.75s/page (was ~240s/page).
+BREAK_LONG_CHANCE = 0.05
+BREAK_LONG_RANGE = (180.0, 480.0)   # 3-8 min — a "stepped away" break
+BREAK_SHORT_CHANCE = 0.15
+BREAK_SHORT_RANGE = (30.0, 120.0)   # 0.5-2 min — a shorter pause
+
+
+def maybe_take_a_break() -> None:
+    """Randomly pause for much longer than the routine per-page jitter,
+    mimicking a real person stepping away mid-session (coffee, email,
+    getting distracted) rather than a script that runs at a constant pace
+    for hours straight. Meant to be called once between pages: most calls
+    do nothing (80% chance of neither branch firing), sometimes a short
+    break, occasionally a long one — see the module-level BREAK_* constants
+    for the expected-value math behind the specific numbers.
+    """
+    roll = random.random()
+    if roll < BREAK_LONG_CHANCE:
+        duration = random.uniform(*BREAK_LONG_RANGE)
+        print(f"  ...taking a longer break ({duration / 60:.1f} min) before continuing...")
+        time.sleep(duration)
+    elif roll < BREAK_LONG_CHANCE + BREAK_SHORT_CHANCE:
+        duration = random.uniform(*BREAK_SHORT_RANGE)
+        print(f"  ...taking a short break ({duration:.0f}s) before continuing...")
+        time.sleep(duration)
+
+
+# Real job-search browsing is bimodal, not evenly spread: most opened
+# postings get a quick skim (title/comp/requirements don't match, move on),
+# a minority actually look promising and get read closely. A flat
+# uniform(3, 15) for every job (the old model) is more even/robotic than a
+# real searcher ever is — see simulate_reading().
+SHORT_GLANCE_CHANCE = 0.7          # fraction of opened jobs that are just a quick skim
+SHORT_GLANCE_RANGE = (2.0, 8.0)    # seconds
+LONG_READ_RANGE = (20.0, 90.0)     # seconds — the minority that get genuinely read
+
+
+def simulate_reading(driver: webdriver.Chrome) -> None:
     """Scroll through the job description pane in small increments over a
-    randomized 3-15s dwell time, mimicking someone actually reading the
-    posting rather than a script that loads the page and immediately
-    scrapes it. Scrolls the actual nested scrollable container
+    randomized dwell time, mimicking someone actually reading the posting
+    rather than a script that loads the page and immediately scrapes it.
+    Scrolls the actual nested scrollable container
     (div.jobs-search__job-details--wrapper), not window — the two-pane
     detail view's right-hand pane scrolls independently of the outer page
     (confirmed via direct inspection: scrollHeight 5663 vs clientHeight 748).
@@ -83,7 +136,10 @@ def simulate_reading(driver: webdriver.Chrome, min_seconds: float = 3.0, max_sec
     than a script would ever think to. Scrolling down still wins on average
     (65% of moves) so we make net forward progress through the posting.
     """
-    target_dwell = random.uniform(min_seconds, max_seconds)  # pick one total dwell time for this listing
+    if random.random() < SHORT_GLANCE_CHANCE:
+        target_dwell = random.uniform(*SHORT_GLANCE_RANGE)
+    else:
+        target_dwell = random.uniform(*LONG_READ_RANGE)
     elapsed = 0.0
     while elapsed < target_dwell:
         direction = 1 if random.random() < 0.65 else -1      # mostly down, but sometimes back up — breaks the monotonic scripted pattern
@@ -146,12 +202,36 @@ def simulate_list_browsing(driver: webdriver.Chrome) -> None:
     time.sleep(1.0)
 
 
+PAGE_LOAD_TIMEOUT_SECONDS = 60  # bounds driver.get() — without this, a hung page load (LinkedIn interstitial that never fires "load", a stuck renderer) blocks until urllib3's own client-side socket read timeout (120s) fires a raw, hard-to-catch ReadTimeoutError instead of a clean, catchable selenium TimeoutException
+
+
 def build_driver() -> webdriver.Chrome:
-    options = Options()                                                        # container for Chrome launch flags
+    options = uc.ChromeOptions()                                                # container for Chrome launch flags
     options.add_argument(f"--user-data-dir={PROFILE_DIR.resolve()}")            # point Chrome at our dedicated profile (has the LinkedIn login)
     options.add_argument("--profile-directory=Default")                        # use the "Default" sub-profile inside that user-data-dir
     options.add_argument("--window-size=1280,1000")                            # open at a fixed, reasonably large size
-    return webdriver.Chrome(options=options)                                    # launch real Chrome with those options and return the controller
+    driver = uc.Chrome(options=options, version_main=150)                      # patched chromedriver: navigator.webdriver reads undefined, cdc_ window vars suppressed; pinned to installed Chrome's major version (auto-detect grabbed a mismatched newer chromedriver otherwise)
+    driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
+    return driver
+
+
+def safe_get(driver: webdriver.Chrome, url: str, retries: int = 2) -> None:
+    """driver.get() bounded by PAGE_LOAD_TIMEOUT_SECONDS (see build_driver),
+    retried on a hung/slow page load rather than failing the whole scrape
+    run on one bad navigation — a transient LinkedIn slowdown or interstitial
+    is common enough over an hour-plus run that it shouldn't be fatal. Lets
+    TimeoutException propagate after `retries` attempts so the caller (which
+    already knows whether "this one job" or "this whole run" should be
+    skipped) decides what happens next, rather than deciding that here."""
+    for attempt in range(retries + 1):
+        try:
+            driver.get(url)
+            return
+        except TimeoutException:
+            if attempt == retries:
+                raise
+            print(f"  Page load timed out (attempt {attempt + 1}/{retries + 1}) — retrying: {url}")
+            jitter(2.0, 4.0)
 
 
 def text_or_none(el) -> str | None:
@@ -161,7 +241,7 @@ def text_or_none(el) -> str | None:
 
 
 def parse_job_card(li) -> dict:
-    """Extract job_id + title from one list-page card. The list is
+    """Extract job_id + title + company from one list-page card. The list is
     virtualized (confirmed via direct inspection, 2026-07-06) — a card's
     title is only in the DOM once that card has scrolled near the viewport
     at least once (see simulate_list_browsing), so title comes back None
@@ -169,17 +249,29 @@ def parse_job_card(li) -> dict:
     a.job-card-list__title--link rather than that link's aria-label or
     sibling visually-hidden span, both of which append a " with
     verification" suffix for LinkedIn-verified postings that <strong>'s own
-    text doesn't have."""
+    text doesn't have. Company name comes from the same lockup's
+    div.artdeco-entity-lockup__subtitle (confirmed via direct inspection,
+    2026-07-14 — renders alongside the title, not virtualized separately in
+    practice: a full-page sample came back with a company for every card
+    that had a title)."""
     job_id = li.get("data-occludable-job-id")
     title = None
     title_link = li.select_one("a.job-card-list__title--link")
     if title_link:
         strong = title_link.select_one("strong")
         title = text_or_none(strong) if strong else text_or_none(title_link)
-    return {"job_id": job_id, "title": title}
+    company = text_or_none(li.select_one("div.artdeco-entity-lockup__subtitle"))
+    return {"job_id": job_id, "title": title, "company": company}
 
 
-def get_job_cards_on_page(driver: webdriver.Chrome, keyword: str, start: int, time_range: str = TIME_RANGE_DAY) -> list[dict]:
+def get_job_cards_on_page(
+    driver: webdriver.Chrome,
+    keyword: str,
+    start: int,
+    time_range: str = TIME_RANGE_DAY,
+    geo_id: str | None = None,
+    work_type: str = WORK_TYPE_REMOTE,
+) -> list[dict]:
     """Fetch job_id + title for one page of results. All 25
     li[data-occludable-job-id] wrappers are in the DOM immediately on page
     load, but the list is virtualized — a card's title text only renders
@@ -194,11 +286,13 @@ def get_job_cards_on_page(driver: webdriver.Chrome, keyword: str, start: int, ti
     already-seen jobs reappearing on later pages as that pool shifts mid-run.
     """
     search_url = (
-        f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT=2"
+        f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT={work_type}"
         f"&sortBy={SORT_BY_MOST_RECENT}&f_TPR={time_range}&start={start}"
     )
+    if geo_id:
+        search_url += f"&geoId={geo_id}"
     print(f"Navigating to: {search_url}")
-    driver.get(search_url)
+    safe_get(driver, search_url)
     check_not_blocked(driver)
 
     try:
@@ -235,27 +329,29 @@ def get_job_cards_on_page(driver: webdriver.Chrome, keyword: str, start: int, ti
 
 
 def retry_missing_titles(driver: webdriver.Chrome, cards: list[dict], max_attempts: int = 2) -> list[dict]:
-    """A card occasionally still comes back with no title even after the
-    full scroll pass — its async render just hadn't finished before we
-    scrolled past it. Left alone, that title=None would make
-    is_relevant_title() treat a possibly-relevant job as off-track and drop
-    it, so retry rather than accept the loss: scroll that specific card
-    back into view directly (scrollIntoView, not the general list scroll).
+    """A card occasionally still comes back with no title (or, same async
+    render, no company) even after the full scroll pass — its render just
+    hadn't finished before we scrolled past it. Left alone, that title=None
+    would make is_relevant_title() treat a possibly-relevant job as
+    off-track and drop it, and a missing company would let an agency
+    posting slip past the company-blocklist check, so retry rather than
+    accept the loss: scroll that specific card back into view directly
+    (scrollIntoView, not the general list scroll).
 
-    Parses each card's title immediately after scrolling to it, one at a
-    time — NOT scroll-to-everything-then-snapshot-once. Confirmed via real
-    scrape logs (2026-07-07): the list only keeps a small window of cards
-    mounted at a time, so scrolling to card #2 can evict card #1's
+    Parses each card's title+company immediately after scrolling to it, one
+    at a time — NOT scroll-to-everything-then-snapshot-once. Confirmed via
+    real scrape logs (2026-07-07): the list only keeps a small window of
+    cards mounted at a time, so scrolling to card #2 can evict card #1's
     just-rendered title before a single end-of-loop snapshot would ever
     see it — a whole batch of retries can silently fail together this way
     if the missing cards are spread across a wide scroll range.
     """
     cards_by_id = {card["job_id"]: card for card in cards}
     for attempt in range(max_attempts):
-        missing_ids = [c["job_id"] for c in cards if c["title"] is None]
+        missing_ids = [c["job_id"] for c in cards if c["title"] is None or c["company"] is None]
         if not missing_ids:
             break
-        print(f"  {len(missing_ids)} card(s) missing a title — retrying (attempt {attempt + 1}/{max_attempts})...")
+        print(f"  {len(missing_ids)} card(s) missing a title/company — retrying (attempt {attempt + 1}/{max_attempts})...")
         for job_id in missing_ids:
             selector = f'li[data-occludable-job-id="{job_id}"]'
             outer_html = driver.execute_script(
@@ -276,11 +372,13 @@ def retry_missing_titles(driver: webdriver.Chrome, cards: list[dict], max_attemp
             if outer_html:
                 li_soup = BeautifulSoup(outer_html, "lxml").select_one("li")
                 if li_soup:
-                    cards_by_id[job_id]["title"] = parse_job_card(li_soup)["title"]
+                    reparsed = parse_job_card(li_soup)
+                    cards_by_id[job_id]["title"] = reparsed["title"]
+                    cards_by_id[job_id]["company"] = reparsed["company"]
 
-    still_missing = [c["job_id"] for c in cards if c["title"] is None]
+    still_missing = [c["job_id"] for c in cards if c["title"] is None or c["company"] is None]
     if still_missing:
-        print(f"  WARNING: {len(still_missing)} card(s) still have no title after {max_attempts} retries: {still_missing}")
+        print(f"  WARNING: {len(still_missing)} card(s) still have no title/company after {max_attempts} retries: {still_missing}")
     return cards
 
 
@@ -370,7 +468,35 @@ def parse_salary(soup: BeautifulSoup) -> str | None:
     return None
 
 
-def scrape_job_detail(driver: webdriver.Chrome, keyword: str, job_id: str, time_range: str = TIME_RANGE_DAY) -> dict:
+WORKPLACE_TYPES = {"Remote", "Hybrid", "On-site"}
+
+
+def parse_workplace_type(soup: BeautifulSoup) -> str | None:
+    """Same job-details-fit-level-preferences button row as parse_salary, but
+    picking out the job's own displayed workplace-type badge ("Remote" /
+    "Hybrid" / "On-site") instead of the salary button — this is LinkedIn's
+    own labeling of the specific job, independent of which f_WT filter the
+    search itself used to find it (e.g. a hybrid/on-site search can still
+    surface a job LinkedIn tags "Remote")."""
+    fit_level = soup.select_one("div.job-details-fit-level-preferences")
+    if not fit_level:
+        return None
+    for btn in fit_level.select("button"):
+        text = btn.get_text(strip=True)
+        for workplace_type in WORKPLACE_TYPES:                  # substring, not equality — LinkedIn duplicates
+            if workplace_type in text:                          # the label in a hidden a11y span within the button,
+                return workplace_type                            # so exact-match against the raw get_text() never hits
+    return None
+
+
+def scrape_job_detail(
+    driver: webdriver.Chrome,
+    keyword: str,
+    job_id: str,
+    time_range: str = TIME_RANGE_DAY,
+    geo_id: str | None = None,
+    work_type: str = WORK_TYPE_REMOTE,
+) -> dict:
     """Fetch everything for one job — title, company, location, industry,
     company size, full JD text, posted date, applicant stats, salary — from
     a single page load of the search-results two-pane view (by adding
@@ -381,10 +507,12 @@ def scrape_job_detail(driver: webdriver.Chrome, keyword: str, job_id: str, time_
     (jobs-company, job-details, jobs-company__inline-information, etc).
     """
     url = (
-        f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT=2"
+        f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT={work_type}"
         f"&sortBy={SORT_BY_MOST_RECENT}&f_TPR={time_range}&currentJobId={job_id}"
     )
-    driver.get(url)                                        # load the search page with this specific job pre-selected in the right-hand pane
+    if geo_id:
+        url += f"&geoId={geo_id}"
+    safe_get(driver, url)                                  # load the search page with this specific job pre-selected in the right-hand pane
     check_not_blocked(driver)                                # same block/challenge check as the list scrape
     simulate_reading(driver)                                 # 3-15s of human-like scrolling instead of a short fixed jitter — this is the page we actually "read"
 
@@ -411,6 +539,7 @@ def scrape_job_detail(driver: webdriver.Chrome, keyword: str, job_id: str, time_
 
     location, posted_date, applicant_stats = parse_top_card_info(soup)
     salary_text = parse_salary(soup)
+    workplace_type = parse_workplace_type(soup)
 
     return {
         "job_id": job_id,
@@ -418,6 +547,7 @@ def scrape_job_detail(driver: webdriver.Chrome, keyword: str, job_id: str, time_
         "title": title,
         "company": company,
         "location": location,
+        "workplace_type": workplace_type,
         "raw_text": raw_text,
         "industry": industry,
         "company_size": company_size,

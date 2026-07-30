@@ -30,6 +30,12 @@ def init_db() -> None:
     _migrate_screening_results_total_score()
     _migrate_screening_results_skill_group_matched()
     _migrate_jobs_expired_not_interested()
+    _migrate_jobs_repost_count()
+    _migrate_screening_results_to_c_product_pm()
+    _migrate_jobs_note()
+    _migrate_jobs_duplicate_of_job_id()
+    _migrate_jobs_workplace_type()
+    _migrate_jobs_applied_at()
 
 
 def _migrate_jobs_detail_fetched() -> None:
@@ -89,16 +95,17 @@ def _migrate_resume_schema() -> None:
     """resume's shape changed during design (briefly held pdf_data for native
     PDF processing, reverted to text-only — extraction is far cheaper in
     tokens than Claude's native PDF vision processing, and only the content
-    matters here, not layout). The table has never been populated (no
-    Settings-page upload flow exists yet), so it's safe to drop and let
-    create_all rebuild it with the current column set."""
+    matters here, not layout). That drop-and-recreate was safe back when the
+    table had never been populated; it now holds real per-track resumes (see
+    CONTEXT.md "Resume"), so this only adds the `track` column additively for
+    a DB still on the old 5-column shape — it must never drop a populated
+    table again."""
     with engine.connect() as conn:
         columns = {row[1] for row in conn.execute(text("PRAGMA table_info(resume)"))}
-        if columns == {"id", "content", "original_filename", "uploaded_at", "updated_at"}:
+        if not columns or "track" in columns:
             return
-        conn.execute(text("DROP TABLE IF EXISTS resume"))
+        conn.execute(text("ALTER TABLE resume ADD COLUMN track TEXT"))
         conn.commit()
-    Base.metadata.create_all(engine)
 
 
 def _drop_legacy_judge_results_table() -> None:
@@ -162,6 +169,85 @@ def _migrate_jobs_expired_not_interested() -> None:
             conn.execute(text("ALTER TABLE jobs ADD COLUMN not_interested BOOLEAN DEFAULT 0"))
         if "not_interested_note" not in columns:
             conn.execute(text("ALTER TABLE jobs ADD COLUMN not_interested_note TEXT"))
+        conn.commit()
+
+
+def _migrate_jobs_repost_count() -> None:
+    """Adds jobs.repost_count if this DB predates it — every existing row
+    starts at 0 (repost detection is new, there's no history to backfill)."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
+        if "repost_count" in columns:
+            return
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN repost_count INTEGER DEFAULT 0"))
+        conn.commit()
+
+
+def _migrate_screening_results_to_c_product_pm() -> None:
+    """Adds screening_results.to_c_product_pm if this DB predates it —
+    PM-track-only flag for a consumer/to-C domain match (D2), derived from
+    the already-stored expertise_matched_domains JSON rather than a new LLM
+    call. Additive; existing rows default to False until backfilled (see
+    judge/screening_run.py's one-time backfill for pre-existing rows)."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(screening_results)"))}
+        if not columns or "to_c_product_pm" in columns:
+            return
+        conn.execute(text("ALTER TABLE screening_results ADD COLUMN to_c_product_pm BOOLEAN DEFAULT 0"))
+        conn.commit()
+
+
+def _migrate_jobs_note() -> None:
+    """Adds jobs.note if this DB predates it — general free-text note on any
+    job (e.g. interview/assessment tracking), independent of not_interested
+    status unlike the existing not_interested_note. Additive/nullable."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
+        if "note" in columns:
+            return
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN note TEXT"))
+        conn.commit()
+
+
+def _migrate_jobs_duplicate_of_job_id() -> None:
+    """Adds jobs.duplicate_of_job_id if this DB predates it — nullable
+    self-referential FK set at scrape time (analysis/duplicate_detector.py)
+    when a same-company job's JD text is a near-exact match to an earlier
+    job. Additive; existing rows default to NULL (not deduped) since
+    detection only runs going forward, not as a retroactive backfill."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
+        if "duplicate_of_job_id" in columns:
+            return
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN duplicate_of_job_id INTEGER REFERENCES jobs(id)"))
+        conn.commit()
+
+
+def _migrate_jobs_workplace_type() -> None:
+    """Adds jobs.workplace_type if this DB predates it — "Remote"/"Hybrid"/
+    "On-site" as displayed on the job's own detail page, added for the
+    dashboard's remote/on-site filter. Additive/nullable; existing rows stay
+    NULL until re-scraped (repost detection will naturally refresh most
+    still-open ones), not backfilled retroactively."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
+        if "workplace_type" in columns:
+            return
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN workplace_type TEXT"))
+        conn.commit()
+
+
+def _migrate_jobs_applied_at() -> None:
+    """Adds jobs.applied_at if this DB predates it — nullable, set going
+    forward by PATCH /api/jobs/<id> (backend/app.py) whenever `applied`
+    flips to True. Existing applied=True rows stay NULL rather than being
+    backfilled with a guessed date — there's no record of when they were
+    actually marked applied before this column existed."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
+        if "applied_at" in columns:
+            return
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN applied_at DATETIME"))
         conn.commit()
 
 
