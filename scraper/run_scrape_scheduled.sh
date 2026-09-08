@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-PROJECT_DIR="/Users/nasi/Desktop/job_hunt_intelligence"
+PROJECT_DIR="/Users/nasi/job_hunt_intelligence"
 LOG_DIR="$PROJECT_DIR/scraper/logs"
 mkdir -p "$LOG_DIR"
 

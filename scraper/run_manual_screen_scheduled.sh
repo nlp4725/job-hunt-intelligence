@@ -29,26 +29,36 @@ set -uo pipefail
 # launchd starts us with a bare environment, in which `claude` cannot reach its
 # stored credentials and dies with "An unknown error occurred". Re-exec once
 # through an interactive login shell so we inherit the same env a Terminal has.
-if [ -z "${JHI_LOGIN_SHELL:-}" ]; then
-  export JHI_LOGIN_SHELL=1
-  exec /bin/zsh -lc "$(printf '%q ' "$0" "$@")"
-fi
+# NO login-shell re-exec here, deliberately. It used to run
+#   exec /bin/zsh -lc "$0 $@"
+# on the theory that launchd's bare environment kept `claude` from reaching its
+# credentials. That theory was wrong, and the workaround was what broke every
+# scheduled run from 2026-09-03 onward:
+#   * Verified 2026-09-08 with a throwaway LaunchAgent: `claude -p` works fine
+#     in the RAW launchd environment. Credentials live in the Keychain, which
+#     does not care about shell rc files.
+#   * Inside the re-exec'd shell this venv's interpreter died on EVERY call
+#     with "init_import_site: Failed to import the site module", so the
+#     blocklist refresh and every data-quality check failed. An otherwise
+#     identical script that did not re-exec ran the same interpreter from an
+#     environment diffed byte-for-byte identical, successfully.
+# Absolute paths below remove any remaining dependence on inherited PATH.
+PROJECT=/Users/nasi/job_hunt_intelligence
+cd "$PROJECT" || exit 1
+export PATH="/Users/nasi/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 # launchd hands children a soft fd limit of 256; Claude Code needs far more.
 # macOS rejects "unlimited" and caps at kern.maxfilesperproc, so step down
 # through concrete values and keep the first that sticks.
 for n in 65536 20480 10240 4096; do ulimit -n "$n" 2>/dev/null && break; done
 
-PROJECT=/Users/nasi/Desktop/job_hunt_intelligence
-cd "$PROJECT" || exit 1
-export PATH="/Users/nasi/.local/bin:$PATH"
-
 SELFTEST=0
 [ "${1:-}" = "--selftest" ] && { SELFTEST=1; shift; }
 KEYWORD="${1:-ai engineer}"
 LOG="scraper/logs/manual_screen_$(date +%Y%m%d_%H%M).log"
+CLAUDE=/Users/nasi/.local/bin/claude
 STATUS="scraper/logs/last_run_status.json"
-PY=./venv/bin/python
+PY="$PROJECT/venv/bin/python"   # absolute: never depends on cwd
 mkdir -p scraper/logs
 
 log()    { echo "$(date '+%F %T'): $*" >> "$LOG"; }
@@ -109,9 +119,9 @@ open('SCRATCH/agencies.txt','w').write('\n'.join(sorted(
 run_screen() {
   local attempt="$1" out rc
   if [ "$SELFTEST" = "1" ]; then
-    out=$(claude -p "reply with exactly: SELFTEST-OK" 2>&1); rc=$?
+    out=$("$CLAUDE" -p "reply with exactly: SELFTEST-OK" 2>&1); rc=$?
   else
-    out=$(claude -p "/linkedin-manual-screen $KEYWORD" --permission-mode acceptEdits 2>&1); rc=$?
+    out=$("$CLAUDE" -p "/linkedin-manual-screen $KEYWORD" --permission-mode acceptEdits 2>&1); rc=$?
   fi
   printf '%s\n' "$out" >> "$LOG"
   # Exit code alone is NOT trustworthy (see header). Treat known error text as
@@ -129,7 +139,7 @@ if ! run_screen 1; then
   if ! run_screen 2; then
     {
       echo "--- diagnostics ---"
-      echo "claude=$(command -v claude)  version=$(claude --version 2>&1 | head -1)"
+      echo "claude=$(command -v claude)  version=$("$CLAUDE" --version 2>&1 | head -1)"
       echo "keychain entry: $(security find-generic-password -s 'Claude Code-credentials' >/dev/null 2>&1 && echo present || echo ABSENT)"
       echo "fd limit=$(ulimit -n)   chrome=$(pgrep -x 'Google Chrome' >/dev/null && echo running || echo closed)"
     } >> "$LOG" 2>&1
