@@ -14,7 +14,7 @@ Background and history: `docs/manual_browsing_screening.md`. This skill is the o
 | | Default |
 |---|---|
 | **Endpoint** | **LITERAL `/jobs/search/` by default.** Only use semantic `/jobs/search-results/` when the user says "semantic". If they ask for both: literal first, then semantic |
-| Pages | **20 per keyword** on the literal endpoint, unless the user says otherwise. Semantic caps at 10 (`start=250` returns nothing) — don't try for more there |
+| Pages | **40 per keyword** on the literal endpoint, unless the user says otherwise. Semantic caps at 10 (`start=250` returns nothing) — don't try for more there |
 | Location | `geoId=103644278` (United States) |
 | Work type | **ALL types by default — omit `f_WT` entirely.** On-site, hybrid and remote are all collected. Add `f_WT=2` ONLY when the user asks for remote specifically ("remote", "remote only", "wfh"). `f_WT=3` is hybrid, `f_WT=1` on-site |
 | Window | `f_TPR=r86400` (24h). Week `r604800`, month `r2592000` |
@@ -42,6 +42,10 @@ Do **not** filter on company size, perceived relevance, or whether a company was
 | List cards | `<a href="/jobs/view/…">` | `<div>` with click handlers |
 
 They return **largely disjoint inventory**. When the user wants both, run literal first, then semantic.
+
+**Why 40 pages and not 20** (raised 2026-09-08): 20 pages is a ceiling of 500 cards, and the busiest recent days collected 441-495 *new* jobs — landing that close to the ceiling means almost nothing was a duplicate, i.e. LinkedIn still had inventory and the run simply stopped. Two things tightened it further: dropping `f_WT=2` added on-site and hybrid to the pool, and roughly half of each page is skipped by the standing filters (page 1 of the 2026-09-08 run: 13 of 25 skipped), so 20 pages yields nearer 240 jobs than 500. The literal endpoint pages far deeper than this — past `start=1225`.
+
+Do not try to "resume" a truncated run at page 21. Results reshuffle between visits (see Gotchas), so a second run re-walks shuffled ground rather than continuing; it is cheaper to run the full depth once. Re-covered jobs are cached and cost no LLM call, but they still cost navigation.
 
 ## Procedure
 
