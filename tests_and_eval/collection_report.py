@@ -32,7 +32,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from db.models import CollectionPage, Job, ScreeningResult  # noqa: E402
+from db.models import CollectionPage, Job, ScreeningResult, utcnow  # noqa: E402
 from db.session import SessionLocal  # noqa: E402
 
 # LinkedIn serves 25 results per search page. The last page of a result set is
@@ -62,12 +62,31 @@ def record(args):
     pages = _parse_pages(args.pages)
     problems = 0
     for i, (page, rendered, skipped, clicked) in enumerate(pages):
-        session.add(CollectionPage(
-            session_id=args.session, keyword=args.keyword, endpoint=args.endpoint,
-            page=page, rendered=rendered, skipped=skipped, clicked=clicked,
-            pages_planned=args.planned,
-        ))
         notes = []
+        # Upsert on (session_id, page). Re-recording a page must REPLACE it,
+        # never append: a restarted run reuses its session id, and appending
+        # silently doubled every total (observed 2026-09-08 — page 1 recorded
+        # twice, reported as 50 cards rendered on a 25-card page, and the
+        # incomplete-run check read "stopped after page 1 of 40 (2 recorded)").
+        # Inflated funnel numbers are exactly the class of confidently-wrong
+        # value this whole gate exists to prevent.
+        existing = (
+            session.query(CollectionPage)
+            .filter(CollectionPage.session_id == args.session, CollectionPage.page == page)
+            .first()
+        )
+        target = existing or CollectionPage(session_id=args.session, page=page)
+        target.keyword = args.keyword
+        target.endpoint = args.endpoint
+        target.rendered = rendered
+        target.skipped = skipped
+        target.clicked = clicked
+        target.pages_planned = args.planned
+        target.recorded_at = utcnow()
+        if existing is None:
+            session.add(target)
+        else:
+            notes.append("replaced the earlier row for this page")
         if rendered != skipped + clicked:
             notes.append(f"{rendered - skipped - clicked} card(s) unaccounted for")
         # Warn on ANY short page here. `record` cannot know whether this is the
