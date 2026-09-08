@@ -35,7 +35,10 @@ def init_db() -> None:
     _migrate_jobs_note()
     _migrate_jobs_duplicate_of_job_id()
     _migrate_jobs_workplace_type()
+    _migrate_jobs_workplace_type_source()
     _migrate_jobs_applied_at()
+    _migrate_companies_ats_fields()
+    _migrate_jobs_applied_resume_version()
 
 
 def _migrate_jobs_detail_fetched() -> None:
@@ -237,6 +240,26 @@ def _migrate_jobs_workplace_type() -> None:
         conn.commit()
 
 
+def _migrate_jobs_workplace_type_source() -> None:
+    """Adds jobs.workplace_type_source — provenance for workplace_type, so a
+    value LinkedIn actually displayed is never confused with one inferred
+    offline from raw_text by analysis/workplace_from_raw_text.py. Existing
+    non-NULL workplace_type rows are stamped "linkedin", since every value
+    written before this column existed came from the posting itself."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
+        if "workplace_type_source" in columns:
+            return
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN workplace_type_source TEXT"))
+        conn.execute(
+            text(
+                "UPDATE jobs SET workplace_type_source = 'linkedin' "
+                "WHERE workplace_type IS NOT NULL"
+            )
+        )
+        conn.commit()
+
+
 def _migrate_jobs_applied_at() -> None:
     """Adds jobs.applied_at if this DB predates it — nullable, set going
     forward by PATCH /api/jobs/<id> (backend/app.py) whenever `applied`
@@ -248,6 +271,36 @@ def _migrate_jobs_applied_at() -> None:
         if "applied_at" in columns:
             return
         conn.execute(text("ALTER TABLE jobs ADD COLUMN applied_at DATETIME"))
+        conn.commit()
+
+
+def _migrate_companies_ats_fields() -> None:
+    """Adds companies.ats_provider/ats_slug/ats_checked_at if this DB
+    predates them — populated by analysis/ats_detector.py probing public
+    Greenhouse/Lever/Ashby/etc. job-board APIs by slug, as a LinkedIn-
+    independent way to find a company's own career-page listings. Additive;
+    existing rows start NULL (not yet checked) until ats_detector.py runs."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(companies)"))}
+        if "ats_provider" in columns:
+            return
+        conn.execute(text("ALTER TABLE companies ADD COLUMN ats_provider TEXT"))
+        conn.execute(text("ALTER TABLE companies ADD COLUMN ats_slug TEXT"))
+        conn.execute(text("ALTER TABLE companies ADD COLUMN ats_checked_at DATETIME"))
+        conn.commit()
+
+
+def _migrate_jobs_applied_resume_version() -> None:
+    """Adds jobs.applied_resume_version if this DB predates it — nullable,
+    set by the browser extension's apply buttons ("Applied w/ v1"/"Applied
+    w/ v2") for the August 2026 resume A/B test (see CONTEXT.md "Resume A/B
+    Test"). Existing applied=True rows stay NULL — no record of which
+    resume version (if any) they were applied with before this existed."""
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
+        if "applied_resume_version" in columns:
+            return
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN applied_resume_version TEXT"))
         conn.commit()
 
 

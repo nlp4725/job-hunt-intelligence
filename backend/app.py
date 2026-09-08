@@ -19,7 +19,7 @@ exposes.
 
 import json
 import pathlib
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
@@ -212,6 +212,43 @@ def api_health():
             .count()
         )
 
+        # A run record only describes the run that wrote it. The manual screen is
+        # usually driven interactively (it needs a paired browser, so it cannot
+        # be scheduled), and an interactive run writes no status file at all —
+        # so a failed SCHEDULED run would otherwise keep the dashboard red
+        # forever while fresh data was landing from the interactive one.
+        # Anything collected after the record supersedes it.
+        if last_run and latest:
+            try:
+                recorded = datetime.fromisoformat(last_run["at"].replace("Z", "+00:00"))
+                if latest > recorded.replace(tzinfo=None):
+                    last_run = dict(last_run, superseded=True)
+            except (KeyError, ValueError, AttributeError):
+                pass
+
+        # A run that stopped before its last planned page never reached SKILL.md's
+        # end-of-run checks — so that data has been verified by nothing. Detected
+        # from the pages themselves, which are written per page and therefore
+        # survive the crash that the report step did not.
+        incomplete = None
+        last_session = (
+            session.query(CollectionPage)
+            .order_by(CollectionPage.recorded_at.desc())
+            .first()
+        )
+        if last_session is not None:
+            rows = (
+                session.query(CollectionPage)
+                .filter(CollectionPage.session_id == last_session.session_id)
+                .all()
+            )
+            planned = next((r.pages_planned for r in rows if r.pages_planned), None)
+            # Only call it crashed once the run has clearly stopped, or an
+            # in-progress run would report itself incomplete on every page.
+            idle_minutes = (now_naive - max(r.recorded_at for r in rows)).total_seconds() / 60
+            if planned and len(rows) < planned and idle_minutes > 30:
+                incomplete = (max(r.page for r in rows), planned, last_session.session_id)
+
         # Worst-wins. Order matters: a stale pipeline is reported as stale even
         # if the last run it managed said "ok", because that ok is old news.
         if last_run is None and latest is None:
@@ -221,7 +258,12 @@ def api_health():
             message = f"nothing collected in {hours_since:.0f}h (expected every {_RUN_INTERVAL_HOURS:.0f}h)"
         elif failing:
             state, message = "drift", f"extraction failing: {', '.join(failing)}"
-        elif last_run and last_run.get("state") not in ("ok", None):
+        elif incomplete:
+            page, planned, sid = incomplete
+            state = "incomplete"
+            message = (f"last run stopped after page {page} of {planned} — its end-of-run "
+                       f"checks never ran (session {sid})")
+        elif last_run and not last_run.get("superseded") and last_run.get("state") not in ("ok", None):
             state, message = "failed", last_run.get("detail") or last_run.get("state")
         else:
             state = "ok"
@@ -234,6 +276,8 @@ def api_health():
             "collected_24h": collected_24h,
             "last_run": last_run,
             "failing_fields": failing,
+            "incomplete_run": {"last_page": incomplete[0], "planned": incomplete[1],
+                               "session": incomplete[2]} if incomplete else None,
         })
     finally:
         session.close()

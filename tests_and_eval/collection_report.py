@@ -4,7 +4,7 @@ Record each page AS IT COMPLETES, as page:rendered:skipped:clicked tuples:
 
     ./venv/bin/python -m tests_and_eval.collection_report record \\
         --session 20260908-ai-engineer --keyword "ai engineer" --endpoint literal \\
-        --pages 1:25:7:18
+        --pages 1:25:7:18 --planned 20
 
 Per page, not batched at the end. A screening run dies mid-way often enough to
 plan for it — the extension disconnects every 20-30 jobs and the renderer goes
@@ -65,6 +65,7 @@ def record(args):
         session.add(CollectionPage(
             session_id=args.session, keyword=args.keyword, endpoint=args.endpoint,
             page=page, rendered=rendered, skipped=skipped, clicked=clicked,
+            pages_planned=args.planned,
         ))
         notes = []
         if rendered != skipped + clicked:
@@ -111,6 +112,19 @@ def report(args):
         problems += bool(notes)
         print(f"  {p.page:>4} {p.rendered:>9} {p.skipped:>8} {p.clicked:>8}   {'; '.join(notes)}")
 
+    # A run that never reached its own report step (SKILL.md steps 5-6) leaves
+    # exactly this trace: pages on disk, target unmet, and no end-of-run checks.
+    planned = next((p.pages_planned for p in reversed(pages) if p.pages_planned), None)
+    if planned and len(pages) < planned:
+        last = max(p.page for p in pages)
+        print(f"\n  *** INCOMPLETE: stopped after page {last} of {planned} "
+              f"({len(pages)} recorded) ***")
+        print("      The run did not reach its end-of-run checks, so nothing verified")
+        print("      this data. Run them now:")
+        print("        ./venv/bin/python -m tests_and_eval.ingest_check --hours 6")
+        print("        ./venv/bin/python -m tests_and_eval.extraction_health --hours 6")
+        problems += 1
+
     rendered = sum(p.rendered for p in pages)
     skipped = sum(p.skipped for p in pages)
     clicked = sum(p.clicked for p in pages)
@@ -143,6 +157,9 @@ if __name__ == "__main__":
     r.add_argument("--session", required=True)
     r.add_argument("--keyword", required=True)
     r.add_argument("--endpoint")
+    r.add_argument("--planned", type=int, default=None,
+                   help="how many pages this run intends to do; lets a crashed run be "
+                        "distinguished from a short one")
     r.add_argument("--pages", required=True,
                    help="comma-separated page:rendered:skipped:clicked, e.g. 1:25:7:18,2:25:6:19")
     r.set_defaults(func=record)

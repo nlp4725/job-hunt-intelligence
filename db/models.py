@@ -301,3 +301,10 @@ class CollectionPage(Base):
     skipped: Mapped[int]                                  # excluded by the standing filters (agency / off-track / already cached)
     clicked: Mapped[int]                                  # opened, captured and sent for screening
     recorded_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
+    # How many pages the run INTENDED to do, recorded on every page. Without it
+    # a crashed run is indistinguishable from a short one: pages 1-14 are on
+    # disk either way, and the end-of-run checks (SKILL.md report steps 5-6)
+    # never ran to say otherwise, because a session that dies at page 14 never
+    # reaches its own report. Knowing the target turns "14 pages recorded" into
+    # "stopped after 14 of 20".
+    pages_planned: Mapped[int | None]

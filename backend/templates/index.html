@@ -192,8 +192,10 @@
   .health.ok       { color: var(--muted); }
   .health.ok       .health-dot { background: var(--good); }
   .health.stale,
+  .health.incomplete,
   .health.drift    { background: #fdf3d7; border-color: #e6c14b; color: #7a5c00; }
   .health.stale    .health-dot,
+  .health.incomplete .health-dot,
   .health.drift    .health-dot { background: #e6a700; }
   .health.failed   { background: #fdecec; border-color: #e2a0a0; color: #8a2020; }
   .health.failed   .health-dot { background: #d14343; }
@@ -627,6 +629,7 @@
         document.getElementById("healthMsg").textContent = {
           ok: "Pipeline healthy", stale: "Pipeline stalled",
           drift: "Extraction drift", failed: "Last run failed",
+          incomplete: "Run stopped early",
           unknown: "No runs recorded"
         }[h.state] + " — " + h.message;
         document.getElementById("healthAge").textContent =

@@ -80,8 +80,10 @@ Slice the output (`.slice(0,1900)`) if the harness blocks a long query string.
 ```bash
 ./venv/bin/python -m tests_and_eval.collection_report record \
   --session <yyyymmdd-keyword> --keyword "<keyword>" --endpoint literal|semantic \
-  --pages <page>:<rendered>:<skipped>:<clicked>
+  --pages <page>:<rendered>:<skipped>:<clicked> --planned <total pages for this run>
 ```
+
+`--planned` matters: it is what lets a crashed run be told apart from a short one. If the session dies at page 14 of 20 — the extension disconnects every 20-30 jobs — pages 1-14 are already on disk, but steps 5 and 6 below never run, so nothing verifies that data. With `--planned` recorded, the dashboard reports "stopped after page 14 of 20" instead of showing green.
 
 `rendered`, `skipped` and `clicked` come straight off the classify output, and `rendered` must equal `skipped + clicked`. Use one `--session` id for the whole run.
 
@@ -177,6 +179,14 @@ Never report counts from memory — they drift. Query the DB.
 ```
 
 The pages were already recorded one by one in step 3; this only reports them. If `report` says "no pages recorded", pages were skipped during the run — say so in the report rather than backfilling from memory.
+
+Then record the outcome, so an interactive run leaves the same trace a scheduled one does (the dashboard health strip reads this file):
+
+```bash
+./venv/bin/python -m tests_and_eval.record_run_status --state ok --detail "<n> jobs across <n> pages"
+# or, if the gate or extraction health failed:
+./venv/bin/python -m tests_and_eval.record_run_status --state block-violation --detail "..."
+```
 
 `ingest_check` exiting 2 means a BLOCK invariant is violated — something no correct run can produce. **Stop and report it before collecting anything further**; do not screen more jobs on top of a broken invariant.
 
