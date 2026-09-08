@@ -1,13 +1,35 @@
 """
 Converts a job's raw scraped posted_date text ("5 hours ago", "Reposted 2
-days ago", "3 weeks ago") into an absolute datetime, anchored to
-Job.first_seen_at (when the scraper actually collected the listing) rather
-than "now" — the relative string is only meaningful relative to whenever it
-was scraped, and displaying it as-is on a dashboard viewed days/weeks later
-reads as if it just happened. "Reposted" is stripped rather than treated
-specially — LinkedIn's own relative-age text after "Reposted" already
-reflects the repost, which is the best signal available; we don't have the
-original post date separately.
+days ago", "3 weeks ago") into an absolute datetime.
+
+The anchor must be *when that text was read off LinkedIn* — a relative
+string is meaningless otherwise, and rendering it on a dashboard viewed days
+or weeks later reads as if it just happened. Callers pass
+Job.posted_date_seen_at, which db/models.py guarantees is written only
+alongside a write to Job.posted_date.
+
+This used to anchor to Job.last_seen_at, which was wrong twice over:
+
+  1. last_seen_at carried onupdate=utcnow, so *any* write to the row moved
+     it. On 2026-09-08 a workplace_type backfill re-stamped 3181 rows in one
+     commit and every one of their displayed post dates jumped forward with
+     it — a Conquer AI ML Engineer role captured 2026-07-13 as "4 days ago"
+     (really ~Jul 9, "2 months ago" on LinkedIn) rendered as Sep 4.
+  2. Even without that, scraper/run_scrape.py bumps last_seen_at for
+     already-detailed jobs *without* refetching their detail, so a re-seen
+     listing's unchanged text got measured against a newer anchor. 443 rows
+     had drifted this way, one by 43 days.
+
+Both are the same mistake: last_seen_at answers "when did we last see this
+listing?", not "when did we last read this text?". Keep them distinct.
+
+Returns None on anything it can't read, including a missing anchor — callers
+must handle that (backend/templates/index.html excludes jobs with no
+posted_at from the dashboard entirely).
+
+"Reposted" is stripped rather than treated specially — LinkedIn's own
+relative-age text after "Reposted" already reflects the repost, which is the
+best signal available; we don't have the original post date separately.
 """
 
 import re

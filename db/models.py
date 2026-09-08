@@ -12,11 +12,18 @@ from sqlalchemy import ForeignKey, JSON, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # Maps each search keyword to its track. machine learning / AI engineer /
-# AI scientist all roll up to "ml_ai"; product manager is its own "pm" track.
+# AI scientist / LLM all roll up to "ml_ai"; product manager is its own "pm"
+# track. Old entries (machine learning, ai engineer, ai scientist, product
+# manager in software) are kept even after the active scraper keyword list
+# narrowed to just "llm" (see scraper/run_scrape.py, Aug 2026) — historical
+# jobs already in the DB were scraped under those keywords and still need
+# to resolve to the right track.
 KEYWORD_TRACKS: dict[str, str] = {
     "machine learning": "ml_ai",
     "ai engineer": "ml_ai",
     "ai scientist": "ml_ai",
+    "llm": "ml_ai",
+    "llm remote": "ml_ai",  # 2026-08-17: "remote" folded into the literal keyword itself (see scraper/run_scrape.py's KEYWORDS) rather than relied on as a separate LinkedIn filter — see CONTEXT.md's broad-match Remote-filter-reliability note.
     "product manager in software": "pm",
 }
 
@@ -47,6 +54,10 @@ class Company(Base):
     research_report: Mapped[str | None] = mapped_column(Text)              # Company Research Agent's markdown findings (Reputation/Stability/Momentum) — cached per company, reused across every job there
     research_report_generated_at: Mapped[datetime | None]
 
+    ats_provider: Mapped[str | None]                                        # e.g. "greenhouse", "lever" — set by analysis/ats_detector.py probing public job-board APIs; NULL = not yet checked or no match found among supported providers
+    ats_slug: Mapped[str | None]                                            # the slug that matched on ats_provider's board (e.g. "affirm" for boards-api.greenhouse.io/v1/boards/affirm/jobs)
+    ats_checked_at: Mapped[datetime | None]                                 # when ats_detector.py last probed this company — distinguishes "checked, no match" from "never checked"
+
     jobs: Mapped[list["Job"]] = relationship(back_populates="company")
 
 
@@ -61,6 +72,7 @@ class Job(Base):
     company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id"))
     location: Mapped[str | None]
     workplace_type: Mapped[str | None]                                # "Remote" / "Hybrid" / "On-site" — the job's own displayed badge (job-details-fit-level-preferences), not derived from which f_WT filter the search used
+    workplace_type_source: Mapped[str | None]                         # "linkedin" when read off the posting, "raw_text" when inferred offline by analysis/workplace_from_raw_text.py (~95% precise, Remote only) — never treat the two as equally trustworthy
 
     keyword_matched: Mapped[str]                                      # which search keyword found this job
     track: Mapped[str]                                                # "ml_ai" or "pm", derived from keyword_matched
@@ -77,6 +89,7 @@ class Job(Base):
 
     applied: Mapped[bool] = mapped_column(default=False)
     applied_at: Mapped[datetime | None]                               # set when `applied` is switched to True via PATCH /api/jobs/<id> (backend/app.py); cleared if switched back to False. Existing applied=True rows predating this column stay NULL — no reliable way to back-date them.
+    applied_resume_version: Mapped[str | None]                        # which resume variant was used, e.g. "v1"/"v2" — set by the extension's apply buttons for the August 2026 resume A/B test (see CONTEXT.md "Resume A/B Test"). Null for anything applied to before this existed, or applied to outside the extension.
     expired: Mapped[bool] = mapped_column(default=False)              # user-marked: listing is dead/filled, not scrape-detected staleness (see `status` below)
     not_interested: Mapped[bool] = mapped_column(default=False)       # user-marked: decided not to apply
     not_interested_note: Mapped[str | None] = mapped_column(Text)     # why, only meaningful when not_interested is True
@@ -88,7 +101,28 @@ class Job(Base):
     duplicate_of_job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"))  # set at scrape time (analysis/duplicate_detector.py) when a same-company job's JD text is a near-exact match to an earlier job — same underlying posting rescraped under a different LinkedIn job_id (a repost), not a same-company-different-role coincidence. Points at the earliest match, not necessarily the very first ever posted.
 
     first_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
-    last_seen_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+    # NO onupdate= here, deliberately. It used to carry onupdate=utcnow, which
+    # fires on *any* UPDATE to the row regardless of which columns changed —
+    # so an unrelated backfill re-stamped it wholesale (2026-09-08:
+    # analysis/workplace_from_raw_text.py writing workplace_type moved
+    # last_seen_at forward on 3181 rows in one commit). That silently rewrote
+    # every affected job's displayed post date, since posted_date is stored as
+    # relative text ("4 days ago") and used to be anchored to this column.
+    # Set it explicitly at the three sites that genuinely re-see a listing:
+    # scraper/run_scrape.py (dedup_page), db/job_writer.py (save_new_job),
+    # backend/app.py (the duplicate-capture merge).
+    last_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # When job.posted_date's *text* was actually read off LinkedIn. This is the
+    # only correct anchor for interpreting that relative string (see
+    # analysis/posted_date_parser.py) and exists precisely so the parse can
+    # never again be broken by an unrelated write. Distinct from last_seen_at:
+    # a listing can be re-seen (row touched, freshness confirmed) without its
+    # posted_date text being re-read — scraper/run_scrape.py bumps last_seen_at
+    # for already-detailed jobs without refetching detail, which had drifted
+    # 443 rows' post dates forward by up to 43 days. Write it *only* alongside
+    # a write to posted_date. NULL only for pre-migration rows nothing could
+    # date; parse_posted_date falls back to last_seen_at in that case.
+    posted_date_seen_at: Mapped[datetime | None]
 
     company: Mapped[Company | None] = relationship(back_populates="jobs")
     skills: Mapped[list["JobSkill"]] = relationship(back_populates="job", cascade="all, delete-orphan")
@@ -197,3 +231,4 @@ class ChatMessage(Base):
     role: Mapped[str]                                                  # "user" or "assistant"
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
