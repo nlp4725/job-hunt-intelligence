@@ -83,13 +83,15 @@ Slice the output (`.slice(0,1900)`) if the harness blocks a long query string.
 
 ```bash
 ./venv/bin/python -m tests_and_eval.collection_report record \
-  --session <yyyymmdd-keyword> --keyword "<keyword>" --endpoint literal|semantic \
+  --session <yyyymmdd-HHMM-keyword> --keyword "<keyword>" --endpoint literal|semantic \
   --pages <page>:<rendered>:<skipped>:<clicked> --planned <total pages for this run>
 ```
 
 `--planned` matters: it is what lets a crashed run be told apart from a short one. If the session dies at page 14 of 20 — the extension disconnects every 20-30 jobs — pages 1-14 are already on disk, but steps 5 and 6 below never run, so nothing verifies that data. With `--planned` recorded, the dashboard reports "stopped after page 14 of 20" instead of showing green.
 
-`rendered`, `skipped` and `clicked` come straight off the classify output, and `rendered` must equal `skipped + clicked`. Use one `--session` id for the whole run.
+`rendered`, `skipped` and `clicked` come straight off the classify output, and `rendered` must equal `skipped + clicked`.
+
+**Pick the `--session` id once, at the start of the run, and reuse it for every page** — `<yyyymmdd-HHMM-keyword>`, e.g. `20260908-1435-ai-engineer`. It includes the time on purpose: one id per invocation. A date-only id made two runs of the same keyword on the same day share a session, so the second silently overwrote the first run's funnel (recording upserts on session+page). A restarted run is a NEW run and gets a new id; the abandoned session stays on record as the incomplete run it was.
 
 Two reasons this is per page and not batched at the end:
 
@@ -178,7 +180,7 @@ Never report counts from memory — they drift. Query the DB.
 5. **Data-quality gate** — both, always, even when clean. See `docs/production_data_quality.md` for what each guarantees.
 
 ```bash
-./venv/bin/python -m tests_and_eval.collection_report report --session <yyyymmdd-keyword>
+./venv/bin/python -m tests_and_eval.collection_report report --session <yyyymmdd-HHMM-keyword>
 ./venv/bin/python -m tests_and_eval.ingest_check --hours 6
 ```
 
