@@ -1,0 +1,46 @@
+#!/bin/bash
+# Scheduled LinkedIn manual screen. Requires Chrome running, logged into LinkedIn,
+# with the job-hunt extension + Claude in Chrome extension loaded — this skill drives
+# a real browser, so it CANNOT run headless or in the cloud.
+set -uo pipefail
+
+# launchd starts us with a bare environment, in which `claude` cannot reach its
+# stored credentials and dies with "An unknown error occurred". Re-exec once
+# through an interactive login shell so we inherit the same env a Terminal has.
+if [ -z "${JHI_LOGIN_SHELL:-}" ]; then
+  export JHI_LOGIN_SHELL=1
+  exec /bin/zsh -lc "$(printf '%q ' "$0" "$@")"
+fi
+
+# launchd hands children a soft fd limit of 256; Claude Code needs far more.
+# Raise to the hard limit (a login shell does this for us, launchd does not).
+# macOS rejects "unlimited" here and caps at kern.maxfilesperproc, so step down
+# through concrete values and keep the first that sticks.
+for n in 65536 20480 10240 4096; do ulimit -n "$n" 2>/dev/null && break; done
+
+cd /Users/nasi/Desktop/job_hunt_intelligence
+export PATH="/Users/nasi/.local/bin:$PATH"
+LOG=scraper/logs/manual_screen_$(date +%Y%m%d_%H%M).log
+
+if ! pgrep -x "Google Chrome" >/dev/null; then
+  echo "$(date): ABORT — Chrome is not running; the manual screen needs a live browser." >> "$LOG"
+  exit 1
+fi
+
+KEYWORD="${1:-ai engineer}"
+echo "$(date): starting manual screen for '$KEYWORD' (fd limit: $(ulimit -n))" >> "$LOG"
+
+claude -p "/linkedin-manual-screen $KEYWORD" \
+  --permission-mode acceptEdits >> "$LOG" 2>&1
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  {
+    echo "--- diagnostics (exit=$rc) ---"
+    echo "whoami=$(whoami)  shell=$SHELL  login_shell_reexec=${JHI_LOGIN_SHELL:-no}"
+    echo "claude=$(command -v claude)  version=$(claude --version 2>&1 | head -1)"
+    echo "creds file: $([ -f "$HOME/.claude/.credentials.json" ] && echo present || echo ABSENT)"
+    echo "fd limit=$(ulimit -n)"
+  } >> "$LOG"
+fi
+echo "$(date): exit=$rc" >> "$LOG"
+exit "$rc"

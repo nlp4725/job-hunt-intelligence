@@ -1,21 +1,26 @@
 """
 LinkedIn job search scraper.
 
-Architecture: LinkedIn renders all 25 job_id wrappers
-(li[data-occludable-job-id]) in the DOM immediately on page load, but the
-list itself is virtualized — a card's title text only renders once that
-card has scrolled near the viewport at least once (confirmed via direct
-inspection, 2026-07-06: the first ~7 cards have a title on load, the rest
-come back with an empty <strong> until scrolled to; once rendered a
-title stays populated even after scrolling past it). get_job_cards_on_page()
-scrolls the whole list to the bottom, then pulls job_id + title + company
-for all 25 cards, so callers can filter out off-track titles
-(analysis/title_filter.py) and known agency/staffing postings
-(judge/agency_blocklist.py, matched by company name substring) before ever
-spending a full detail-page fetch on a job. Only for jobs that pass both
-filters do we fetch the full two-pane detail view (company, location,
-industry, company size, raw JD text, posted date, applicant stats, salary
-— all from one page load).
+Architecture (rebuilt 2026-08-14 — LinkedIn reworked the list page's DOM
+entirely, breaking every selector this module previously used): each list
+card is now a div[role="button"] whose componentkey attribute embeds the
+job id directly ("job-card-component-ref-<id>") — no real <a href> in the
+card at all, navigation is a JS click handler. Title comes from a same-card
+"Dismiss <title> job" button's aria-label, not the card's own visible
+title text (which sometimes has a "(Verified job)" suffix). Confirmed via
+direct inspection: unlike the old list, this one is NOT virtualized for
+text content — all 25 cards have full title/company available immediately
+on page load, no scroll-to-render wait needed (get_job_cards_on_page()
+still does one lightweight scroll as cheap insurance against the automated
+Selenium session rendering slower than the live interactive session this
+was verified against). See parse_job_card() for the extraction logic.
+get_job_cards_on_page() pulls job_id + title + company for all 25 cards, so
+callers can filter out off-track titles (analysis/title_filter.py) and
+known agency/staffing postings (judge/agency_blocklist.py, matched by
+company name substring) before ever spending a full detail-page fetch on a
+job. Only for jobs that pass both filters do we fetch the full two-pane
+detail view (company, location, industry, company size, raw JD text,
+posted date, applicant stats, salary — all from one page load).
 
 Run:
     python scraper/linkedin_scraper.py "machine learning"
@@ -29,16 +34,18 @@ import time                                     # time.sleep() for the jitter de
 from pathlib import Path                        # cross-platform file path handling
 from urllib.parse import quote                  # URL-encode the keyword (e.g. spaces -> %20)
 
-import undetected_chromedriver as uc            # patched chromedriver + navigator.webdriver/cdc_ suppression (see build_driver)
+import undetected_chromedriver as uc            # patched chromedriver + navigator.webdriver/cdc_ suppression (Chrome path only, see build_driver)
 from bs4 import BeautifulSoup                   # parses raw HTML into a searchable tree
-from selenium import webdriver                  # drives an actual Chrome browser
+from selenium import webdriver                  # drives an actual Chrome/Edge browser
 from selenium.common.exceptions import TimeoutException  # raised by set_page_load_timeout() instead of a raw socket timeout
 from selenium.webdriver.chrome.options import Options   # Chrome launch flags (profile dir, window size)
+from selenium.webdriver.edge.options import Options as EdgeOptions  # Edge launch flags — same flag names as Chrome (both Chromium-based); Selenium Manager auto-resolves a matching msedgedriver, no separate driver install needed
 from selenium.webdriver.common.by import By      # "how to locate an element" enum (CSS, XPath, etc.)
 from selenium.webdriver.support import expected_conditions as EC  # wait-until conditions
 from selenium.webdriver.support.ui import WebDriverWait           # explicit "wait up to N seconds" helper
 
 PROFILE_DIR = Path(__file__).parent / ".chrome-profile"   # the dedicated Chrome profile dir from setup_chrome_profile.py
+EDGE_PROFILE_DIR = Path(__file__).parent / ".edge-profile"  # separate dedicated Edge profile dir — Chrome and Edge can't share a user-data-dir, each needs its own logged-in LinkedIn session (see setup_chrome_profile.py --browser edge)
 OUTPUT_FILE = Path(__file__).parent / "sample_output.json"  # where this test run's results get saved
 
 SORT_BY_MOST_RECENT = "DD"    # LinkedIn's sortBy param for newest-posted-first (default "R" = relevance, which reshuffles between page loads)
@@ -71,6 +78,65 @@ def check_not_blocked(driver: webdriver.Chrome) -> None:
         raise LinkedInBlockedError("challenge")                   # stop immediately — do not retry, that's what makes things worse
     if "/login" in url:                                            # got bounced to the login page — our saved session expired or was invalidated
         raise LinkedInBlockedError("logged_out")
+
+
+class BroadMatchDegradedError(Exception):
+    """Raised when a broad-match keyword's very first page (start=0) doesn't
+    look like a healthy broad-match search. See CONTEXT.md's throttling
+    note: a heavily-used session can silently degrade a broad-match query
+    down toward narrow-literal-match behavior — same URL, same endpoint, no
+    error, just a much smaller/less-remote result set. Checked once per
+    keyword (start=0 only, not every page — a session that degrades mid-
+    keyword wouldn't be caught by a start-of-run check anyway, and checking
+    every page would be expensive for no benefit): (1) still actually on
+    /jobs/search-results/, not silently redirected elsewhere, (2) the
+    results-count header still says "99+" (a degraded session reported far
+    fewer), (3) at least 18 of this page's 25 cards are workplace_hint ==
+    "Remote" (a healthy "llm remote" search ran ~96% clean across two live-
+    checked pages; a real regression should fail well below that, not just
+    dip slightly). The right response is to stop this keyword's run
+    entirely and surface it, not silently continue on bad data.
+    """
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+DEBUG_DUMP_DIR = Path(__file__).parent / "logs" / "debug_dumps"
+
+
+def _dump_diagnostics(driver: webdriver.Chrome, label: str) -> None:
+    """Called when a selector-dependent step comes up empty in a way
+    check_not_blocked() doesn't catch (URL looks fine — not /checkpoint/,
+    /authwall/, /login — but the expected content isn't there either).
+    check_not_blocked() only catches an explicit redirect to a block page;
+    it can't tell "genuinely logged in and rendering normally" apart from
+    "logged in, same URL, but served a stripped/degraded page" — which is a
+    real, separately-observed LinkedIn behavior (confirmed 2026-08-14 while
+    debugging the browser extension: a standalone job-detail page reached
+    via direct/automated navigation came back with almost no content, no
+    explicit block, while the same job loaded fine through organic
+    in-app navigation). Dumps current URL, title, a body-text snippet (to
+    the log — cheap, always readable) and the full page source (to a
+    timestamped file — only when something's actually wrong, so this
+    doesn't bloat storage on normal runs) so a failure like this is
+    diagnosable from the log alone next time, without needing a live
+    session to inspect.
+    """
+    try:
+        url = driver.current_url
+        title = driver.title
+        body_text = driver.execute_script("return document.body ? document.body.innerText : ''") or ""
+        print(f"  DEBUG [{label}]: url={url!r} title={title!r} body_text_len={len(body_text)}")
+        print(f"  DEBUG [{label}]: body_text_snippet={body_text[:300]!r}")
+
+        DEBUG_DUMP_DIR.mkdir(parents=True, exist_ok=True)
+        dump_path = DEBUG_DUMP_DIR / f"{label}_{time.strftime('%Y%m%d_%H%M%S')}.html"
+        dump_path.write_text(driver.page_source, encoding="utf-8")
+        print(f"  DEBUG [{label}]: full page source saved to {dump_path}")
+    except Exception as e:
+        print(f"  DEBUG [{label}]: diagnostics collection itself failed: {e}")
 
 
 def jitter(a: float = 1.5, b: float = 5) -> None:
@@ -154,63 +220,47 @@ def simulate_reading(driver: webdriver.Chrome) -> None:
         elapsed += pause
 
 
-def simulate_list_browsing(driver: webdriver.Chrome) -> None:
-    """Scroll the results list all the way to the bottom so every one of
-    this page's 25 cards renders its title. Confirmed via direct inspection
-    (2026-07-06): LinkedIn's job-card list is virtualized — only cards near
-    the viewport have title text in the DOM at all (cards further down come
-    back with an empty <strong>) — but once a card has rendered, its title
-    stays populated even after scrolling past it, so a single top-to-bottom
-    pass is enough; no need to re-check earlier cards.
-
-    The actual scrollable element is the <ul>'s parent div, not
-    div.scaffold-layout__list itself (that one reported scrollHeight ==
-    clientHeight — not scrollable — while scrolling it silently did
-    nothing). Ember gives the real scrollable div a hashed, unstable class
-    name each session, so it's located structurally (ul.parentElement)
-    rather than by class.
-
-    Movement is randomized (direction/distance/pauses), like
-    simulate_reading(), just biased more strongly downward since the goal
-    here is full coverage of the page's cards, not idle browsing.
-    """
-    container = driver.execute_script(
-        "const ul = document.querySelector('div.scaffold-layout__list ul'); "
-        "return ul ? ul.parentElement : null;"
-    )
-    if container is None:
-        print("  WARNING: list scroll container not found — card titles may not render.")
-        return
-
-    max_scroll = driver.execute_script(
-        "return arguments[0].scrollHeight - arguments[0].clientHeight;", container
-    )
-    if max_scroll <= 0:
-        return  # fewer cards than fit on one screen — nothing to scroll
-
-    scrolled = 0
-    iterations = 0
-    while scrolled < max_scroll and iterations < 40:  # iteration cap is just a safety backstop against an unexpected page state
-        direction = 1 if random.random() < 0.85 else -1   # mostly down, occasional up — same anti-detection idea as simulate_reading()
-        step = direction * random.randint(250, 400)       # smaller steps than a first pass at this — more overlap between steps gives each card's async render more of a chance to finish before we move past it
-        driver.execute_script("arguments[0].scrollTop += arguments[1];", container, step)
-        scrolled = driver.execute_script("return arguments[0].scrollTop;", container)
-        time.sleep(random.uniform(0.9, 1.8))              # longer than the original 0.6-1.4s — that pace still occasionally scrolled past a card before its title finished rendering (see retry_missing_titles for the backstop)
-        iterations += 1
-
-    driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight;", container)  # guarantee the last card rendered even if the jittered loop undershot
-    time.sleep(1.0)
-
-
 PAGE_LOAD_TIMEOUT_SECONDS = 60  # bounds driver.get() — without this, a hung page load (LinkedIn interstitial that never fires "load", a stuck renderer) blocks until urllib3's own client-side socket read timeout (120s) fires a raw, hard-to-catch ReadTimeoutError instead of a clean, catchable selenium TimeoutException
 
 
-def build_driver() -> webdriver.Chrome:
-    options = uc.ChromeOptions()                                                # container for Chrome launch flags
-    options.add_argument(f"--user-data-dir={PROFILE_DIR.resolve()}")            # point Chrome at our dedicated profile (has the LinkedIn login)
-    options.add_argument("--profile-directory=Default")                        # use the "Default" sub-profile inside that user-data-dir
-    options.add_argument("--window-size=1280,1000")                            # open at a fixed, reasonably large size
-    driver = uc.Chrome(options=options, version_main=150)                      # patched chromedriver: navigator.webdriver reads undefined, cdc_ window vars suppressed; pinned to installed Chrome's major version (auto-detect grabbed a mismatched newer chromedriver otherwise)
+# Deletes the property from Navigator.prototype entirely (not just
+# overriding it on the instance) so 'webdriver' in navigator reads false —
+# matching a genuinely non-automated browser, where the key is absent, not
+# merely undefined. A plain Object.defineProperty(navigator, 'webdriver',
+# {get: () => undefined}) still leaves the key present (in-check still
+# true), which is itself a residual tell.
+_HIDE_WEBDRIVER_CDP_SCRIPT = "delete Object.getPrototypeOf(navigator).webdriver"
+
+
+def build_driver(browser: str = "chrome") -> webdriver.Chrome | webdriver.Edge:
+    """browser: "chrome" (default) or "edge" — an alternative when Chrome
+    itself is busy/unavailable, or to spread automated traffic across two
+    different browser fingerprints rather than always presenting as Chrome.
+    Edge has no "undetected-edgedriver" equivalent to undetected_chromedriver
+    (Chrome-specific binary patching), so its stealth comes from manually
+    injecting the same navigator.webdriver override via a CDP command instead
+    — Edge is Chromium-based, so Selenium's CDP passthrough (execute_cdp_cmd)
+    works on it the same way it does on Chrome. The cdc_ window-variable
+    fingerprint (see undetected_chromedriver) isn't addressed on the Edge
+    path since nothing here patches the msedgedriver binary itself; Chrome
+    remains the more thoroughly hardened option."""
+    if browser == "edge":
+        options = EdgeOptions()
+        options.add_argument(f"--user-data-dir={EDGE_PROFILE_DIR.resolve()}")
+        options.add_argument("--profile-directory=Default")
+        options.add_argument("--window-size=1280,1000")
+        driver = webdriver.Edge(options=options)
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": _HIDE_WEBDRIVER_CDP_SCRIPT})
+    elif browser == "chrome":
+        options = uc.ChromeOptions()                                                # container for Chrome launch flags
+        options.add_argument(f"--user-data-dir={PROFILE_DIR.resolve()}")            # point Chrome at our dedicated profile (has the LinkedIn login)
+        options.add_argument("--profile-directory=Default")                        # use the "Default" sub-profile inside that user-data-dir
+        options.add_argument("--window-size=1280,1000")                            # open at a fixed, reasonably large size
+        driver = uc.Chrome(options=options, version_main=150)                      # patched chromedriver: navigator.webdriver reads undefined, cdc_ window vars suppressed; pinned to installed Chrome's major version (auto-detect grabbed a mismatched newer chromedriver otherwise)
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": _HIDE_WEBDRIVER_CDP_SCRIPT})  # uc's own patching leaves navigator.webdriver as a defined `false` rather than truly absent — this closes that gap the same way as the Edge path
+    else:
+        raise ValueError(f"Unknown browser {browser!r} — expected 'chrome' or 'edge'")
+
     driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
     return driver
 
@@ -240,28 +290,277 @@ def text_or_none(el) -> str | None:
     return " ".join(el.get_text(strip=True).split()) or None    # get all text, collapse whitespace/newlines to single spaces
 
 
-def parse_job_card(li) -> dict:
-    """Extract job_id + title + company from one list-page card. The list is
-    virtualized (confirmed via direct inspection, 2026-07-06) — a card's
-    title is only in the DOM once that card has scrolled near the viewport
-    at least once (see simulate_list_browsing), so title comes back None
-    for any card not yet rendered. Pulled from the <strong> inside
-    a.job-card-list__title--link rather than that link's aria-label or
-    sibling visually-hidden span, both of which append a " with
-    verification" suffix for LinkedIn-verified postings that <strong>'s own
-    text doesn't have. Company name comes from the same lockup's
-    div.artdeco-entity-lockup__subtitle (confirmed via direct inspection,
-    2026-07-14 — renders alongside the title, not virtualized separately in
-    practice: a full-page sample came back with a company for every card
-    that had a title)."""
-    job_id = li.get("data-occludable-job-id")
+_CARD_LIST_SELECTOR = 'div[role="button"][componentkey^="job-card-component-ref-"]'
+
+# LinkedIn also still serves this older card template on some searches/
+# sessions — confirmed 2026-08-14 by dumping a real automated run's page
+# source: a "5 results" search returned zero componentkey cards, but its
+# actual rendered DOM (verified by walking up from the title text node,
+# past a hidden hydration <code> blob that happened to contain the same
+# text) used this classic structure instead. The componentkey template was
+# separately live-verified against a 1000+-result search the same day, so
+# both are real and apparently split by search/session, not a stale one
+# replacing a live one — check for both rather than assuming either.
+#
+# This classic template only ever renders 7 cards per fetch — its own
+# in-page "1 2 3 … Next" pager, not the 25-per-page the componentkey
+# template and get_job_cards_on_page's `start` stepping were built around.
+# Confirmed live 2026-08-14 this does NOT skip results: start=0/25/50 map
+# 1:1 onto the pager's own pages 1/2/3 and returned three disjoint,
+# non-overlapping sets of 7 job ids with no gap — LinkedIn is reinterpreting
+# `start` as "internal page number" for this template rather than a literal
+# result offset, so the existing start+=25 loop still walks every result in
+# order, just 7 at a time instead of 25 (more iterations, not missed pages).
+_CARD_LIST_SELECTOR_CLASSIC = 'div.job-card-container[data-job-id]'
+
+# Matches the metadata clutter that shows up as a "leaf" text node alongside
+# company name in a card — benefit/alumni counts, applicant status, salary,
+# posted-date, bare separators — so parse_job_card can skip past all of it
+# to find the actual company name without depending on a fixed leaf index
+# (not every card shows the same set of badges).
+_CARD_NOISE_PATTERN = re.compile(
+    r"school alumni|\bbenefit|\bapplicant|actively review|early applicant|"
+    r"\bago\b|verified job|^\$|^·$|^•$",
+    re.IGNORECASE,
+)
+
+
+_CARD_WORKPLACE_PATTERN = re.compile(r"\((Remote|Hybrid|On-site)\)")
+
+
+def _extract_card_workplace_hint(card) -> str | None:
+    """"Remote"/"Hybrid"/"On-site" if the card's own visible text shows a
+    "(Remote)" etc. tag next to its location, else None.
+
+    Added 2026-08-17 after finding LinkedIn's broad-match "Remote" filter
+    (see click_remote_filter) is not reliably applied — confirmed live: a
+    fresh, correctly-filtered search can still include a genuinely on-site
+    posting, and this is non-deterministic (the same flow run minutes apart
+    produced 15/15 remote once and had leaked non-remote postings another
+    time). A page-level "did the filter work" check can't catch this
+    because it silently varies job-by-job even on a page that otherwise
+    looks correctly filtered. This card-level tag is the same information
+    LinkedIn's own detail page displays (verified against real postings),
+    and reading it here lets the caller skip a job before ever paying for
+    its expensive full detail-page fetch — the fix for "capturing non-
+    remote jobs is fine, we'll filter later" being too slow in practice.
+    """
+    match = _CARD_WORKPLACE_PATTERN.search(card.get_text(" ", strip=True))
+    return match.group(1) if match else None
+
+
+def parse_job_card(card) -> dict:
+    """Extract job_id + title + company from one list-page card.
+
+    LinkedIn rebuilt the list page (confirmed via direct inspection,
+    2026-08-14) — every old selector here (li[data-occludable-job-id],
+    a.job-card-list__title--link, div.artdeco-entity-lockup__subtitle)
+    returns zero matches now. New structure: a card is div[role="button"]
+    whose componentkey attribute embeds the job id directly
+    ("job-card-component-ref-<id>") — no real <a href> anywhere in the
+    card, navigation is a JS click handler, not a link. Title comes from a
+    same-card "Dismiss <title> job" button's aria-label rather than the
+    card's own visible title text, which sometimes has a "(Verified job)"
+    suffix the aria-label doesn't. Company has no dedicated class the way
+    the old artdeco-entity-lockup__subtitle was — extracted as the first
+    leaf-text node that isn't the title (or the title with "(Verified
+    job)" appended) and doesn't match _CARD_NOISE_PATTERN.
+    """
+    component_key = card.get("componentkey", "") or ""
+    raw_job_id = component_key.replace("job-card-component-ref-", "") or None
+    # see parse_job_card_classic's docstring — a non-job widget with a
+    # non-numeric id sentinel got through this template's sibling parser
+    # once already; reject anything non-digit here too, defensively.
+    job_id = raw_job_id if raw_job_id and raw_job_id.isdigit() else None
+
     title = None
-    title_link = li.select_one("a.job-card-list__title--link")
-    if title_link:
-        strong = title_link.select_one("strong")
-        title = text_or_none(strong) if strong else text_or_none(title_link)
-    company = text_or_none(li.select_one("div.artdeco-entity-lockup__subtitle"))
-    return {"job_id": job_id, "title": title, "company": company}
+    dismiss_btn = card.select_one('button[aria-label^="Dismiss "]')
+    if dismiss_btn:
+        label = dismiss_btn.get("aria-label", "") or ""
+        if label.startswith("Dismiss ") and label.endswith(" job"):
+            title = label[len("Dismiss "):-len(" job")]
+
+    company = None
+    for el in card.find_all(True):
+        if el.find(True):          # has a child tag — not a leaf, skip (avoids double-counting nested text)
+            continue
+        text = text_or_none(el)
+        if not text:
+            continue
+        if title and title in text:                # the title itself, possibly "<title> (Verified job)"
+            continue
+        if _CARD_NOISE_PATTERN.search(text):
+            continue
+        company = text
+        break
+
+    return {"job_id": job_id, "title": title, "company": company, "workplace_hint": _extract_card_workplace_hint(card)}
+
+
+def parse_job_card_classic(card) -> dict:
+    """Extract job_id + title + company from a classic-template card
+    (see _CARD_LIST_SELECTOR_CLASSIC). job_id is a plain data attribute;
+    title is the title link's aria-label with a trailing "with
+    verification" suffix stripped (the visible text has it, the old
+    componentkey template's equivalent suffix was "(Verified job)" —
+    different wording, same badge); company is the entity-lockup subtitle,
+    which this template does have a dedicated class for (unlike the
+    componentkey template).
+
+    job_id must be all-digits: a real DB row (id=12403) turned up with
+    job_id='search', title=None, company=None, url='.../jobs/view/search/'
+    — some non-job widget LinkedIn mixes into the list (a "refine your
+    search" prompt or similar) reuses the job-card-container class with a
+    literal "search" sentinel instead of a numeric data-job-id, and it
+    passed the old `if job_id` truthy check since a non-empty string isn't
+    falsy. Real LinkedIn job ids are always digit strings, so reject
+    anything that isn't before it reaches the DB unique-constraint layer.
+    """
+    raw_job_id = card.get("data-job-id") or None
+    job_id = raw_job_id if raw_job_id and raw_job_id.isdigit() else None
+    title = None
+    link = card.select_one("a.job-card-list__title--link")
+    if link:
+        label = link.get("aria-label", "") or ""
+        title = re.sub(r"\s+with verification$", "", label, flags=re.IGNORECASE).strip() or None
+    company = None
+    subtitle = card.select_one(".artdeco-entity-lockup__subtitle")
+    if subtitle:
+        company = text_or_none(subtitle)
+    return {"job_id": job_id, "title": title, "company": company, "workplace_hint": _extract_card_workplace_hint(card)}
+
+
+def simulate_list_browsing(driver: webdriver.Chrome) -> None:
+    """Scroll the results list all the way to the bottom so every one of
+    this page's 25 cards renders.
+
+    Restored 2026-08-14 after being deleted earlier the same day on the
+    (wrong) assumption that the rebuilt list "isn't virtualized" — that was
+    only confirmed true for the componentkey template on a 1000+-result
+    search. The classic template (_CARD_LIST_SELECTOR_CLASSIC, also still
+    live) turned out to be virtualized after all: live DOM inspection
+    showed 25 real <li> elements per page, but only the first 7 hold actual
+    card content — the other 18 sit as empty
+    "jobs-search-results__job-card-search--generic-occlusion" placeholders
+    until scrolled into view. Critically, a single jump-to-bottom
+    (`window.scrollTo`/`scrollTop = scrollHeight` in one shot, what the
+    componentkey-only version of this function's caller used) does NOT
+    hydrate them — confirmed live both via JS scrollTop assignment and
+    scrollIntoView, neither changed the hydrated count. Only genuine
+    incremental scrolling (many small steps with pauses between, as below)
+    hydrates each card in turn, matching a scroll-EVENT-driven virtualized
+    window rather than one that renders based on final scroll position.
+
+    Original docstring (2026-07-06), still accurate for why this is
+    incremental rather than a single jump: once a card has rendered, its
+    content stays populated even after scrolling past it, so a single
+    top-to-bottom pass is enough; no need to re-check earlier cards.
+
+    The actual scrollable element is the <ul>'s parent div, not
+    div.scaffold-layout__list itself (that one reported scrollHeight ==
+    clientHeight — not scrollable — while scrolling it silently did
+    nothing). Ember gives the real scrollable div a hashed, unstable class
+    name each session, so it's located structurally (ul.parentElement)
+    rather than by class. Harmless no-op on the componentkey template,
+    where the list is already fully rendered and max_scroll resolves to
+    ~0 immediately.
+
+    Movement is randomized (direction/distance/pauses), like
+    simulate_reading(), just biased more strongly downward since the goal
+    here is full coverage of the page's cards, not idle browsing.
+
+    max_scroll is recomputed every iteration rather than once up front —
+    found live 2026-08-14 debugging a run where 2 of 9 pages still stuck at
+    7/25 despite this function running (no "container not found" warning
+    logged): placeholder <li> heights before hydration are LinkedIn's own
+    estimate, so scrollHeight can grow as real cards render in, meaning a
+    max_scroll computed only once at the start can go stale mid-loop and
+    make the loop exit believing it reached bottom when the true bottom
+    had since moved further down.
+    """
+    container = driver.execute_script(
+        "const ul = document.querySelector('div.scaffold-layout__list ul'); "
+        "return ul ? ul.parentElement : null;"
+    )
+    if container is None:
+        print("  WARNING: list scroll container not found — card titles may not render.")
+        return
+
+    iterations = 0
+    while iterations < 40:  # iteration cap is just a safety backstop against an unexpected page state
+        max_scroll = driver.execute_script(
+            "return arguments[0].scrollHeight - arguments[0].clientHeight;", container
+        )
+        if max_scroll <= 0:
+            break  # fewer cards than fit on one screen — nothing left to scroll
+        scrolled = driver.execute_script("return arguments[0].scrollTop;", container)
+        if scrolled >= max_scroll:
+            break
+        direction = 1 if random.random() < 0.85 else -1   # mostly down, occasional up — same anti-detection idea as simulate_reading()
+        step = direction * random.randint(250, 400)       # smaller steps than a first pass at this — more overlap between steps gives each card's async render more of a chance to finish before we move past it
+        driver.execute_script("arguments[0].scrollTop += arguments[1];", container, step)
+        time.sleep(random.uniform(0.9, 1.8))              # longer than a faster pace would use — that pace still occasionally scrolled past a card before its content finished rendering (see retry_missing_titles for the backstop)
+        iterations += 1
+
+    driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight;", container)  # guarantee the last card rendered even if the loop undershot
+    time.sleep(1.5)
+
+
+def _hydrated_vs_total_cards(driver: webdriver.Chrome) -> tuple[int, int]:
+    """(hydrated_card_count, total_li_count) in the results list — lets
+    get_job_cards_on_page detect a scroll pass that finished early with
+    cards still un-hydrated (see simulate_list_browsing's docstring) and
+    retry rather than silently under-capturing the page."""
+    result = driver.execute_script(
+        "const ul = document.querySelector('div.scaffold-layout__list ul'); "
+        "if (!ul) return [0, 0]; "
+        "const lis = [...ul.children]; "
+        "const hydrated = lis.filter(li => "
+        "  li.querySelector('div.job-card-container[data-job-id]') || "
+        "  li.querySelector('div[role=\"button\"][componentkey^=\"job-card-component-ref-\"]')"
+        ").length; "
+        "return [hydrated, lis.length];"
+    )
+    return tuple(result)
+
+
+_BROAD_MATCH_BASE_URL = "https://www.linkedin.com/jobs/search-results/"
+
+# LinkedIn's location entity id for "United States" (broad/nationwide, not a
+# specific city/region) — confirmed live 2026-08-17 as part of the
+# keyword-based Remote fix below, matches "United States" as shown in the
+# real UI's location selector.
+_BROAD_MATCH_GEO_ID = "103644278"
+
+_MIN_REMOTE_CARDS = 18  # out of 25 — see BroadMatchDegradedError
+
+
+def _get_results_count_text(driver: webdriver.Chrome) -> str | None:
+    """The "N results"/"99+ results" header text on a /jobs/search-results/
+    page, or None if it can't be found. Used only by the start=0 health
+    check (see BroadMatchDegradedError) — not parsed into a number since
+    "99+" is the only value that actually matters here."""
+    return driver.execute_script(
+        "const els = [...document.querySelectorAll('*')];"
+        "const m = els.find(e => e.children.length===0 && /^\\d+\\+?\\s*results?$/i.test(e.textContent.trim()));"
+        "return m ? m.textContent.trim() : null;"
+    )
+
+
+def _check_broad_match_health(driver: webdriver.Chrome, cards: list[dict]) -> None:
+    """Raises BroadMatchDegradedError if this keyword's first page doesn't
+    look like a healthy broad-match search. Call once, at start=0 only —
+    see BroadMatchDegradedError's docstring for what's checked and why."""
+    if _BROAD_MATCH_BASE_URL not in driver.current_url:
+        raise BroadMatchDegradedError(f"url_changed: expected {_BROAD_MATCH_BASE_URL!r} in the URL, got {driver.current_url!r}")
+
+    results_text = _get_results_count_text(driver)
+    if not results_text or "99+" not in results_text:
+        raise BroadMatchDegradedError(f"too_few_results: results header was {results_text!r}, expected \"99+ results\"")
+
+    remote_count = sum(1 for c in cards if c.get("workplace_hint") == "Remote")
+    if remote_count < _MIN_REMOTE_CARDS:
+        raise BroadMatchDegradedError(f"not_remote: only {remote_count}/{len(cards)} cards tagged Remote, expected at least {_MIN_REMOTE_CARDS}")
 
 
 def get_job_cards_on_page(
@@ -271,80 +570,120 @@ def get_job_cards_on_page(
     time_range: str = TIME_RANGE_DAY,
     geo_id: str | None = None,
     work_type: str = WORK_TYPE_REMOTE,
+    broad_match: bool = False,
 ) -> list[dict]:
-    """Fetch job_id + title for one page of results. All 25
-    li[data-occludable-job-id] wrappers are in the DOM immediately on page
-    load, but the list is virtualized — a card's title text only renders
-    once that card has scrolled near the viewport at least once (confirmed
-    via direct inspection, 2026-07-06), so simulate_list_browsing() scrolls
-    all the way to the bottom before parsing, not just a light jitter.
-    Returning title here (not just the id) is what lets the caller drop
-    off-track jobs (analysis/title_filter.py) before ever spending a full
-    detail-page fetch on them. `sortBy=DD` (newest first) + `f_TPR` (time
-    window) keep this page's results scoped to a small, newest-first slice
-    instead of LinkedIn's whole relevance-ranked pool — the fix for
-    already-seen jobs reappearing on later pages as that pool shifts mid-run.
+    """Fetch job_id + title + company for one page of results (up to 25
+    cards). The componentkey template renders all 25 immediately without
+    scrolling (confirmed via direct inspection, 2026-08-14, on a
+    1000+-result search) — but the classic template
+    (_CARD_LIST_SELECTOR_CLASSIC) is virtualized and only renders its first
+    7 cards without help, so simulate_list_browsing()'s incremental scroll
+    is required (see its docstring for how this was found — a same-day
+    regression where this file briefly assumed neither template needed
+    scrolling, confirmed wrong by live DOM inspection showing 18 of 25
+    cards per page going uncaptured). Returning title here (not just the
+    id) is what lets the caller drop off-track jobs
+    (analysis/title_filter.py) before ever spending a full detail-page
+    fetch on them. `sortBy=DD` (newest first) + `f_TPR` (time window) keep
+    this page's results scoped to a small, newest-first slice instead of
+    LinkedIn's whole relevance-ranked pool — the fix for already-seen jobs
+    reappearing on later pages as that pool shifts mid-run.
+
+    broad_match=True switches to /jobs/search-results/ (found 2026-08-14
+    investigating why 'llm' only returned 4-5 results/day — LinkedIn's own
+    UI, reached via its search-box autocomplete rather than a raw keyword
+    submit, uses this endpoint and returns 99+ results for the same query
+    by matching related AI/ML/GenAI terms rather than the literal string
+    "llm", which /jobs/search/ requires). No sortBy=DD param here — this
+    endpoint doesn't accept it the way /jobs/search/ does, so results
+    aren't guaranteed newest-first; dedup_page's detail_fetched check still
+    prevents rework, it just means "no more new ids" isn't as clean a
+    signal of true end-of-results as on the literal-match endpoint.
+
+    Remote is folded into the literal keyword text itself (caller passes
+    e.g. "llm remote" as `keyword`) rather than applied as a separate
+    LinkedIn filter — a prior version clicked a "Remote" filter chip and
+    carried its resulting referralSearchId across pages, but that filter
+    turned out to be unreliable even when it visibly "worked" (confirmed
+    live 2026-08-17: On-site/Hybrid jobs still leaked through a genuinely-
+    active Remote filter, non-deterministically run to run) and required
+    a lot of fragile session-state bookkeeping. Just searching "<keyword>
+    remote" as literal text is stateless — no click, no token to carry
+    forward — and empirically far cleaner (96% Remote-tagged across two
+    live-checked pages, vs. runs as low as ~15% clean with the filter-click
+    approach). It's not perfect (still occasionally includes an on-site/
+    hybrid job whose text happens to satisfy the search some other way),
+    which is exactly why parse_job_card's workplace_hint check and
+    run_scrape.py's detail-page-level workplace_type check both still
+    exist as safety nets — this just makes them catch the exception
+    instead of doing most of the filtering work. geoId=_BROAD_MATCH_GEO_ID
+    ("United States") keeps this nationwide rather than defaulting to
+    whatever location LinkedIn infers for the account.
     """
-    search_url = (
-        f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT={work_type}"
-        f"&sortBy={SORT_BY_MOST_RECENT}&f_TPR={time_range}&start={start}"
-    )
-    if geo_id:
-        search_url += f"&geoId={geo_id}"
-    print(f"Navigating to: {search_url}")
-    safe_get(driver, search_url)
-    check_not_blocked(driver)
+    if broad_match:
+        search_url = f"{_BROAD_MATCH_BASE_URL}?keywords={quote(keyword)}&f_TPR={time_range}&geoId={_BROAD_MATCH_GEO_ID}&start={start}"
+        print(f"Navigating to: {search_url}")
+        safe_get(driver, search_url)
+        check_not_blocked(driver)
+    else:
+        search_url = (
+            f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT={work_type}"
+            f"&sortBy={SORT_BY_MOST_RECENT}&f_TPR={time_range}&start={start}"
+        )
+        if geo_id:
+            search_url += f"&geoId={geo_id}"
+        print(f"Navigating to: {search_url}")
+        safe_get(driver, search_url)
+        check_not_blocked(driver)
 
     try:
         WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "li[data-occludable-job-id]"))
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, f"{_CARD_LIST_SELECTOR}, {_CARD_LIST_SELECTOR_CLASSIC}")
+            )
         )
     except Exception:
         print("  WARNING: job list didn't appear within 15s — page may need manual inspection.")
 
-    # The wait above only confirms the card *wrappers* exist — their title
-    # text is a separate async render that can lag behind. Waiting for the
-    # first card's title specifically (not just presence of the <li>s) gives
-    # that render pipeline a moment to warm up before we start scrolling
-    # away from it, which cuts down on how often retry_missing_titles has
-    # to run at all.
-    try:
-        WebDriverWait(driver, 6).until(
-            lambda d: d.find_element(By.CSS_SELECTOR, "a.job-card-list__title--link strong").text.strip() != ""
-        )
-    except Exception:
-        print("  WARNING: first card's title didn't populate within 6s — list may be rendering slower than usual this run.")
-
-    simulate_list_browsing(driver)                        # scrolls to the bottom — required to render every card's title, see docstring
+    simulate_list_browsing(driver)
+    for retry in range(2):  # bounded retry for the occasional page that finishes its scroll pass with cards still un-hydrated — see simulate_list_browsing's docstring
+        hydrated, total = _hydrated_vs_total_cards(driver)
+        if hydrated >= total:
+            break
+        print(f"  Only {hydrated}/{total} cards hydrated after scroll — retrying ({retry + 1}/2)...")
+        simulate_list_browsing(driver)
 
     soup = BeautifulSoup(driver.page_source, "lxml")
-    ul = soup.select_one("div.scaffold-layout__list-detail-inner div.scaffold-layout__list ul")  # exact container path, confirmed via direct inspection
-    if not ul:
-        print("  Results list container not found.")
-        return []
+    cards_html = soup.select(_CARD_LIST_SELECTOR)
+    if cards_html:
+        cards = [parse_job_card(card) for card in cards_html]
+    else:
+        cards_html = soup.select(_CARD_LIST_SELECTOR_CLASSIC)
+        if cards_html:
+            cards = [parse_job_card_classic(card) for card in cards_html]
+        else:
+            print("  Results list container not found.")
+            _dump_diagnostics(driver, "empty_job_list")
+            return []
 
-    cards = [parse_job_card(li) for li in ul.select("li[data-occludable-job-id]")]
     cards = [card for card in cards if card["job_id"]]        # drop any None job_ids, just in case
-    return retry_missing_titles(driver, cards)
+    cards = retry_missing_titles(driver, cards)
+
+    if broad_match and start == 0:
+        _check_broad_match_health(driver, cards)
+
+    return cards
 
 
 def retry_missing_titles(driver: webdriver.Chrome, cards: list[dict], max_attempts: int = 2) -> list[dict]:
-    """A card occasionally still comes back with no title (or, same async
-    render, no company) even after the full scroll pass — its render just
-    hadn't finished before we scrolled past it. Left alone, that title=None
-    would make is_relevant_title() treat a possibly-relevant job as
-    off-track and drop it, and a missing company would let an agency
-    posting slip past the company-blocklist check, so retry rather than
-    accept the loss: scroll that specific card back into view directly
-    (scrollIntoView, not the general list scroll).
-
-    Parses each card's title+company immediately after scrolling to it, one
-    at a time — NOT scroll-to-everything-then-snapshot-once. Confirmed via
-    real scrape logs (2026-07-07): the list only keeps a small window of
-    cards mounted at a time, so scrolling to card #2 can evict card #1's
-    just-rendered title before a single end-of-loop snapshot would ever
-    see it — a whole batch of retries can silently fail together this way
-    if the missing cards are spread across a wide scroll range.
+    """A card occasionally still comes back with no title/company even
+    though this list isn't virtualized for text (see get_job_cards_on_page)
+    — a transient render lag, not the routine case it was on the old list.
+    Left alone, that title=None would make is_relevant_title() treat a
+    possibly-relevant job as off-track and drop it, and a missing company
+    would let an agency posting slip past the company-blocklist check, so
+    retry rather than accept the loss: scroll that specific card back into
+    view directly (scrollIntoView), then re-read.
     """
     cards_by_id = {card["job_id"]: card for card in cards}
     for attempt in range(max_attempts):
@@ -353,12 +692,15 @@ def retry_missing_titles(driver: webdriver.Chrome, cards: list[dict], max_attemp
             break
         print(f"  {len(missing_ids)} card(s) missing a title/company — retrying (attempt {attempt + 1}/{max_attempts})...")
         for job_id in missing_ids:
-            selector = f'li[data-occludable-job-id="{job_id}"]'
+            selector = (
+                f'div[role="button"][componentkey="job-card-component-ref-{job_id}"], '
+                f'div.job-card-container[data-job-id="{job_id}"]'
+            )
             outer_html = driver.execute_script(
-                "const li = document.querySelector(arguments[0]); "
-                "if (!li) return null; "
-                "li.scrollIntoView({block: 'center'}); "
-                "return li.outerHTML;",
+                "const c = document.querySelector(arguments[0]); "
+                "if (!c) return null; "
+                "c.scrollIntoView({block: 'center'}); "
+                "return c.outerHTML;",
                 selector,
             )
             time.sleep(1.0)
@@ -367,14 +709,21 @@ def retry_missing_titles(driver: webdriver.Chrome, cards: list[dict], max_attemp
             # re-read straight after the wait (not the outer_html captured
             # before it) so the pause has a chance to let the render finish
             outer_html = driver.execute_script(
-                "const li = document.querySelector(arguments[0]); return li ? li.outerHTML : null;", selector
+                "const c = document.querySelector(arguments[0]); return c ? c.outerHTML : null;", selector
             )
             if outer_html:
-                li_soup = BeautifulSoup(outer_html, "lxml").select_one("li")
-                if li_soup:
-                    reparsed = parse_job_card(li_soup)
+                card_soup = BeautifulSoup(outer_html, "lxml").select_one(
+                    'div[role="button"], div[data-job-id]'
+                )
+                if card_soup:
+                    reparsed = (
+                        parse_job_card(card_soup)
+                        if card_soup.get("componentkey")
+                        else parse_job_card_classic(card_soup)
+                    )
                     cards_by_id[job_id]["title"] = reparsed["title"]
                     cards_by_id[job_id]["company"] = reparsed["company"]
+                    cards_by_id[job_id]["workplace_hint"] = reparsed["workplace_hint"]
 
     still_missing = [c["job_id"] for c in cards if c["title"] is None or c["company"] is None]
     if still_missing:
@@ -422,13 +771,30 @@ def scrape_keyword(
 SALARY_PATTERN = re.compile(r"\$[\d,.]+\s*[kK]?(?:/yr|/hr|/year|/hour)?\s*-\s*\$[\d,.]+\s*[kK]?(?:/yr|/hr|/year|/hour)?")
 
 
+_TERTIARY_NOISE_PATTERN = re.compile(
+    r"^promoted by hirer$|^responses managed off linkedin$|"
+    r"^no response insights available yet$|^company review time is typically",
+    re.IGNORECASE,
+)
+
+
 def parse_top_card_info(soup: BeautifulSoup) -> tuple[str | None, str | None, str | None]:
     """Pulls location, posted-date text, and applicant-count text out of the
     tertiary description container under the job title. Matched by keyword
     content (" ago", "clicked apply"/"applicant"), not fixed span position,
     since not every job shows every span (e.g. "Promoted by hirer" isn't
-    always present). The first span matching neither pattern is location,
-    since location always renders first among these spans."""
+    always present). The first remaining span is location, since location
+    always renders first among these spans.
+
+    Found via DB audit 2026-08-14: hirer-responsiveness badges ("Promoted by
+    hirer", "Responses managed off LinkedIn", "No response insights
+    available yet", "Company review time is typically...") match neither the
+    "ago" nor "applicant" pattern, so they were being misclassified as
+    location — and since location was then no longer None, the *real*
+    location span right after it was silently dropped. 107 already-scraped
+    jobs affected; _TERTIARY_NOISE_PATTERN filters these out before the
+    first-remaining-span-is-location fallback runs.
+    """
     tertiary = soup.select_one("div.job-details-jobs-unified-top-card__tertiary-description-container")
     if not tertiary:
         return None, None, None
@@ -448,7 +814,9 @@ def parse_top_card_info(soup: BeautifulSoup) -> tuple[str | None, str | None, st
             posted_date = text
         elif "clicked apply" in low or "applicant" in low:
             applicant_stats = text
-        elif location is None:                     # first span matching neither pattern = location
+        elif _TERTIARY_NOISE_PATTERN.search(text):
+            continue
+        elif location is None:                     # first remaining span = location
             location = text
 
     return location, posted_date, applicant_stats
@@ -496,22 +864,70 @@ def scrape_job_detail(
     time_range: str = TIME_RANGE_DAY,
     geo_id: str | None = None,
     work_type: str = WORK_TYPE_REMOTE,
+    broad_match: bool = False,
 ) -> dict:
     """Fetch everything for one job — title, company, location, industry,
     company size, full JD text, posted date, applicant stats, salary — from
-    a single page load of the search-results two-pane view (by adding
-    &currentJobId=<id> to the same search URL) rather than navigating to the
-    standalone /jobs/view/<id>/ page. The standalone page renders with
-    hashed/unstable CSS classes (confirmed by direct investigation); the
-    two-pane view renders the same content with stable, semantic class names
-    (jobs-company, job-details, jobs-company__inline-information, etc).
+    the /jobs/search/ two-pane view via a direct currentJobId deep link.
+    That page has stable, semantic class names (job-details-jobs-unified-
+    top-card__company-name, #job-details, jobs-company, etc.) — unlike the
+    standalone /jobs/view/<id>/ page, which renders the same content with
+    hashed/unstable CSS-module classes instead (e.g. "_3aef665a fd81105c
+    ..." — reconfirmed live 2026-08-17 via direct inspection, zero <h1>
+    anywhere on that page).
+
+    broad_match jobs (found via /jobs/search-results/'s related-term
+    matching, not literal keyword text — see get_job_cards_on_page) use
+    this exact same /jobs/search/ page, just with `keywords` left out of
+    the URL entirely: only currentJobId={job_id}&f_TPR={time_range}. Two
+    other approaches were tried and ruled out live 2026-08-17:
+
+    1. Deep-linking with `keywords` still attached (the literal-match
+       shape below, unchanged) doesn't work for a broad-match-sourced job:
+       /jobs/search/ runs a literal-text search against `keywords`
+       regardless of currentJobId being present, and a job found by
+       related-term matching (e.g. "AI Builder - Remote" at OneDigital,
+       surfaced under the query "llm remote" without literally containing
+       "llm") isn't part of that literal query's own result set — the
+       detail pane simply never renders (confirmed: page body showed "llm
+       remote in United States, 658 results" with h1/company-name/
+       job-details all null, even though the URL still showed
+       currentJobId=<the requested id>). Dropping `keywords` removes the
+       literal-match filter entirely, so there's nothing left for the job
+       to fail to match against.
+
+    2. An earlier version of this function loaded the broad-match list
+       page (/jobs/search-results/) and JS-clicked the matching card, since
+       a deep link into that endpoint (with or without `keywords`) never
+       exposes the stable classes either — confirmed both before and after
+       this change. That click-based approach's own safeguard (poll the
+       URL for currentJobId to update before trusting the extraction)
+       turned out insufficient: a DB audit found job_id 4452234830 saved
+       as "AI Agent Developer" / Hagerty with detail_fetched=True (a
+       "successful" fetch by that safeguard's own criteria), while its
+       real, live content — confirmed independently on /jobs/view/,
+       /jobs/search-results/, and this /jobs/search/ deep link, all three
+       agreeing — is "Software Engineer, AI/Agents" / Ladders. The URL
+       updating to the right id is not proof the rendered pane's content
+       actually caught up with it. A single direct navigation (this
+       version, same as the literal-match path always used) has no
+       click/route-timing race to get wrong in the first place.
+
+    workplace_type is extracted the same way for both paths now
+    (parse_workplace_type, from the fit-level button row) rather than
+    passed through from the list card's workplace_hint tag — the earlier
+    broad-match version relied on that hint only because its old
+    extraction path had no reliable way to read the page itself.
     """
-    url = (
-        f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT={work_type}"
-        f"&sortBy={SORT_BY_MOST_RECENT}&f_TPR={time_range}&currentJobId={job_id}"
-    )
-    if geo_id:
-        url += f"&geoId={geo_id}"
+    if broad_match:
+        url = f"https://www.linkedin.com/jobs/search/?currentJobId={job_id}&f_TPR={time_range}"
+    else:
+        url = (
+            f"https://www.linkedin.com/jobs/search/?keywords={quote(keyword)}&f_WT={work_type}"
+            f"&sortBy={SORT_BY_MOST_RECENT}&f_TPR={time_range}&currentJobId={job_id}"
+        )
+        if geo_id:
+            url += f"&geoId={geo_id}"
     safe_get(driver, url)                                  # load the search page with this specific job pre-selected in the right-hand pane
     check_not_blocked(driver)                                # same block/challenge check as the list scrape
     simulate_reading(driver)                                 # 3-15s of human-like scrolling instead of a short fixed jitter — this is the page we actually "read"

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jobhunt.manualscreen</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nasi/job_hunt_intelligence/scraper/run_manual_screen_scheduled.sh</string>
+        <string>ai engineer</string>
+    </array>
+
+    <!-- 5.1 hours = 18360s. Matches Claude Code's rolling 5h usage window,
+         so each run starts just after the previous window has refreshed. -->
+    <key>StartInterval</key>
+    <integer>18360</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nasi/job_hunt_intelligence/scraper/logs/manualscreen_launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nasi/job_hunt_intelligence/scraper/logs/manualscreen_launchd.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

@@ -18,22 +18,20 @@ sys.path.insert(0, str(Path(__file__).parent.parent))  # so `db.` / `analysis.` 
 
 from selenium.common.exceptions import TimeoutException
 
-from analysis.salary_parser import parse_salary_range
-from analysis.duplicate_detector import find_duplicate_job
-from analysis.skills_extractor import extract_skills
 from analysis.title_filter import is_relevant_title, is_too_senior_title
-from db.models import Company, Job, JobSkill, ScrapeRun, track_for_keyword, utcnow
+from db.job_writer import get_or_create_company, save_new_job
+from db.models import Job, ScrapeRun, track_for_keyword, utcnow
 from db.session import get_session, init_db
 from judge.agency_blocklist import delete_agency_jobs, is_agency_company_name
 from judge.eligibility import load_resumes, resume_for_screening
 from judge.screening_run import run_screening, screen_one
 from scraper.linkedin_scraper import (
+    BroadMatchDegradedError,
     LinkedInBlockedError,
     PROFILE_DIR,
     TIME_RANGE_DAY,
     TIME_RANGE_MONTH,
     TIME_RANGE_WEEK,
-    WORK_TYPE_HYBRID_ONSITE,
     WORK_TYPE_REMOTE,
     build_driver,
     get_job_cards_on_page,
@@ -42,29 +40,34 @@ from scraper.linkedin_scraper import (
     scrape_job_detail,
 )
 
-KEYWORDS = ["machine learning", "ai engineer", "ai scientist", "product manager in software"]
+# Narrowed to just "llm remote" (2026-08-17) — was ["llm", "ai engineer"],
+# before that ["machine learning", "ai engineer", "ai scientist", "product
+# manager in software"]. "ai engineer" dropped: its literal-match coverage
+# turned out to heavily overlap with what "llm remote"'s broad match already
+# surfaces (both return general AI/ML postings, not just literal-"llm"
+# ones), so running both was mostly duplicate work. PM track remains paused
+# (no PM keyword); existing pm-track jobs/resume/screening in the DB are
+# untouched, this only affects what gets scraped going forward. See
+# db.models.KEYWORD_TRACKS for the keyword->track mapping.
+KEYWORDS = ["llm remote"]
 
-# geoId captured directly from LinkedIn's own location-autocomplete URL
-# (origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE), not guessed.
-GEO_ID_CALIFORNIA = "102095887"   # California, United States
-
-# (geo_id, work_type, run_label_suffix). None geo_id = remote, nationwide, no
-# location filter (unchanged original behavior). The other = hybrid/on-site,
-# scoped to California.
-LOCATIONS = [
-    (None, WORK_TYPE_REMOTE, None),
-    (GEO_ID_CALIFORNIA, WORK_TYPE_HYBRID_ONSITE, "CA"),
-]
-
-# Every keyword x every location — 4 keywords x 2 locations = 8 searches per
-# run. run_label distinguishes each keyword's location variants in ScrapeRun
-# history; None (the remote variant) logs under the keyword itself, matching
-# original behavior.
-SEARCHES = [
-    (keyword, geo_id, work_type, f"{keyword} ({suffix})" if suffix else None)
-    for keyword in KEYWORDS
-    for geo_id, work_type, suffix in LOCATIONS
-]
+# Remote, nationwide, no location filter — geo_id=None and the default
+# work_type (WORK_TYPE_REMOTE) on every keyword. CA hybrid/on-site coverage
+# was dropped; remote-only going forward.
+#
+# "llm remote" runs broad_match=True (2026-08-14, keyword changed 2026-08-17):
+# literal-match against just the word "llm" was only turning up 4-5 real
+# postings/day (verified — that's genuinely all LinkedIn has under that
+# exact literal string for a remote+24h search), while LinkedIn's own
+# related-term search endpoint returns 99+ for the same query by matching
+# AI/ML/GenAI postings more broadly. The keyword itself is "llm remote", not
+# "llm" — folding "remote" into the literal search text turned out to be a
+# far more reliable way to get remote-only results than LinkedIn's own
+# Remote filter chip (see get_job_cards_on_page's broad_match docstring and
+# CONTEXT.md for why the filter chip was dropped as unreliable/non-
+# deterministic even when it visibly "worked").
+BROAD_MATCH_KEYWORDS = {"llm remote"}
+SEARCHES = [(keyword, None, WORK_TYPE_REMOTE, None, keyword in BROAD_MATCH_KEYWORDS) for keyword in KEYWORDS]
 
 LOG_DIR = Path(__file__).parent / "logs"
 
@@ -144,26 +147,6 @@ def _screening_worker(job_queue: queue.Queue) -> None:
             job_queue.task_done()
 
 
-def get_or_create_company(session, name: str | None, industry: str | None, size: str | None) -> Company | None:
-    if not name:
-        return None
-    company = session.query(Company).filter(Company.name == name).first()
-    if company:
-        # backfill industry/size if we now have info we didn't have before
-        # (e.g. an earlier scrape found this company with a listing that
-        # didn't render its About-card properly)
-        if industry and not company.industry:
-            company.industry = industry
-        if size and not company.size:
-            company.size = size
-        return company
-
-    company = Company(name=name, industry=industry, size=size, analyzed_at=utcnow() if industry else None)
-    session.add(company)
-    session.flush()  # assigns company.id without needing a full commit yet
-    return company
-
-
 def create_placeholder_job(session, keyword: str, track: str, job_id: str) -> None:
     """Phase 1 (daily run): persist a bare id-only row the moment a job is
     discovered, before its content is ever fetched. This is what lets phase
@@ -181,54 +164,6 @@ def create_placeholder_job(session, keyword: str, track: str, job_id: str) -> No
     )
     session.add(job)
     session.commit()
-
-
-def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -> Job:
-    """Insert or complete a job row with full scraped detail, and commit
-    immediately — if a block hits mid-run, everything saved so far survives.
-    Upserts rather than always inserting because a placeholder row (id only,
-    detail_fetched=False) may already exist here — created either earlier
-    this run's phase 1, or by a previous run that got interrupted before
-    finishing phase 2.
-
-    Title-relevance filtering (analysis/title_filter.py) already happened
-    upstream, at list-page collection time (see filter_relevant_ids) — by
-    the time a job_id reaches this function its title has already passed
-    the track's curated term list, so is_relevant just keeps its schema
-    default (True) here.
-    """
-    company = get_or_create_company(session, detail["company"], detail["industry"], detail["company_size"])
-
-    job = session.query(Job).filter(Job.job_id == job_id).first()
-    if job is None:
-        job = Job(job_id=job_id, url=detail["url"], keyword_matched=keyword, track=track)
-        session.add(job)
-
-    job.url = detail["url"]
-    job.title = detail["title"]
-    job.company_name = detail["company"]
-    job.company_id = company.id if company else None
-    job.location = detail["location"]
-    job.workplace_type = detail["workplace_type"]
-    job.keyword_matched = keyword
-    job.track = track
-    job.raw_text = detail["raw_text"]
-    job.salary_text = detail["salary_text"]
-    job.salary_min, job.salary_max = parse_salary_range(detail["salary_text"])
-    job.posted_date = detail["posted_date"]
-    job.applicant_stats = detail["applicant_stats"]
-    job.detail_fetched = True
-
-    session.flush()          # assigns job.id (if newly inserted) so JobSkill rows below can reference it
-
-    if detail["raw_text"]:
-        for skill_name in extract_skills(detail["raw_text"]):
-            session.add(JobSkill(job_id=job.id, skill_name=skill_name))
-
-    job.duplicate_of_job_id = find_duplicate_job(session, job.company_name, job.raw_text, exclude_job_id=job.id)
-
-    session.commit()
-    return job
 
 
 REPOST_GAP_DAYS = 7  # an already-known job reappearing in a TIME_RANGE_DAY (f_TPR=r86400, "past 24h") search after this long a gap since last_seen_at can only mean LinkedIn just reposted/rebumped it — that's the sole way it re-qualifies for a 24h-window search. A shorter gap is more likely routine day-to-day scrape overlap than a genuine new repost cycle, so it's not counted.
@@ -359,6 +294,7 @@ def process_keyword(
     geo_id: str | None = None,
     work_type: str = WORK_TYPE_REMOTE,
     run_label: str | None = None,
+    broad_match: bool = False,
 ) -> None:
     """Pages through results one page at a time, running each page's dedup
     check + full detail fetch immediately after that page loads, rather than
@@ -371,6 +307,10 @@ def process_keyword(
     could drift mid-pagination, but proved unreliable in practice; this
     single interleaved pass is simpler and matches the backfill path that
     already works.
+
+    broad_match just threads through to get_job_cards_on_page — see that
+    function's docstring for what it changes (a different LinkedIn search
+    endpoint with related-term matching instead of literal keyword text).
     """
     track = track_for_keyword(keyword)
     run_label = run_label or keyword
@@ -387,7 +327,7 @@ def process_keyword(
     while True:
         print(f"\n--- Page {page_num} (start={start}) ---")
         try:
-            cards = get_job_cards_on_page(driver, keyword, start, time_range, geo_id=geo_id, work_type=work_type)  # LinkedInBlockedError propagates up uncaught — see main()
+            cards = get_job_cards_on_page(driver, keyword, start, time_range, geo_id=geo_id, work_type=work_type, broad_match=broad_match)  # LinkedInBlockedError propagates up uncaught — see main()
         except TimeoutException:
             # get_job_cards_on_page already retried once internally (safe_get)
             # — treat this the same as one job's detail page timing out: skip
@@ -418,16 +358,53 @@ def process_keyword(
         needs_detail_ids, brand_new_ids = dedup_page(session, job_ids)
         relevant_ids = filter_relevant_ids(session, track, cards_by_id, needs_detail_ids, brand_new_ids)
 
+        if broad_match:
+            # Skip the expensive full detail-page fetch entirely for cards
+            # the LIST view already confidently tags Hybrid/On-site — see
+            # scraper/linkedin_scraper.py's _extract_card_workplace_hint
+            # docstring for why LinkedIn's own "Remote" filter click can't
+            # be trusted alone. Only excludes a CONFIDENT non-remote hint;
+            # None (unparseable) or "Remote" both proceed to the fetch, so
+            # this can't lose a genuinely-remote job over a card-text miss
+            # — the detail-fetch-level check below is the safety net for
+            # cases where the list tag and the job's own detail page
+            # disagree.
+            confident_non_remote = {
+                jid for jid in relevant_ids
+                if cards_by_id[jid].get("workplace_hint") in ("Hybrid", "On-site")
+            }
+            if confident_non_remote:
+                print(f"  {len(confident_non_remote)} card(s) tagged Hybrid/On-site in the list view — skipping detail fetch:")
+                for jid in confident_non_remote:
+                    print(f"    {jid}: {cards_by_id[jid]['title']!r} ({cards_by_id[jid]['workplace_hint']})")
+            relevant_ids = [jid for jid in relevant_ids if jid not in confident_non_remote]
+
         for job_id in relevant_ids:
             print(f"  New job {job_id} ({cards_by_id[job_id]['title']!r}) — fetching full detail...")
             try:
-                detail = scrape_job_detail(driver, keyword, job_id, time_range, geo_id=geo_id, work_type=work_type)
+                detail = scrape_job_detail(driver, keyword, job_id, time_range, geo_id=geo_id, work_type=work_type, broad_match=broad_match)
             except TimeoutException:
                 # Already retried once internally (safe_get) — one job's page
                 # hanging twice shouldn't cost the rest of the run; it has no
                 # Job row yet (create_placeholder_job isn't called on this
                 # path), so it's simply retried fresh on the next scrape.
                 print(f"  Job {job_id} detail page timed out twice — skipping, will retry next run.")
+                continue
+            if broad_match and detail["workplace_type"] != "Remote":
+                # LinkedIn's own "Remote" filter click on the broad-match
+                # endpoint (see click_remote_filter) doesn't reliably
+                # restrict results to remote-only jobs — confirmed live
+                # 2026-08-17: On-site/Hybrid postings kept slipping through
+                # despite the filter chip being active with no error. Our
+                # own workplace_type extraction (from the job's own detail
+                # page) is accurate and independent of that filter, so it's
+                # the more trustworthy signal here — post-filter on it
+                # rather than trusting LinkedIn's list-level filter. No Job
+                # row is created for a skipped job (same as a detail-page
+                # timeout, see above) — it'll just get re-checked and
+                # re-skipped if it resurfaces on a future run, a small,
+                # bounded cost rather than one worth tracking state for.
+                print(f"  Job {job_id} ({detail['title']!r}) is {detail['workplace_type']!r}, not Remote — skipping (broad-match's Remote filter isn't reliable, see CONTEXT.md).")
                 continue
             job = save_new_job(session, keyword, track, job_id, detail)
             num_new += 1
@@ -475,6 +452,15 @@ def main() -> None:
     mode = "initial" if initial else "week" if week else "daily"
     setup_file_logging(mode)
 
+    # --only=<keyword> restricts this run to one configured keyword (e.g.
+    # a one-off "just re-check llm over the past week" without also paying
+    # for a full week-window re-scrape of every other keyword).
+    only_keyword = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--only=")), None)
+    searches = [s for s in SEARCHES if s[0] == only_keyword] if only_keyword else SEARCHES
+    if only_keyword and not searches:
+        print(f"--only={only_keyword!r} doesn't match any configured keyword ({[s[0] for s in SEARCHES]!r}).")
+        sys.exit(1)
+
     if not PROFILE_DIR.exists():
         print(f"No Chrome profile found at {PROFILE_DIR}. Run setup_chrome_profile.py first.")
         sys.exit(1)
@@ -514,12 +500,13 @@ def main() -> None:
 
     try:
         print(f"=== {label} ===")
-        for keyword, geo_id, work_type, run_label in SEARCHES:
+        for keyword, geo_id, work_type, run_label, broad_match in searches:
             try:
                 process_keyword(
                     driver, session, keyword, time_range, max_pages,
                     screening_queue, resumes_by_track, default_content,
                     geo_id=geo_id, work_type=work_type, run_label=run_label,
+                    broad_match=broad_match,
                 )
             except LinkedInBlockedError as e:
                 track = track_for_keyword(keyword)
@@ -533,6 +520,20 @@ def main() -> None:
                 else:
                     print("LinkedIn served a security checkpoint. Stopping this run — do NOT retry immediately.")
                 break   # stop processing remaining keywords too — a block affects the whole session, not just one keyword
+            except BroadMatchDegradedError as e:
+                # Unlike LinkedInBlockedError, this is specific to one
+                # keyword's broad-match health (see its docstring) — not
+                # necessarily a sign the whole session/account is
+                # compromised, so continue to the next keyword rather than
+                # stopping the run outright.
+                track = track_for_keyword(keyword)
+                session.add(ScrapeRun(
+                    keyword=run_label or keyword, track=track, num_found=0, num_new=0,
+                    status="error", error_message=f"broad_match_degraded: {e.reason}",
+                ))
+                session.commit()
+                print(f"  Broad-match health check failed for {keyword!r} — reason: {e.reason}. Skipping this keyword.")
+                continue
 
         deleted = delete_agency_jobs(session)
         print(f"\n=== Deleted {deleted} agency/staffing postings (blocklist cleanup) ===")

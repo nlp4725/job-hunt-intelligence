@@ -145,7 +145,46 @@ See `.claude/skills/linkedin-manual-screen/SKILL.md`, "Repairing a field the ext
 
 ---
 
-## 6. Known gaps
+## 6. What can and cannot be scheduled
+
+| Job | Mechanism | Unattended? |
+|---|---|---|
+| Data-quality gate, extraction health, funnel report | plain Python on the local DB | yes — no Claude, no browser |
+| Selenium scraper (`com.jobhunt.scrape`) | launchd | yes |
+| **Manual LinkedIn screen** | interactive session + paired Chrome | **no — structurally impossible** |
+
+The manual screen was scheduled from 2026-09-03 and never once succeeded (23
+runs, 0 successes). Three separate causes, discovered in this order:
+
+1. The wrapper trusted `$?`, so a failed run reported `exit=0` and every log
+   carried a bogus "creds file: ABSENT" — the diagnostics pointed at a
+   non-problem for six days.
+2. macOS TCC. The project lived in `~/Desktop`, a protected folder, and a
+   LaunchAgent whose program lives there is denied access to it. The venv
+   interpreter could not read its own `pyvenv.cfg`, so it died before running
+   any project code, and `claude` failed identically. Fixed by moving the
+   project to `~/job_hunt_intelligence` (home is not protected).
+3. The real blocker underneath both: **the screen needs Claude in Chrome, which
+   pairs with a specific interactive Claude Code session.** It is not an MCP
+   server you can configure — `claude mcp list` does not show it — so a
+   `claude -p` session has no browser tools at all. Cloud-scheduled agents
+   (`/schedule`) fail for the same reason plus no access to the local DB.
+
+So `com.jobhunt.manualscreen` is unloaded and its plist archived under
+`scraper/disabled/`. Do not re-enable it: it cannot work, and while loaded it
+overwrote `last_run_status.json` with a failure every 5.1 hours, pinning the
+dashboard red.
+
+Run the screen interactively instead: `/linkedin-manual-screen <keyword>` in a
+session with Chrome connected.
+
+A periodic health checker was considered and deliberately NOT built. The
+dashboard's `/api/health` already computes staleness, incomplete-run detection
+and extraction drift live on every page load, so a timer would add only a push
+notification — and running the gate against an idle database on a schedule
+returns the same answer every time, which is how an alert gets ignored.
+
+## 7. Known gaps
 
 Stated rather than quietly tolerated:
 
