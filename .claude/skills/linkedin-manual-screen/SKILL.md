@@ -110,6 +110,18 @@ await window.__go('<title fragment>', '<company fragment>')
 
 Chain 2 per call when both are likely cached; 1 per call otherwise.
 
+### 4b. Every 5 pages — one call, checks extraction is still working
+
+```bash
+./venv/bin/python -m tests_and_eval.extraction_health --hours 1
+```
+
+Report nothing if it is clean; **stop immediately** if a field is flagged `<-- BROKEN?` and run the repair loop at the end of this file before collecting further.
+
+This exists because recording and checking are different things. Every capture records which strategy won each field, automatically and server-side — but nothing *reads* those records until report step 6. On a 40-page run that is two hours and ~450 jobs after a break begins, and a null `posted_date` is not stored as a null: `db/job_writer.py` substitutes the `"0 hours ago"` sentinel, so every one of those jobs is recorded as posted today. That is unrecoverable — the real date was never captured — and it is what happened on 2026-09-08 before this check existed.
+
+One call per five pages against 2-3 screenshots per page is a rounding error; a corrupted 40-page run is not.
+
 ### 5. Next page — repeat from step 1. Do not pause to report.
 
 ## Token efficiency — this is the whole game
