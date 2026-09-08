@@ -268,3 +268,36 @@ class ExtractionEvent(Base):
     # to serve as a fixture, without turning every LinkedIn layout tweak into
     # thousands of near-identical HTML blobs.
     snapshot_html: Mapped[str | None] = mapped_column(Text)
+
+
+class CollectionPage(Base):
+    """Per-page funnel for a manual LinkedIn screening session — the run record
+    for the browser-extension collection path.
+
+    scrape_runs only ever covered the Selenium scraper (last entry 2026-08-17);
+    every job collected since then came through the extension and left no run
+    record at all. So there was no way to answer the two questions you have to
+    be able to answer about any ingestion system: did we see everything we
+    should have, and what happened to what we saw?
+
+    One row per search-results page, written by the linkedin-manual-screen
+    skill as it works. `rendered` is the load-bearing number: LinkedIn serves
+    25 cards per page, so anything less means the page was not fully scrolled
+    and listings were silently never seen — a miss that is invisible in the DB
+    afterwards, because a job you never enumerated leaves no trace anywhere.
+
+    rendered = skipped + clicked must hold exactly. A gap means cards were
+    enumerated and then dropped by neither rule — i.e. lost.
+    """
+
+    __tablename__ = "collection_pages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[str] = mapped_column(index=True)   # one id per screening session, so pages group into a run
+    keyword: Mapped[str]
+    endpoint: Mapped[str | None]                          # "literal" (/jobs/search/) or "semantic" (/jobs/search-results/)
+    page: Mapped[int]
+    rendered: Mapped[int]                                 # cards actually enumerated on the page; expected 25
+    skipped: Mapped[int]                                  # excluded by the standing filters (agency / off-track / already cached)
+    clicked: Mapped[int]                                  # opened, captured and sent for screening
+    recorded_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)

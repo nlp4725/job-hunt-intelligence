@@ -56,7 +56,14 @@ def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -
 
     job = session.query(Job).filter(Job.job_id == job_id).first()
     if job is None:
-        job = Job(job_id=job_id, url=detail["url"], keyword_matched=keyword, track=track)
+        # first_seen_at must be stamped from the SAME `now` as last_seen_at.
+        # Left to its column default it is evaluated at flush time, a few
+        # milliseconds AFTER `now` was taken, so a brand-new row landed with
+        # last_seen_at < first_seen_at — which is impossible by definition and
+        # trips the temporal-sanity check in tests_and_eval/ingest_check.py.
+        # (Caught on the gate's first real run, 3 rows, 2026-09-08.)
+        job = Job(job_id=job_id, url=detail["url"], keyword_matched=keyword, track=track,
+                  first_seen_at=now)
         session.add(job)
 
     job.url = detail["url"]

@@ -17,16 +17,19 @@ not_interested, not_interested_note, note) — the only mutations this API
 exposes.
 """
 
+import json
+import pathlib
 from datetime import timedelta
 
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
+from sqlalchemy import func
 
 from analysis.posted_date_parser import parse_posted_date
 from analysis.title_filter import classify_track
 from analysis.top_tech_companies import is_top500_tech
 from db.job_writer import save_new_job
-from db.models import Company, ExtractionEvent, Job, ScreeningResult, utcnow
+from db.models import CollectionPage, Company, ExtractionEvent, Job, ScreeningResult, utcnow
 from db.session import get_session
 from judge.agency_blocklist import is_agency_job
 from judge.eligibility import load_resumes
@@ -138,6 +141,100 @@ def api_jobs():
             })
 
         return jsonify({"count": len(jobs), "jobs": jobs})
+    finally:
+        session.close()
+
+
+# The scheduled screen is expected roughly every 5.1 hours (launchd
+# StartInterval 18360 in scraper/com.jobhunt.manualscreen.plist). Past twice
+# that with nothing recorded, the pipeline is not merely idle — it is stuck,
+# and that has to look different from "fine". 22 consecutive scheduled runs
+# failed over six days in September 2026 and the only evidence was a 378-byte
+# log file nobody opened; silence reading as success IS the bug.
+_RUN_INTERVAL_HOURS = 5.1
+_STALE_AFTER_HOURS = _RUN_INTERVAL_HOURS * 2
+
+_STATUS_FILE = pathlib.Path(__file__).resolve().parent.parent / "scraper" / "logs" / "last_run_status.json"
+
+
+@app.route("/api/health")
+def api_health():
+    """Ambient pipeline health for the dashboard's status strip.
+
+    Deliberately summary-only and cheap: this is polled by every dashboard
+    load, and its job is to answer one question — is the pipeline working? —
+    not to replace tests_and_eval/ingest_check.py, which stays the real gate.
+    """
+    session = get_session()
+    try:
+        now = utcnow()
+
+        # What the wrapper last reported. Absent = the scheduled run has never
+        # completed far enough to write it.
+        last_run = None
+        if _STATUS_FILE.exists():
+            try:
+                last_run = json.loads(_STATUS_FILE.read_text())
+            except (ValueError, OSError):
+                last_run = {"state": "unreadable", "detail": "last_run_status.json could not be parsed"}
+
+        latest_page = session.query(func.max(CollectionPage.recorded_at)).scalar()
+        latest_job = session.query(func.max(Job.first_seen_at)).scalar()
+        latest = max([t for t in (latest_page, latest_job) if t], default=None)
+        # SQLite has no tz-aware type, so anything read back is naive even
+        # though utcnow() (which wrote it) is aware — compare naive to naive,
+        # same as scraper/run_scrape.py's dedup_page does.
+        now_naive = now.replace(tzinfo=None)
+        hours_since = (now_naive - latest).total_seconds() / 3600 if latest else None
+
+        # Extraction drift over the trailing captures, mirroring
+        # tests_and_eval/extraction_health.py's trailing-window rule: a period
+        # average hides a break that started an hour ago.
+        recent = (
+            session.query(ExtractionEvent)
+            .order_by(ExtractionEvent.captured_at.desc())
+            .limit(20)
+            .all()
+        )
+        failing = []
+        if len(recent) >= 5:
+            counts, nulls = {}, {}
+            for event in recent:
+                for field, strategy in (event.strategies or {}).items():
+                    counts[field] = counts.get(field, 0) + 1
+                    if strategy is None:
+                        nulls[field] = nulls.get(field, 0) + 1
+            failing = sorted(f for f, n in nulls.items() if n / counts[f] >= 0.8)
+
+        collected_24h = (
+            session.query(Job)
+            .filter(Job.first_seen_at >= now_naive - timedelta(hours=24))
+            .count()
+        )
+
+        # Worst-wins. Order matters: a stale pipeline is reported as stale even
+        # if the last run it managed said "ok", because that ok is old news.
+        if last_run is None and latest is None:
+            state, message = "unknown", "no run has been recorded yet"
+        elif hours_since is not None and hours_since > _STALE_AFTER_HOURS:
+            state = "stale"
+            message = f"nothing collected in {hours_since:.0f}h (expected every {_RUN_INTERVAL_HOURS:.0f}h)"
+        elif failing:
+            state, message = "drift", f"extraction failing: {', '.join(failing)}"
+        elif last_run and last_run.get("state") not in ("ok", None):
+            state, message = "failed", last_run.get("detail") or last_run.get("state")
+        else:
+            state = "ok"
+            message = f"{collected_24h} job(s) collected in the last 24h"
+
+        return jsonify({
+            "state": state,
+            "message": message,
+            "hours_since_activity": round(hours_since, 1) if hours_since is not None else None,
+            "collected_24h": collected_24h,
+            "last_run": last_run,
+            "failing_fields": failing,
+        })
     finally:
         session.close()
 

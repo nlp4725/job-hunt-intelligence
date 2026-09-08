@@ -16,17 +16,18 @@ Background and history: `docs/manual_browsing_screening.md`. This skill is the o
 | **Endpoint** | **LITERAL `/jobs/search/` by default.** Only use semantic `/jobs/search-results/` when the user says "semantic". If they ask for both: literal first, then semantic |
 | Pages | **20 per keyword** on the literal endpoint, unless the user says otherwise. Semantic caps at 10 (`start=250` returns nothing) — don't try for more there |
 | Location | `geoId=103644278` (United States) |
-| Work type | **`f_WT=2` (Remote) — always on.** Every search is remote-only; do not ask the user to restate it |
+| Work type | **ALL types by default — omit `f_WT` entirely.** On-site, hybrid and remote are all collected. Add `f_WT=2` ONLY when the user asks for remote specifically ("remote", "remote only", "wfh"). `f_WT=3` is hybrid, `f_WT=1` on-site |
 | Window | `f_TPR=r86400` (24h). Week `r604800`, month `r2592000` |
 | Coverage | **Click EVERY card that survives the three filters.** No discretionary triage, no "this looks irrelevant", no stopping because a page seems repetitive |
 | Pacing | **Never stop between pages.** Run all pages in one continuous turn |
 | Reporting | Per page, log skip count + reasons. Give ONE consolidated report at the very end |
 
-## The three standing filters — the ONLY reasons to skip a card
+## The two standing filters — the ONLY reasons to skip a card
 
 1. **Agency** — `judge.agency_blocklist._matches_agency_substring(company)` or company in the DB-derived "Staffing and Recruiting" list. Never hand-roll this check; it does word-boundary matching so `"turing"` doesn't fire on `"Manufacturing"`.
-2. **On-site** — card's location line contains `On-site`. `Hybrid` is NOT a skip (hybrid roles have scored 11–12). With `f_WT=2` these should be rare, but LinkedIn still leaks a few through, so keep the check.
-3. **Staff / Principal in the title** — word-boundary match. Title test only, not a seniority inference.
+2. **Staff / Principal in the title** — word-boundary match. Title test only, not a seniority inference.
+
+**On-site is NOT a skip** (changed 2026-09-08). It was, back when every search carried `f_WT=2` and an on-site card could only be LinkedIn leaking one through. Now that all work types are collected by default, skipping them would silently discard exactly what the search asked for. Hybrid was never a skip either — hybrid roles have scored 11–12.
 
 Do **not** filter on company size, perceived relevance, or whether a company was already seen. A seen *company* often has a genuinely new *posting*; job-level dedup is the extension's job.
 
@@ -56,7 +57,9 @@ open('SCRATCH/agencies.txt','w').write('\n'.join(sorted(
 
 ### 1. Navigate + install helpers (one browser_batch)
 
-`https://www.linkedin.com/jobs/{search|search-results}/?keywords=<kw>&f_TPR=r86400&f_WT=2&geoId=103644278&start=<N*25>`
+`https://www.linkedin.com/jobs/{search|search-results}/?keywords=<kw>&f_TPR=r86400&geoId=103644278&start=<N*25>`
+
+Append `&f_WT=2` only if the user asked for remote specifically. With no `f_WT`, LinkedIn returns all work types.
 
 Install `__sleep __cardEls __panel __pending __waitPanel __retry __track __doC __go __list2` — see `helpers.js` in this skill directory.
 
@@ -71,6 +74,23 @@ Install `__sleep __cardEls __panel __pending __waitPanel __retry __track __doC _
 `window.__list2()` → pipe into `classify.py` (see this directory) → prints SKIP lines with reasons and the CLICK list.
 
 Slice the output (`.slice(0,1900)`) if the harness blocks a long query string.
+
+**Record the page before moving on — never skip this, never defer it to the end.**
+
+```bash
+./venv/bin/python -m tests_and_eval.collection_report record \
+  --session <yyyymmdd-keyword> --keyword "<keyword>" --endpoint literal|semantic \
+  --pages <page>:<rendered>:<skipped>:<clicked>
+```
+
+`rendered`, `skipped` and `clicked` come straight off the classify output, and `rendered` must equal `skipped + clicked`. Use one `--session` id for the whole run.
+
+Two reasons this is per page and not batched at the end:
+
+- A page that rendered fewer than 25 cards was not fully scrolled, and listings you never enumerated leave **no trace anywhere** afterwards — no row, no null, no error. This is the only moment that miss is detectable.
+- Runs die mid-way (the extension disconnects every 20–30 jobs; the renderer goes unresponsive on long sessions). A crashed run is exactly the one whose funnel you need, and recording at the end loses all of it precisely then.
+
+The call is trivial next to the 2–3 screenshots the page already costs.
 
 ### 4. Click every CLICK card — one JS call each
 
@@ -149,7 +169,18 @@ q=(s.query(ScreeningResult,Job,Company).join(Job,ScreeningResult.job_id==Job.id)
 
 Never report counts from memory — they drift. Query the DB.
 
-5. **Extraction health** — always run, always report the line, even when clean:
+5. **Data-quality gate** — both, always, even when clean. See `docs/production_data_quality.md` for what each guarantees.
+
+```bash
+./venv/bin/python -m tests_and_eval.collection_report report --session <yyyymmdd-keyword>
+./venv/bin/python -m tests_and_eval.ingest_check --hours 6
+```
+
+The pages were already recorded one by one in step 3; this only reports them. If `report` says "no pages recorded", pages were skipped during the run — say so in the report rather than backfilling from memory.
+
+`ingest_check` exiting 2 means a BLOCK invariant is violated — something no correct run can produce. **Stop and report it before collecting anything further**; do not screen more jobs on top of a broken invariant.
+
+6. **Extraction health** — always run, always report the line, even when clean:
 
 ```bash
 ./venv/bin/python -m tests_and_eval.extraction_health --hours 6

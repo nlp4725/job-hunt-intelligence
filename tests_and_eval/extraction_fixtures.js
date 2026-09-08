@@ -87,6 +87,25 @@ const CHICAGO_TRAP = `
     ${JD}
   </div>`;
 
+// Live 2026-09-08 (MeeBoss, Carbon Mapper, ForgeMission): the detail pane
+// renders the title link twice — real top card, then a condensed sticky header
+// carrying ONLY "Company · Location (Remote)". Scoping to the later (sticky)
+// one made posted_date and applicant_stats unrecoverable, and job_writer then
+// stamped those jobs "0 hours ago" — a false posting date, not a null.
+const STICKY_HEADER_DUPLICATE = `
+  <div>
+    <div>
+      <a href="/jobs/view/4464637636/">Founding Engineer</a>
+      <a href="/company/meeboss/">MeeBoss</a>
+      <div><span>MeeBoss · United States (Remote) · 6 days ago · 41 applicants</span></div>
+    </div>
+    <div class="job-details-jobs-unified-top-card__sticky-header">
+      <a href="/jobs/view/4464637636/"><h2>Founding Engineer</h2></a>
+      <div><span>MeeBoss · United States (Remote)</span></div>
+    </div>
+    ${JD}
+  </div>`;
+
 const CASES = [
   {
     name: "pre-September: separate pill + leaf nodes",
@@ -104,6 +123,12 @@ const CASES = [
     name: "workplace type in the title must not become the location",
     html: WORKPLACE_IN_TITLE,
     expect: { location: "Chicago, IL", posted_date: "3 days ago" },
+  },
+  {
+    name: "sticky-header duplicate must not steal the scope",
+    html: STICKY_HEADER_DUPLICATE,
+    expect: { posted_date: "6 days ago", applicant_stats: "41 applicants",
+              location: "United States", workplace_type: "Remote" },
   },
   {
     name: "'Chicago' must never be accepted as a posted_date",

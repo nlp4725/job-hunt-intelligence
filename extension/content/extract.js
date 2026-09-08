@@ -138,8 +138,46 @@ function findTopCardScope() {
     return false;
   };
   const detailMatches = matching.filter((el) => !inResultsCard(el));
-  const titleLink = detailMatches[detailMatches.length - 1] || matching[0] || anchors[0];
-  return { titleLink, scope: findScopeExcluding(titleLink, "about the job") };
+
+  // The detail pane renders the open job's title link TWICE: once in the real
+  // top card, and once in a condensed sticky header that appears on scroll
+  // (class job-details-jobs-unified-top-card__sticky-header). The sticky one
+  // comes LATER in document order, so taking the last match landed the scope
+  // on it — and it carries only "Company · Location (Remote)": no date, no
+  // applicant count anywhere inside it. Verified against three live captures
+  // 2026-09-08 (MeeBoss, Carbon Mapper, ForgeMission): posted_date and
+  // applicant_stats null on all three, after which db/job_writer.py stamped
+  // them with the "0 hours ago" sentinel — dating jobs as posted today when
+  // they were not. No strategy can recover a value that is not in scope.
+  //
+  // So pick the candidate by what its region actually contains rather than by
+  // position. Deliberately content-based, not a class-name test: the hashed
+  // class names this file was rebuilt to avoid change every LinkedIn release,
+  // whereas "the top card is the one with the posting date in it" stays true.
+  // Ties keep the last match, so behaviour is unchanged wherever no candidate
+  // has a date (a genuinely date-less posting scopes exactly as before).
+  const candidates = detailMatches.length ? detailMatches : [matching[0] || anchors[0]].filter(Boolean);
+  let best = null;
+  let bestScore = -1;
+  for (const el of candidates) {
+    const candidate = { titleLink: el, scope: findScopeExcluding(el, "about the job") };
+    let text = "";
+    try {
+      const leaves = topCardMetaLeaves(candidate) || [];
+      text = leaves.map((n) => n.textContent).join(" \u00b7 ");
+      if (candidate.scope) text += " " + candidate.scope.textContent;
+    } catch (e) {
+      text = "";
+    }
+    let score = 0;
+    if (RELATIVE_DATE.test(text)) score += 2;          // the decisive signal
+    if (/clicked apply|applicant/i.test(text)) score += 1;
+    if (score >= bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+  return best;
 }
 
 // LinkedIn's newer layout renders link text twice for accessibility — a
@@ -495,7 +533,19 @@ function extractWorkplaceType(topCard) {
 function topCardSnapshot(topCard) {
   if (!topCard || !topCard.scope) return null;
   try {
-    const clone = topCard.scope.cloneNode(true);
+    // Capture a GENEROUS region, not just the chosen scope. Learned 2026-09-08:
+    // when the failure IS a mis-scope (the sticky-header duplicate stealing the
+    // top card), a snapshot of the chosen scope contains everything except the
+    // markup you need to diagnose it — the three captures saved that day could
+    // never be turned into a passing fixture, because the real top card was
+    // outside the region we kept. Climb a few levels so a wrong scope is still
+    // visible in its surroundings.
+    let region = topCard.scope;
+    for (let i = 0; i < 3 && region.parentElement; i++) {
+      region = region.parentElement;
+      if (/about the job/i.test(region.textContent)) break;
+    }
+    const clone = region.cloneNode(true);
     clone.querySelectorAll("svg, style, script, noscript").forEach((el) => el.remove());
     clone.querySelectorAll("*").forEach((el) => {
       for (const attr of [...el.attributes]) {

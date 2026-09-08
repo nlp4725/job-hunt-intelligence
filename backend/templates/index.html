@@ -59,6 +59,8 @@
   }
 
   .wrap { max-width: 1280px; margin: 0 auto; }
+  /* The table has 17 columns, so give it the full viewport instead of the 1280px text column. */
+  .wrap.wide { max-width: none; }
 
   header.head { margin-bottom: 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
   h1 { font-size: 21px; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 4px; }
@@ -97,11 +99,18 @@
   .tab.active .count { color: var(--accent); opacity: 0.75; }
 
   .table-scroll {
-    overflow-x: auto;
+    /* Always reserve the horizontal scrollbar: macOS overlay scrollbars are
+       invisible until you scroll, which hides the right-hand columns. */
+    overflow-x: scroll;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--surface-1);
+    scrollbar-color: var(--text-muted) var(--surface-2);
   }
+  .table-scroll::-webkit-scrollbar { height: 12px; }
+  .table-scroll::-webkit-scrollbar-track { background: var(--surface-2); border-radius: 0 0 10px 10px; }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 6px; border: 3px solid var(--surface-2); }
+  .table-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px; }
 
@@ -153,8 +162,46 @@
   .job-title:hover { text-decoration: underline; }
   .job-title:after { content: " ↗"; font-size: 10px; opacity: 0.5; font-weight: 400; }
   .company-name { color: var(--text-secondary); font-size: 12px; margin-top: 1px; }
+  /* How many jobs at this company are already marked applied — surfaced inline
+     so a company you have hit repeatedly is visible without sorting. */
+  .applied-count {
+    display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 4px;
+    font-size: 10.5px; font-weight: 650; font-variant-numeric: tabular-nums;
+    background: var(--surface-2); color: var(--text-muted);
+  }
+  .applied-count.repeat { background: #fdecc8; color: #8a5a00; }
+
+  /* Applications whose workplace type was never recorded — folded into the
+     non-remote count, but flagged so a broken extraction doesn't masquerade
+     as a real shift in where you're applying. */
+  .unknown-note { color: var(--muted); cursor: help; border-bottom: 1px dotted currentColor; }
+
+  /* Health strip. Green states get the smallest possible footprint — a healthy
+     pipeline should not compete with the job list for attention. Bad states
+     get colour and a border so they read as a problem at a glance. */
+  .health { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            margin: 6px 0 0; padding: 5px 10px; border-radius: 6px;
+            font-size: 12px; border: 1px solid transparent; }
+  .health-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+  .health-age { color: var(--muted); }
+  .health-toggle { background: none; border: none; padding: 0; font: inherit;
+                   color: var(--muted); text-decoration: underline; cursor: pointer; }
+  .health-detail { flex-basis: 100%; margin: 6px 0 0; padding: 8px;
+                   background: rgba(0,0,0,0.04); border-radius: 4px;
+                   font-size: 11px; white-space: pre-wrap; overflow-x: auto; }
+  .health.ok       { color: var(--muted); }
+  .health.ok       .health-dot { background: var(--good); }
+  .health.stale,
+  .health.drift    { background: #fdf3d7; border-color: #e6c14b; color: #7a5c00; }
+  .health.stale    .health-dot,
+  .health.drift    .health-dot { background: #e6a700; }
+  .health.failed   { background: #fdecec; border-color: #e2a0a0; color: #8a2020; }
+  .health.failed   .health-dot { background: #d14343; }
+  .health.unknown  { background: #eee; border-color: #ccc; color: #555; }
+  .health.unknown  .health-dot { background: #999; }
   .duplicate-note { color: var(--warning); font-size: 11.5px; margin-top: 2px; }
   .badge.dup { background: var(--warning-wash); color: var(--warning); }
+  .hidden-col { display: none; }
 
   .badge {
     display: inline-flex; align-items: center; justify-content: center;
@@ -179,11 +226,23 @@
 </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap wide">
     <header class="head">
       <div>
         <h1>Job Screening Dashboard</h1>
         <p class="sub" id="subtitle">Loading…</p>
+        <!-- Ambient pipeline health. Quiet and muted when fine; coloured and
+             impossible to miss when not. Deliberately NOT behind a tab: a tab
+             is opt-in, and the failure this exists to catch (22 consecutive
+             failed scheduled runs over six days, September 2026) is precisely
+             the one you never think to go looking for. -->
+        <div id="healthStrip" class="health" hidden>
+          <span class="health-dot"></span>
+          <span id="healthMsg"></span>
+          <span id="healthAge" class="health-age"></span>
+          <button type="button" id="healthToggle" class="health-toggle">details</button>
+          <pre id="healthDetail" class="health-detail" hidden></pre>
+        </div>
       </div>
     </header>
 
@@ -243,8 +302,8 @@
             <th data-sort="company_industry">Industry<span class="arrow"></span></th>
             <th data-sort="company_size">Size<span class="arrow"></span></th>
             <th data-sort="workplace_type">Workplace<span class="arrow"></span></th>
-            <th class="num" data-sort="top500_tech">Top 500<span class="arrow"></span></th>
-            <th class="num" data-sort="to_c_product_pm">To-C<span class="arrow"></span></th>
+            <th class="num hidden-col" data-sort="top500_tech">Top 500<span class="arrow"></span></th>
+            <th class="num hidden-col" data-sort="to_c_product_pm">To-C<span class="arrow"></span></th>
             <th data-sort="posted_at">Posted<span class="arrow"></span></th>
             <th class="num" data-sort="applied">Applied<span class="arrow"></span></th>
             <th class="num" data-sort="expired">Expired<span class="arrow"></span></th>
@@ -341,6 +400,16 @@
       var companyDiv = document.createElement("div");
       companyDiv.className = "company-name";
       companyDiv.textContent = job.company_name || "";
+      if (job.company_applied_count > 0) {
+        var appliedCount = document.createElement("span");
+        // 3+ is the threshold that reads as "you keep applying here" — it turns
+        // amber so it is noticeable while scanning, not just readable on hover.
+        appliedCount.className = "applied-count" + (job.company_applied_count >= 3 ? " repeat" : "");
+        appliedCount.textContent = "applied " + job.company_applied_count + "\u00d7";
+        appliedCount.title = "You have marked " + job.company_applied_count
+          + " job(s) at " + job.company_name + " as applied";
+        companyDiv.appendChild(appliedCount);
+      }
       jobTd.appendChild(link);
       jobTd.appendChild(companyDiv);
       if (isDuplicate) {
@@ -379,6 +448,7 @@
         top500Td.className = "num muted";
         top500Td.textContent = "—";
       }
+      top500Td.classList.add("hidden-col");
       tr.appendChild(top500Td);
 
       var toCTd = document.createElement("td");
@@ -392,6 +462,7 @@
         toCTd.className = "num muted";
         toCTd.textContent = "—";
       }
+      toCTd.classList.add("hidden-col");
       tr.appendChild(toCTd);
 
       var postedTd = document.createElement("td");
@@ -481,8 +552,34 @@
         if (!r.ok) throw new Error("request failed");
         return r.json();
       })
-      .then(function () {
+      .then(function (saved) {
         Object.keys(updates).forEach(function (k) { job[k] = updates[k]; });
+        // Adopt the server's own values for the fields it DERIVES rather than
+        // takes from us — applied_at is stamped in backend/app.py, not sent by
+        // this request. Without this the row keeps applied_at=null until a
+        // reload, and isRemoteApplication() reads a null applied_at as
+        // "predates the on-site cutover", so a job you just applied to on-site
+        // would count itself as remote.
+        if (saved && typeof saved === "object") {
+          ["applied_at", "applied_resume_version", "not_interested_note", "note"].forEach(function (k) {
+            if (k in saved) job[k] = saved[k];
+          });
+        }
+        // company_applied_count is computed server-side across the whole DB,
+        // so every OTHER row for the same company is now stale too. Adjust
+        // them all in place rather than re-fetching the full job list on every
+        // checkbox click.
+        if ("applied" in updates) {
+          var key = (job.company_name || "").trim().toLowerCase();
+          var delta = updates.applied ? 1 : -1;
+          if (key) {
+            allJobs.forEach(function (other) {
+              if ((other.company_name || "").trim().toLowerCase() === key) {
+                other.company_applied_count = Math.max(0, (other.company_applied_count || 0) + delta);
+              }
+            });
+          }
+        }
         element.disabled = false;
         if (onSuccess) onSuccess();
       })
@@ -498,9 +595,71 @@
       });
   }
 
+  // Until this date the pipeline only ever surfaced remote roles, so every
+  // application before it is remote by construction — workplace_type on those
+  // rows is unreliable (NULL on ~10K of them until the September 2026 layout
+  // break was found, and backfilled by inference rather than read from
+  // LinkedIn). Deliberately a FIXED date, not a rolling "before today":
+  // with a rolling test, a job applied to on-site today would silently
+  // recount itself as remote tomorrow.
+  var ONSITE_COLLECTION_START = "2026-09-08";
+
+  function isRemoteApplication(job) {
+    // applied_at is NULL on rows applied to before that column existed, which
+    // by definition predates the cutover.
+    if (!job.applied_at) return true;
+    if (job.applied_at.slice(0, 10) < ONSITE_COLLECTION_START) return true;
+    return job.workplace_type === "Remote";
+  }
+
+  // Health is refreshed on load and every 5 minutes. Staleness is computed
+  // server-side (see /api/health) because "nothing has happened for 14 hours"
+  // is itself a state — the whole point is that silence must not look like
+  // success.
+  function loadHealth() {
+    fetch("/api/health")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (h) {
+        if (!h) return;
+        var strip = document.getElementById("healthStrip");
+        strip.hidden = false;
+        strip.className = "health " + h.state;
+        document.getElementById("healthMsg").textContent = {
+          ok: "Pipeline healthy", stale: "Pipeline stalled",
+          drift: "Extraction drift", failed: "Last run failed",
+          unknown: "No runs recorded"
+        }[h.state] + " — " + h.message;
+        document.getElementById("healthAge").textContent =
+          h.hours_since_activity === null ? ""
+            : "· last activity " + (h.hours_since_activity < 1
+                ? "under an hour ago"
+                : Math.round(h.hours_since_activity) + "h ago");
+        document.getElementById("healthDetail").textContent = JSON.stringify(h.last_run, null, 2);
+      })
+      .catch(function () { /* health must never break the dashboard */ });
+  }
+
+  document.getElementById("healthToggle").addEventListener("click", function () {
+    var d = document.getElementById("healthDetail");
+    d.hidden = !d.hidden;
+    this.textContent = d.hidden ? "details" : "hide";
+  });
+
+  loadHealth();
+  setInterval(loadHealth, 5 * 60 * 1000);
+
   function updateSubtitle(filteredCount, trackTotal) {
     var trackJobs = allJobs.filter(function (j) { return j.track === activeTrack; });
-    var appliedCount = trackJobs.filter(function (j) { return j.applied; }).length;
+    var appliedJobs = trackJobs.filter(function (j) { return j.applied; });
+    var appliedCount = appliedJobs.length;
+    var remoteApplied = appliedJobs.filter(isRemoteApplication).length;
+    var nonRemoteApplied = appliedCount - remoteApplied;
+    // Hybrid, On-site and (post-cutover) unknown all count as non-remote.
+    // Surfaced in the tooltip rather than as a third number, so a capture that
+    // failed to read workplace_type doesn't quietly inflate "non-remote".
+    var unknownWorkplace = appliedJobs.filter(function (j) {
+      return !isRemoteApplication(j) && !j.workplace_type;
+    }).length;
     var expiredCount = trackJobs.filter(function (j) { return j.expired; }).length;
     var notInterestedCount = trackJobs.filter(function (j) { return j.not_interested; }).length;
     var duplicateCount = trackJobs.filter(function (j) { return j.duplicate_of_job_id; }).length;
@@ -508,7 +667,14 @@
     var total = trackTotal === undefined ? trackJobs.length : trackTotal;
     subtitle.innerHTML = "<b>" + shown + "</b> of <b>" + total + "</b> screened jobs, ranked by fit"
       + " · <b>" + duplicateCount + "</b> duplicates"
-      + " · <b>" + appliedCount + "</b> applied"
+      + " · <b>" + remoteApplied + "</b> remote applied"
+      + " · <b>" + nonRemoteApplied + "</b> non-remote applied"
+      + (unknownWorkplace
+          ? " <span class=\"unknown-note\" title=\"" + unknownWorkplace
+            + " of the non-remote applications have no workplace type recorded — "
+            + "counted as non-remote. Check extraction health if this is climbing.\">("
+            + unknownWorkplace + " unknown)</span>"
+          : "")
       + " · <b>" + expiredCount + "</b> expired"
       + " · <b>" + notInterestedCount + "</b> not interested";
   }
