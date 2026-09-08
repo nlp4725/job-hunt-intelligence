@@ -38,3 +38,6 @@ frontend/dist/
 # Editor
 .vscode/
 .idea/
+
+# Node (jsdom, used only by tests_and_eval/extraction_fixtures.js)
+/node_modules/

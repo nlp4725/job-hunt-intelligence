@@ -10,6 +10,7 @@ for prior context/docstrings on the two functions below.
 
 from analysis.duplicate_detector import find_duplicate_job
 from analysis.salary_parser import parse_salary_range
+from analysis.workplace_from_raw_text import WRITEBACK_ALLOWED, infer_workplace_type
 from analysis.skills_extractor import extract_skills
 from db.models import Company, Job, JobSkill, utcnow
 
@@ -63,7 +64,22 @@ def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -
     job.company_name = detail["company"]
     job.company_id = company.id if company else None
     job.location = detail["location"]
-    job.workplace_type = detail["workplace_type"]
+    # LinkedIn's own tag when the extension could read it. When it couldn't —
+    # which is what every LinkedIn layout rebuild looks like from here (the
+    # September 2026 one left workplace_type NULL on 97% of captures for
+    # weeks) — fall back to inferring it from the JD text rather than storing
+    # nothing. That downgrade costs precision, which workplace_type_source
+    # records honestly, instead of costing the field entirely. Only the tiers
+    # that cleared the precision bar in analysis/workplace_from_raw_text.py's
+    # eval are ever written.
+    if detail["workplace_type"]:
+        job.workplace_type = detail["workplace_type"]
+        job.workplace_type_source = "linkedin"
+    elif not job.workplace_type and detail["raw_text"]:
+        predicted, confidence = infer_workplace_type(detail["raw_text"], detail["title"])
+        if predicted and (confidence, predicted) in WRITEBACK_ALLOWED:
+            job.workplace_type = predicted
+            job.workplace_type_source = "raw_text"
     job.keyword_matched = keyword
     job.track = track
     job.raw_text = detail["raw_text"]

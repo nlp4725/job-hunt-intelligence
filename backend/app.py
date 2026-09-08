@@ -17,6 +17,8 @@ not_interested, not_interested_note, note) — the only mutations this API
 exposes.
 """
 
+from datetime import timedelta
+
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 
@@ -24,7 +26,7 @@ from analysis.posted_date_parser import parse_posted_date
 from analysis.title_filter import classify_track
 from analysis.top_tech_companies import is_top500_tech
 from db.job_writer import save_new_job
-from db.models import Company, Job, ScreeningResult, utcnow
+from db.models import Company, ExtractionEvent, Job, ScreeningResult, utcnow
 from db.session import get_session
 from judge.agency_blocklist import is_agency_job
 from judge.eligibility import load_resumes
@@ -326,6 +328,53 @@ def api_extension_lookup(job_id):
         session.close()
 
 
+# How many snapshots to keep per distinct failure signature. A LinkedIn layout
+# change breaks the same field on every card, so without a cap one screening
+# session would store hundreds of near-identical blobs. Three is enough to see
+# whether a failure is layout-wide or particular to one posting.
+_SNAPSHOTS_PER_SIGNATURE = 3
+
+
+def _record_extraction_event(session, job_id, meta):
+    """Persist which extraction strategy won each field, and keep the DOM when
+    one lost. See db/models.py:ExtractionEvent for why this exists at all.
+
+    Deliberately best-effort: telemetry must never be the reason a capture
+    fails. A malformed meta dict from an extension version that's out of step
+    with this server costs an event row, not the job.
+    """
+    if not isinstance(meta, dict):
+        return
+    try:
+        # Must check the container is a list first: iterating a stray string
+        # here silently yields its characters as "field names".
+        raw_failed = meta.get("failed_fields")
+        failed = [f for f in raw_failed if isinstance(f, str)][:20] if isinstance(raw_failed, list) else []
+        snapshot = meta.get("snapshot_html") if failed else None
+        if snapshot:
+            signature = ",".join(sorted(failed))
+            seen = (
+                session.query(ExtractionEvent)
+                .filter(
+                    ExtractionEvent.snapshot_html.isnot(None),
+                    ExtractionEvent.failed_fields == failed,
+                    ExtractionEvent.captured_at > utcnow() - timedelta(days=7),
+                )
+                .count()
+            )
+            if seen >= _SNAPSHOTS_PER_SIGNATURE:
+                snapshot = None
+        session.add(ExtractionEvent(
+            job_id=str(job_id),
+            strategies=meta.get("strategies") if isinstance(meta.get("strategies"), dict) else None,
+            failed_fields=failed,
+            snapshot_html=snapshot[:20000] if isinstance(snapshot, str) else None,
+        ))
+        session.commit()
+    except Exception as exc:  # noqa: BLE001 - see docstring
+        session.rollback()
+        app.logger.warning("extraction event not recorded: %s", exc)
+
 
 @app.route("/api/extension/jobs", methods=["POST"])
 def api_extension_capture():
@@ -364,6 +413,7 @@ def api_extension_capture():
 
         detail = {field: body.get(field) for field in _EXTENSION_DETAIL_FIELDS}
         job = save_new_job(session, keyword="extension", track=resolved_track, job_id=str(job_id), detail=detail)
+        _record_extraction_event(session, job_id, body.get("extraction_meta"))
 
         blocked = _agency_or_duplicate_response(job, session)
         if blocked is not None:

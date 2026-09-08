@@ -232,3 +232,39 @@ class ChatMessage(Base):
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
+
+class ExtractionEvent(Base):
+    """One row per browser-extension capture, recording which extraction
+    strategy won for each field — and, when a field had no winner at all, a
+    snapshot of the DOM that defeated it.
+
+    Why this table exists. LinkedIn rebuilds this page's markup regularly
+    (hashed CSS classes 2026-08, the top-card meta-line collapse 2026-09) and
+    every rebuild silently breaks a field. Before this, a break left no trace:
+    extension/content/extract.js logged a console warning nobody was reading,
+    the row saved with NULL, and the failure was only noticed ~10K rows later
+    when analysis/workplace_from_raw_text.py had to reconstruct the field
+    offline. Worse, by the time anyone looked, the markup that broke it was
+    gone — so writing a new strategy meant re-visiting LinkedIn and hoping to
+    hit the same layout again.
+
+    So: record the winning strategy per field on EVERY capture (a single null
+    is normal — not every posting shows applicant stats; a null *rate* is the
+    real signal), and keep the evidence when nothing won. The snapshots double
+    as regression fixtures, so a future selector change can be tested against
+    every layout already seen without touching the network.
+    """
+
+    __tablename__ = "extraction_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_id: Mapped[str | None]                                  # LinkedIn's job id, not Job.id — an event is worth keeping even if the capture never produced a row
+    captured_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
+    strategies: Mapped[dict | None] = mapped_column(JSON)       # {field: winning strategy name, or null if every strategy failed}
+    failed_fields: Mapped[list | None] = mapped_column(JSON)    # fields with no winner; [] on a clean capture
+    # Trimmed outerHTML of the top card, stored ONLY on a failed capture and
+    # only for the first few occurrences of each distinct failure signature
+    # (see backend/app.py:_record_extraction_event) — enough to diagnose and
+    # to serve as a fixture, without turning every LinkedIn layout tweak into
+    # thousands of near-identical HTML blobs.
+    snapshot_html: Mapped[str | None] = mapped_column(Text)

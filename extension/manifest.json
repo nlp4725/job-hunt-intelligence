@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Job Hunt Intelligence — LinkedIn Copilot",
+  "version": "0.1.0",
+  "description": "Scores LinkedIn job postings you view against your resume and tracks what you apply to — talks to a local job_hunt_intelligence backend on 127.0.0.1:5050.",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["scripting", "webNavigation"],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "http://127.0.0.1:5050/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/jobs/*"],
+      "js": ["content/extract.js", "content/panel.js", "content/content_script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
