@@ -47,6 +47,25 @@ def is_relevant_title(title: str | None, track: str) -> bool:
     return bool(pattern.search(title))
 
 
+def classify_track(title: str | None) -> str | None:
+    """Best-effort ml_ai vs pm classification for a title with no known
+    search keyword — e.g. a job captured via the browser extension, where
+    there's no KEYWORD_TRACKS lookup to fall back on. Checks "pm" first:
+    its term list is a tight, low-false-positive set of product-management-
+    specific phrases, whereas "ml_ai"'s list includes broad single words
+    ("software", "engineer") that would false-positive on plenty of PM
+    titles if checked first — e.g. "Product Manager in Software" contains
+    "software", one of ml_ai's own terms. Returns None if neither track's
+    terms match, leaving the caller to ask the user."""
+    if not title:
+        return None
+    if _COMPILED_PATTERNS["pm"].search(title):
+        return "pm"
+    if _COMPILED_PATTERNS["ml_ai"].search(title):
+        return "ml_ai"
+    return None
+
+
 # Director-level, Staff-level, and Principal-level (and above) roles are a
 # seniority mismatch for the candidate's actual band (~3 years, mid-level —
 # see judge/seniority_fit.py's bands) regardless of track, so this is
