@@ -106,6 +106,43 @@ const STICKY_HEADER_DUPLICATE = `
     ${JD}
   </div>`;
 
+// The About-the-company card, in both orderings seen in the wild. The extractor
+// used to skip leaf index 0 on the assumption that the company name came first;
+// when industry leads, that discarded the industry and returned null while
+// company_size still resolved — the 2026-09-08 signature (8.4% -> 32% missing).
+const COMPANY_CARD_NAME_FIRST = `
+  <div>
+    <div>
+      <a href="/jobs/view/4464637636/">AI Engineer</a>
+      <a href="/company/talenthop/">TalentHop</a>
+      <div><span>United States (Remote) &middot; 2 days ago &middot; 8 applicants</span></div>
+    </div>
+    ${JD}
+    <div>
+      <h2>About the company</h2>
+      <div><span>TalentHop</span></div>
+      <div><span>Staffing and Recruiting</span></div>
+      <div><span>11-50 employees</span></div>
+      <div><span>4,102 followers</span></div>
+    </div>
+  </div>`;
+
+const COMPANY_CARD_INDUSTRY_FIRST = `
+  <div>
+    <div>
+      <a href="/jobs/view/4464637636/">AI Engineer</a>
+      <a href="/company/talenthop/">TalentHop</a>
+      <div><span>United States (Remote) &middot; 2 days ago &middot; 8 applicants</span></div>
+    </div>
+    ${JD}
+    <div>
+      <h2>About the company</h2>
+      <div><span>Staffing and Recruiting</span></div>
+      <div><span>11-50 employees</span></div>
+      <div><span>4,102 followers</span></div>
+    </div>
+  </div>`;
+
 const CASES = [
   {
     name: "pre-September: separate pill + leaf nodes",
@@ -129,6 +166,16 @@ const CASES = [
     html: STICKY_HEADER_DUPLICATE,
     expect: { posted_date: "6 days ago", applicant_stats: "41 applicants",
               location: "United States", workplace_type: "Remote" },
+  },
+  {
+    name: "company card: name first, industry second",
+    html: COMPANY_CARD_NAME_FIRST,
+    expect: { industry: "Staffing and Recruiting", company_size: "11-50 employees" },
+  },
+  {
+    name: "company card: industry first, no name leaf",
+    html: COMPANY_CARD_INDUSTRY_FIRST,
+    expect: { industry: "Staffing and Recruiting", company_size: "11-50 employees" },
   },
   {
     name: "'Chicago' must never be accepted as a posted_date",

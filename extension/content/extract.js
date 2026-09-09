@@ -230,14 +230,31 @@ function extractRawText() {
   return text || null;
 }
 
-function extractIndustryAndSize() {
+// `companyName` is used to exclude the company's own name by VALUE. This used
+// to skip leaf index 0 instead (`i > 0`), assuming the name always came first.
+// When the industry is itself the first leaf, that assumption discarded the one
+// value being looked for, and every later leaf is noise — which yields exactly
+// the signature seen on the 2026-09-08 run: company_size found, industry null.
+// Industry went from 8.4% missing to 32% that way, and it is not a cosmetic
+// field: judge/agency_blocklist.py derives the staffing-agency list from
+// companies.industry, so the companies that lost it included TalentHop (16
+// jobs), Yara AI (9) and Specialist Staffing Group — recruiting intermediaries
+// that then consumed LLM screening calls instead of being skipped.
+//
+// Position is not a property of the data; identity is. Same lesson as the
+// top-card sticky-header fix: select by what a value IS, not where it sits.
+function extractIndustryAndSize(companyName) {
   const h2 = findHeading("about the company");
   if (!h2) return { industry: null, company_size: null };
   const leaves = collectLeavesUntilNextHeading(h2);
 
   const company_size = leaves.find((t) => /employee/i.test(t)) || null;
-  const noise = /employee|follower|on linkedin|^(follow|more|show more|…|•)$/i;
-  const industry = leaves.find((t, i) => i > 0 && !noise.test(t) && t.length < 60) || null;
+  const noise = /employee|follower|on linkedin|^(follow|following|more|show more|see all|…|•)$/i;
+  const name = (companyName || "").trim().toLowerCase();
+  const industry =
+    leaves.find(
+      (t) => !noise.test(t) && t.length < 60 && t.trim().toLowerCase() !== name
+    ) || null;
 
   return { industry, company_size };
 }
@@ -370,6 +387,12 @@ const FIELD_VALIDATORS = {
   title: (v) => v.length > 1 && v.length < 200,
   company: (v) => v.length > 0 && v.length < 120,
   raw_text: (v) => v.length > 50,
+  // An industry is a short label from LinkedIn's own controlled vocabulary
+  // ("Software Development", "Staffing and Recruiting"). It is never a headcount
+  // string and never the company name — the two things that have been
+  // mis-selected here.
+  industry: (v) => v.length < 60 && !/employee|follower/i.test(v),
+  company_size: (v) => /employee/i.test(v),
 };
 
 // Records which strategy won each field for the current extractJobDetail()
@@ -570,7 +593,7 @@ function extractJobDetail() {
   const topCard = findTopCardScope();
   const { title, company } = extractTitleAndCompany(topCard);
   const raw_text = extractRawText();
-  const { industry, company_size } = extractIndustryAndSize();
+  const { industry, company_size } = extractIndustryAndSize(company);
   const { location, posted_date, applicant_stats } = extractTertiary(topCard);
   const workplace_type = extractWorkplaceType(topCard);
 
