@@ -285,6 +285,8 @@
       </select>
       <label class="check-filter"><input type="checkbox" id="softwareOnly"> Software companies only</label>
       <label class="check-filter"><input type="checkbox" id="top500Only"> Top 500 tech companies only</label>
+      <label class="check-filter" title="Hides companies whose LinkedIn industry is &quot;Business Consulting and Services&quot; or &quot;IT Services and IT Consulting&quot; — where most staffing and body-shop intermediaries sit. Blunt: it also hides genuine employers with those tags (Oracle, Cognizant, Deloitte, Quantiphi).">
+        <input type="checkbox" id="hideConsulting" checked> Hide consulting / IT services firms</label>
       <label class="check-filter" id="toCOnlyLabel" style="display: none;"><input type="checkbox" id="toCOnly"> Customer-facing (to-C) product only</label>
       <label class="check-filter"><input type="checkbox" id="showCrossedOff"> Show crossed off (applied / expired / not interested)</label>
       <label class="check-filter"><input type="checkbox" id="hideDuplicates"> Hide duplicates (reposts of an already-seen job)</label>
@@ -682,6 +684,8 @@
       + " · <b>" + notInterestedCount + "</b> not interested";
   }
 
+  var CONSULTING_INDUSTRIES = ["Business Consulting and Services", "IT Services and IT Consulting"];
+
   function applySortAndFilter() {
     var query = searchInput.value.trim().toLowerCase();
     var showCrossedOff = document.getElementById("showCrossedOff").checked;
@@ -693,6 +697,7 @@
     var cutoff = Date.now() - postedWithinDays * 86400000;
     var top500Only = document.getElementById("top500Only").checked;
     var softwareOnly = document.getElementById("softwareOnly").checked;
+    var hideConsulting = document.getElementById("hideConsulting").checked;
     var seniorityFilter = document.getElementById("seniorityFilter").value;
     function matchesSeniority(j) {
       if (!seniorityFilter) return true;
@@ -740,6 +745,11 @@
       if (hideDuplicates && j.duplicate_of_job_id) return false;
       if (top500Only && !j.top500_tech) return false;
       if (softwareOnly && !isSoftwareCompany(j)) return false;
+      // Where staffing and body-shop intermediaries cluster. A blunt instrument
+      // on purpose: it filters on LinkedIn's industry tag, which real employers
+      // (Oracle, Cognizant, Deloitte) also carry — hence a toggle rather than a
+      // permanent exclusion, so nothing is lost, only hidden.
+      if (hideConsulting && CONSULTING_INDUSTRIES.indexOf(j.company_industry) !== -1) return false;
       if (!matchesSeniority(j)) return false;
       if (!matchesCompanySize(j)) return false;
       if (!matchesWorkplaceType(j)) return false;
@@ -809,6 +819,7 @@
   document.getElementById("hideDuplicates").addEventListener("change", applySortAndFilter);
   document.getElementById("softwareOnly").addEventListener("change", applySortAndFilter);
   document.getElementById("top500Only").addEventListener("change", applySortAndFilter);
+  document.getElementById("hideConsulting").addEventListener("change", applySortAndFilter);
   document.getElementById("seniorityFilter").addEventListener("change", applySortAndFilter);
   document.getElementById("companySizeFilter").addEventListener("change", applySortAndFilter);
   document.getElementById("workplaceTypeFilter").addEventListener("change", applySortAndFilter);
