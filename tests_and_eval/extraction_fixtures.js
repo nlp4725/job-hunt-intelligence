@@ -143,6 +143,33 @@ const COMPANY_CARD_INDUSTRY_FIRST = `
     </div>
   </div>`;
 
+// Live 2026-09-09 (blcks AI, MakeMeCure, PPT Consulting): smaller companies
+// render the industry as a BARE TEXT NODE with sibling spans, not as its own
+// element. A childless-element scan cannot see it — the wrapping div has
+// children — so industry came back null while company_size resolved. This is
+// the real cause of the 8.4% -> 32% jump, NOT the leaf-index rule that was
+// blamed first.
+const COMPANY_CARD_TEXT_NODE = `
+  <div>
+    <div>
+      <a href="/jobs/view/4463588242/">AI Engineer (m/w/d)</a>
+      <a href="/company/blcksai/">blcks AI</a>
+      <div><span>United States (Remote) &middot; 8 hours ago &middot; 42 applicants</span></div>
+    </div>
+    ${JD}
+    <div>
+      <h2>About the company</h2>
+      <div><a href="/company/blcksai/">blcks AI</a></div>
+      <div>111 followers</div>
+      <button><span>Follow</span></button>
+      <div>
+        Software Development
+        <span>2-10 employees</span>
+        <span>1 on LinkedIn</span>
+      </div>
+    </div>
+  </div>`;
+
 const CASES = [
   {
     name: "pre-September: separate pill + leaf nodes",
@@ -176,6 +203,11 @@ const CASES = [
     name: "company card: industry first, no name leaf",
     html: COMPANY_CARD_INDUSTRY_FIRST,
     expect: { industry: "Staffing and Recruiting", company_size: "11-50 employees" },
+  },
+  {
+    name: "company card: industry as a bare text node beside spans",
+    html: COMPANY_CARD_TEXT_NODE,
+    expect: { industry: "Software Development", company_size: "2-10 employees" },
   },
   {
     name: "'Chicago' must never be accepted as a posted_date",

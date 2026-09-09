@@ -243,10 +243,51 @@ function extractRawText() {
 //
 // Position is not a property of the data; identity is. Same lesson as the
 // top-card sticky-header fix: select by what a value IS, not where it sits.
+// Text units between `startHeading` and the next <h2> — every non-empty TEXT
+// NODE in document order, not just childless elements.
+//
+// Why text nodes: LinkedIn renders the company card in (at least) two shapes.
+// Axon's industry is its own element, which collectLeavesUntilNextHeading sees.
+// But smaller companies render it as a BARE TEXT NODE with sibling spans:
+//
+//     <div>
+//       Software Development          <- text node, no element of its own
+//       <span>2-10 employees</span>
+//       <span>1 on LinkedIn</span>
+//     </div>
+//
+// That div is not a leaf (it has children), so the industry was invisible to a
+// leaf scan and came back null — verified against live snapshots from blcks AI,
+// MakeMeCure and PPT Consulting on 2026-09-09. Walking text nodes covers both
+// shapes, because a childless element's text is itself a text node.
+function collectTextUnitsUntilNextHeading(startHeading, climbLevels = 4) {
+  let container = startHeading;
+  for (let i = 0; i < climbLevels && container.parentElement; i++) container = container.parentElement;
+
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  const units = [];
+  let started = false;
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node === startHeading) { started = true; continue; }
+    if (!started) continue;
+    // The heading's own text node follows it in the walk — skip anything still
+    // inside the heading, or "About the company" itself becomes the industry.
+    if (startHeading.contains(node)) continue;
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.tagName === "H2") break;
+      continue;
+    }
+    const text = node.textContent.trim();
+    if (text) units.push(text);
+  }
+  return units;
+}
+
 function extractIndustryAndSize(companyName) {
   const h2 = findHeading("about the company");
   if (!h2) return { industry: null, company_size: null };
-  const leaves = collectLeavesUntilNextHeading(h2);
+  const leaves = collectTextUnitsUntilNextHeading(h2);
 
   const company_size = leaves.find((t) => /employee/i.test(t)) || null;
   // Also excludes the company page's own section headers and marketing

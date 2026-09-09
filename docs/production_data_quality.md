@@ -234,6 +234,18 @@ guessed. Three known-stale violations firing on every run would have trained
 the operator to ignore the gate within a week, which is why they were cleared
 before it was switched on.
 
+**7.8b An inferred cause is not a cause.** The company-industry failure was
+first diagnosed from its signature alone — company_size present, industry null,
+which only one code path could produce — and a positional rule (`i > 0`
+skipping leaf zero) was "fixed" and written up as the cause. It was not. Real
+snapshots, captured once the field was finally instrumented, showed the actual
+shape: LinkedIn renders the industry as a BARE TEXT NODE beside sibling spans
+for smaller companies, so a childless-element scan could never see it, while
+the size span next to it resolved fine. The signature was consistent with both
+explanations and the reasoning felt airtight; it was still wrong. Diagnose from
+captured evidence, and when acting on inference instead, say so and go back for
+the evidence — the repair loop in the skill exists precisely to make that cheap.
+
 **7.9 A check only sees what you told it to look at.** Instrumentation coverage
 is itself something to audit. company industry silently went from 8.4% missing
 to 32% during the 2026-09-08 run and neither guard noticed, for two independent
