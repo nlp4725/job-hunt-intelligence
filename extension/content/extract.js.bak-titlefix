@@ -1,0 +1,251 @@
+// DOM extraction for a LinkedIn job detail page.
+//
+// LinkedIn rebuilt this page with fully hashed/obfuscated CSS class names
+// (e.g. "c7f3f3a7", "_10fbd90b") sometime after the old Selenium scraper's
+// selectors (scraper/linkedin_scraper.py, BEM-style classes like
+// "job-details-jobs-unified-top-card__company-name") were written — verified
+// live (2026-08-13): zero elements match those old selectors, zero <h1>
+// tags exist at all. Rebuilt from scratch against two things that survive a
+// frontend rebuild much better than class names do:
+//   1. Semantic <a href> paths — /jobs/view/<id>/ for the title link,
+//      /company/<slug>/ for the company link.
+//   2. Real <h2> section headings ("About the job", "About the company") as
+//      structural boundaries — content between one heading and the next is
+//      read via DOM Range.toString(), so nesting depth doesn't matter.
+//
+// Every function here returns null on failure instead of throwing — one
+// broken selector (LinkedIn DOM drift, again, inevitably) must not kill the
+// whole extraction. The aggregated dict shape in extractJobDetail() is a
+// hand-maintained contract with backend/app.py's _EXTENSION_DETAIL_FIELDS
+// and db/job_writer.py:save_new_job()'s detail[...] accesses — keep in sync.
+//
+// Guarded like content_script.js's __jhiInjected check and panel.js's
+// window.JHIPanel check: LinkedIn's SPA navigation can trigger
+// background.js's webNavigation fallback to re-inject this file on top of
+// the original declarative injection. Top-level `const`s would otherwise
+// throw a redeclaration SyntaxError on the second injection.
+if (!window.__jhiExtractLoaded) {
+window.__jhiExtractLoaded = true;
+
+function getJobIdFromLocation() {
+  try {
+    const url = new URL(location.href);
+    const fromQuery = url.searchParams.get("currentJobId");
+    if (fromQuery) return fromQuery;
+    const match = url.pathname.match(/\/jobs\/view\/(\d+)\//);
+    return match ? match[1] : null;
+  } catch (e) {
+    console.warn("[jhi] getJobIdFromLocation failed", e);
+    return null;
+  }
+}
+
+function findHeading(text) {
+  const pattern = new RegExp("^" + text + "$", "i");
+  return [...document.querySelectorAll("h2")].find((el) => pattern.test(el.textContent.trim())) || null;
+}
+
+// The tightest ancestor of `startEl` that does NOT yet contain `boundaryText`
+// — used to scope the top-card (title/company/location/etc.) to exclude the
+// JD body and everything after it, without depending on a fixed nesting
+// depth (LinkedIn's wrapper-div depth here has already proven to vary).
+function findScopeExcluding(startEl, boundaryText, maxLevels = 10) {
+  let el = startEl;
+  let prev = el;
+  for (let i = 0; i < maxLevels && el.parentElement; i++) {
+    el = el.parentElement;
+    if (new RegExp(boundaryText, "i").test(el.textContent)) return prev;
+    prev = el;
+  }
+  return prev;
+}
+
+// All leaf-element text between `startHeading` and the next <h2> in document
+// order, within a generously-sized ancestor container. Climbing a fixed
+// number of levels is safe here (unlike findScopeExcluding's job) because
+// we bound the far end by the next heading, not by depth.
+function collectLeavesUntilNextHeading(startHeading, climbLevels = 4) {
+  let container = startHeading;
+  for (let i = 0; i < climbLevels && container.parentElement; i++) container = container.parentElement;
+  const all = [...container.querySelectorAll("*")];
+  const startIdx = all.indexOf(startHeading);
+  if (startIdx === -1) return [];
+  const leaves = [];
+  for (let i = startIdx + 1; i < all.length; i++) {
+    const el = all[i];
+    if (el.tagName === "H2") break;
+    if (el.children.length === 0 && el.textContent.trim()) leaves.push(el.textContent.trim());
+  }
+  return leaves;
+}
+
+function findTopCardScope() {
+  const titleLink = [...document.querySelectorAll('a[href*="/jobs/view/"]')].find(
+    (el) => el.textContent.trim().length > 0
+  );
+  if (!titleLink) return null;
+  return { titleLink, scope: findScopeExcluding(titleLink, "about the job") };
+}
+
+// LinkedIn's newer layout renders link text twice for accessibility — a
+// visually-hidden copy plus an aria-hidden="true" copy — so a naive
+// .textContent returns the string concatenated to itself with no separator
+// ("AI EngineerAI Engineer"). Confirmed live 2026-08-27 on SWAKIO, stored as
+// "Machine Learning Researcher (Remote)Machine Learning Researcher (Remote)".
+// Prefer the aria-hidden copy when present, then defensively collapse an
+// exactly-doubled string in case the markup changes again.
+function visibleText(el) {
+  if (!el) return "";
+  // Only trust the aria-hidden copy if it actually carries text — LinkedIn also
+  // marks decorative <svg> icons aria-hidden, and blindly reading the first match
+  // would return "" and null out the title.
+  const ariaCopy = [...el.querySelectorAll('[aria-hidden="true"]')].find(
+    (n) => n.textContent.trim().length > 0
+  );
+  let text = (ariaCopy ? ariaCopy.textContent : el.textContent).trim();
+  const half = text.length / 2;
+  if (text.length % 2 === 0 && text.slice(0, half) === text.slice(half)) {
+    text = text.slice(0, half);
+  }
+  return text;
+}
+
+function extractTitleAndCompany(topCard) {
+  if (!topCard) return { title: null, company: null };
+  const title = visibleText(topCard.titleLink) || null;
+  // The company link sits outside the top-card scope in some layout variants,
+  // which stored company_name as NULL — including the highest-scoring job of
+  // the 2026-08-27 pass (14/15). Fall back to the first /company/ link on the
+  // page before giving up.
+  const findCompanyLink = (root) =>
+    [...root.querySelectorAll('a[href*="/company/"]')].find((el) => visibleText(el).length > 0);
+  const companyLink = findCompanyLink(topCard.scope) || findCompanyLink(document);
+  return { title, company: companyLink ? visibleText(companyLink) : null };
+}
+
+function extractRawText() {
+  const h2 = findHeading("about the job");
+  if (!h2) return null;
+  const nextH2 = [...document.querySelectorAll("h2")].find(
+    (el) => el !== h2 && h2.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING
+  );
+  const range = document.createRange();
+  range.setStartBefore(h2);
+  if (nextH2) range.setEndBefore(nextH2);
+  else range.setEndAfter(document.body.lastChild);
+  const text = range.toString().replace(/\s+/g, " ").trim();
+  return text || null;
+}
+
+function extractIndustryAndSize() {
+  const h2 = findHeading("about the company");
+  if (!h2) return { industry: null, company_size: null };
+  const leaves = collectLeavesUntilNextHeading(h2);
+
+  const company_size = leaves.find((t) => /employee/i.test(t)) || null;
+  const noise = /employee|follower|on linkedin|^(follow|more|show more|…|•)$/i;
+  const industry = leaves.find((t, i) => i > 0 && !noise.test(t) && t.length < 60) || null;
+
+  return { industry, company_size };
+}
+
+// Top-card pill/meta elements render as <span>s on some listings (e.g.
+// BioRender) and as <a href="/jobs/search-results/...">-wrapped filter
+// links on others (e.g. third-party-syndicated postings like National Debt
+// Relief's) — verified live against both. Query both tags, but exclude the
+// title (/jobs/view/) and company (/company/) links themselves, which are
+// also childless leaves and would otherwise get misclassified as location.
+function topCardLeaves(topCard) {
+  return [...topCard.scope.querySelectorAll("span, a")].filter((el) => {
+    if (el.children.length !== 0) return false;
+    if (el.tagName === "A") {
+      const href = el.getAttribute("href") || "";
+      if (href.includes("/jobs/view/") || href.includes("/company/")) return false;
+    }
+    return true;
+  });
+}
+
+function extractTertiary(topCard) {
+  // location / posted_date / applicant_stats are classified by content (not
+  // position or tag) since not every job shows every one.
+  const result = { location: null, posted_date: null, applicant_stats: null };
+  if (!topCard) return result;
+
+  for (const el of topCardLeaves(topCard)) {
+    let text = el.textContent.trim();
+    if (!text || text === "·") continue;
+    if (["Apply", "Save", "Follow"].includes(text)) continue;
+
+    if (/ago/i.test(text)) {
+      if (!result.posted_date) result.posted_date = text;
+    } else if (/clicked apply|applicant/i.test(text)) {
+      if (!result.applicant_stats) result.applicant_stats = text;
+    } else if (!result.location && !/^(remote|hybrid|on-site|full-time|part-time|contract)$/i.test(text)) {
+      // A leaf with an embedded "•" (distinct from the "·" separator between
+      // leaves, already filtered above) means LinkedIn rendered company +
+      // location + workplace-type as one combined node instead of separate
+      // leaves — seen live on a third-party-syndicated posting ("Centraprise
+      // • Cary, NC (On-site)", 2026-08-18). This classifier can't safely
+      // split a blob like that apart, so leave location unset (N/A) rather
+      // than storing the whole ambiguous string, which could silently
+      // include the company name in the wrong field.
+      if (!text.includes("•")) result.location = text;
+    }
+  }
+
+  return result;
+}
+
+const WORKPLACE_TYPES = ["Remote", "Hybrid", "On-site"];
+
+function extractWorkplaceType(topCard) {
+  if (!topCard) return null;
+  for (const el of topCardLeaves(topCard)) {
+    const text = el.textContent.trim();
+    if (WORKPLACE_TYPES.includes(text)) return text;
+  }
+  return null;
+}
+
+// Aggregates every field into the shape save_new_job() / the extension
+// backend endpoint expects. Warns (by field name) on anything null, which
+// is the signal the manual verification phase reads directly. salary_text
+// is deliberately left null for now — not required, and the naive
+// "$...-$..." pattern false-matched LinkedIn's own "Retry Premium for $0"
+// upsell text in testing.
+function extractJobDetail() {
+  const job_id = getJobIdFromLocation();
+  const topCard = findTopCardScope();
+  const { title, company } = extractTitleAndCompany(topCard);
+  const raw_text = extractRawText();
+  const { industry, company_size } = extractIndustryAndSize();
+  const { location, posted_date, applicant_stats } = extractTertiary(topCard);
+  const workplace_type = extractWorkplaceType(topCard);
+
+  const detail = {
+    job_id,
+    url: job_id ? `https://www.linkedin.com/jobs/view/${job_id}/` : null,
+    title,
+    company,
+    location,
+    workplace_type,
+    raw_text,
+    industry,
+    company_size,
+    posted_date,
+    applicant_stats,
+    salary_text: null,
+  };
+
+  for (const [field, value] of Object.entries(detail)) {
+    if (value === null && field !== "salary_text") console.warn(`[jhi] extraction: ${field} is null`);
+  }
+
+  return detail;
+}
+
+window.getJobIdFromLocation = getJobIdFromLocation;
+window.extractJobDetail = extractJobDetail;
+
+} // end __jhiExtractLoaded guard

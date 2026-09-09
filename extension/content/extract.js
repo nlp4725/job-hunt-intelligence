@@ -578,7 +578,16 @@ function extractJobDetail() {
   // multi-signal logic above — but their health still has to show up in the
   // telemetry, or a break in the most important fields of all is the one
   // thing the report can't see.
-  for (const [field, value] of [["title", title], ["company", company], ["raw_text", raw_text]]) {
+  // industry and company_size come from the About-the-company card, which is a
+  // separate region from the top card and fails independently of it. They were
+  // omitted from this loop originally, so extraction_health could not see them
+  // at all — and industry silently went from 8.4% missing to 32% across the
+  // 2026-09-08 run with nothing reporting it. industry is not cosmetic: the
+  // agency blocklist is derived from companies.industry == "Staffing and
+  // Recruiting", so a company with no industry can never be recognised as a
+  // recruiting intermediary and its postings burn LLM screening calls.
+  for (const [field, value] of [["title", title], ["company", company], ["raw_text", raw_text],
+                                ["industry", industry], ["company_size", company_size]]) {
     const ok = value && (FIELD_VALIDATORS[field] || (() => true))(value);
     lastRunMeta.strategies[field] = ok ? "builtin" : null;
     if (!ok) lastRunMeta.failed.push(field);

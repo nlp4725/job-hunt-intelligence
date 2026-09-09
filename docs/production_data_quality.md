@@ -184,7 +184,69 @@ and extraction drift live on every page load, so a timer would add only a push
 notification — and running the gate against an idle database on a schedule
 returns the same answer every time, which is how an alert gets ignored.
 
-## 7. Known gaps
+## 7. Error handling: the principles, and the incident behind each
+
+Written down because every one of these was learned from a specific failure in
+this repo, with numbers. They generalise; the examples are what make them
+concrete.
+
+**7.1 Automation raises the stakes; it does not create reliability.**
+The scheduler ran faithfully every 5.1 hours for six days and produced nothing,
+while looking exactly like a working system. The property that matters is not
+*automatic*, it is *observable and recoverable*.
+
+**7.2 Classify a failure before handling it.** Three kinds, three responses:
+transient (extension disconnects every 20-30 jobs) -> retry; permanent (Claude
+in Chrome cannot pair with a headless session) -> fail loudly, never retry;
+corruption (a location stored in posted_date) -> stop, quarantine, repair.
+The old wrapper treated all three identically — `exit=1`, log, move on — so an
+architectural impossibility looked like a hiccup for six days.
+
+**7.3 Retry is only safe if the operation is idempotent.** When the 2026-09-08
+run restarted, page 1 was recorded twice and every total doubled. Retrying a
+non-idempotent write does not fix a failure, it manufactures a new one. The
+upsert on (session_id, page) is what makes the retry safe; save_new_job upserts
+on job_id for the same reason. Before adding a retry, ask what happens if the
+operation runs twice.
+
+**7.4 Detect absence, not just bad events.** Silence is indistinguishable from
+health unless absence is modelled explicitly — hence the `stale`, `no-data` and
+`incomplete` states, and the pages_planned column, which exists purely so "14
+pages recorded" can be read as "stopped at 14 of 40".
+
+**7.5 The check must live outside the thing it checks.** A health check inside
+a process disappears exactly when that process dies: report steps 5-6 never run
+if the session dies at page 14. Control plane outside data plane.
+
+**7.6 Bound the blast radius.** Checking only at the end means a break at page 3
+corrupts 37 more pages. The every-5-pages extraction check is a circuit
+breaker. The general question: how much damage accrues between failure and
+detection?
+
+**7.7 Degrade honestly; never fabricate.** When extraction fails, job_writer
+infers workplace_type from raw text and RECORDS that it did
+(workplace_type_source) — precision lost, field kept, provenance intact. The
+anti-pattern sits right beside it: the "0 hours ago" sentinel, invented to
+satisfy a non-null expectation, destroyed 349 real timestamps.
+
+**7.8 Keep alerts credible.** BLOCK vs WARN, and baselines measured rather than
+guessed. Three known-stale violations firing on every run would have trained
+the operator to ignore the gate within a week, which is why they were cleared
+before it was switched on.
+
+**7.9 A check only sees what you told it to look at.** Instrumentation coverage
+is itself something to audit. company industry silently went from 8.4% missing
+to 32% during the 2026-09-08 run and neither guard noticed, for two independent
+reasons: it was not among ingest_check's invariants, and extension/content/
+extract.js never recorded it in the per-field telemetry, so extraction_health
+was structurally blind to it. Both were omissions rather than decisions. The
+cost was not cosmetic — the agency blocklist is derived from
+companies.industry, so a company with no industry can never be recognised as a
+recruiting intermediary, and its postings consume LLM screening calls. When
+adding a field, add it to the writer, the validator, the telemetry and the
+gate; a field present in only the first is unmonitored by construction.
+
+## 8. Known gaps
 
 Stated rather than quietly tolerated:
 

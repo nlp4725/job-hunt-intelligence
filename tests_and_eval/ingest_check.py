@@ -110,6 +110,14 @@ CHECKS = [
     ("no location", WARN,
      "select count(*) from jobs where detail_fetched=1 and (location is null or location='')",
      0.05, ""),
+    ("no company industry", WARN,
+     "select count(*) from jobs j left join companies c on j.company_id=c.id "
+     "where j.detail_fetched=1 and (c.industry is null or trim(c.industry)='')",
+     0.084, "the agency blocklist is DERIVED from companies.industry — a company with no "
+            "industry can never be recognised as a staffing agency, so its postings burn "
+            "LLM screening calls. Baseline is the historical rate; the 2026-09-08 run hit "
+            "32% with nothing reporting it, because industry was in neither this gate nor "
+            "the extraction telemetry"),
     ("no company size", WARN,
      "select count(*) from jobs j left join companies c on j.company_id=c.id "
      "where j.detail_fetched=1 and (c.size is null or c.size='')",
