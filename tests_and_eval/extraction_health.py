@@ -33,6 +33,12 @@ FIXTURE_DIR = pathlib.Path(__file__).resolve().parent / "fixtures"
 # a genuinely broken field goes to ~100% (workplace_type hit 97% in Sept 2026).
 ALARM_NULL_RATE = 0.80
 
+# Never alarm on a handful of captures. One unlucky page — or, as on 2026-09-09,
+# a single manual capture taken from a standalone /jobs/view/ URL rather than the
+# two-pane search layout the extractor targets — reads as "100% null" and fires
+# every field at once. An alarm that cries wolf on n=1 is worse than no alarm.
+MIN_SAMPLE = 5
+
 # A break that started an hour into a long session is invisible in the window
 # average — 30 broken captures after 40 healthy ones is only 43% null, well
 # under the alarm. So the trailing window is checked independently: what
@@ -69,7 +75,9 @@ def report(hours=24, export=False):
         won = ", ".join(f"{n} {name}" for name, n in counts.most_common() if name != "NULL")
         r_total = sum(recent[field].values())
         r_rate = recent[field].get("NULL", 0) / r_total if r_total else 0.0
-        broken = rate >= ALARM_NULL_RATE or (r_total >= 5 and r_rate >= ALARM_NULL_RATE)
+        broken = total >= MIN_SAMPLE and (
+            rate >= ALARM_NULL_RATE or (r_total >= MIN_SAMPLE and r_rate >= ALARM_NULL_RATE)
+        )
         trail = f"   last {r_total}: {r_rate:5.1%} null" if r_total else ""
         flag = "  <-- BROKEN?" if broken else ""
         print(f"  {field:<16} {nulls:>4}/{total:<4} null ({rate:5.1%}){trail}   {won or '-'}{flag}")
