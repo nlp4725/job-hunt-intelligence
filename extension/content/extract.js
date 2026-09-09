@@ -249,7 +249,12 @@ function extractIndustryAndSize(companyName) {
   const leaves = collectLeavesUntilNextHeading(h2);
 
   const company_size = leaves.find((t) => /employee/i.test(t)) || null;
-  const noise = /employee|follower|on linkedin|^(follow|following|more|show more|see all|…|•)$/i;
+  // Also excludes the company page's own section headers and marketing
+  // taglines, which is what got stored when the positional rule mis-picked:
+  // "Interested in working with us in the future?" (166 companies) and
+  // "Commitments" (40) were both sitting in companies.industry.
+  const noise =
+    /employee|follower|on linkedin|working with us|^(follow|following|more|show more|see all|commitments|jobs|life|about|people|posts|videos|…|•)$/i;
   const name = (companyName || "").trim().toLowerCase();
   const industry =
     leaves.find(
@@ -391,7 +396,11 @@ const FIELD_VALIDATORS = {
   // ("Software Development", "Staffing and Recruiting"). It is never a headcount
   // string and never the company name — the two things that have been
   // mis-selected here.
-  industry: (v) => v.length < 60 && !/employee|follower/i.test(v),
+  // LinkedIn industries are short controlled-vocabulary labels — at most a few
+  // words, never a question, never a sentence. "Technology, Information and
+  // Internet" is the long end at four words.
+  industry: (v) =>
+    v.length < 60 && !/employee|follower/i.test(v) && !v.endsWith("?") && v.split(/\s+/).length <= 6,
   company_size: (v) => /employee/i.test(v),
 };
 
