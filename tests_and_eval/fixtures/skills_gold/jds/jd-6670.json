@@ -1,0 +1,36 @@
+{
+ "id": "jd-6670",
+ "kind": "jd",
+ "text_file": "jd-6670.txt",
+ "source": {
+  "job_id": 6670,
+  "title": "Strategic Partnership Manager - AI Safety",
+  "first_seen_at": "2026-07-16T13:49:19.747769",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [],
+ "gold": [
+  "Agents",
+  "Red-teaming",
+  "Stakeholder Management"
+ ],
+ "status": "verified",
+ "notes": "",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Red-teaming",
+    "evidence": "adaptive adversarial red teaming agents"
+   },
+   {
+    "skill": "Agents",
+    "evidence": "adversarial red teaming agents"
+   },
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "Align internal teams and customer expectations on timelines"
+   }
+  ],
+  "removed": []
+ }
+}

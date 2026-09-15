@@ -1,0 +1,118 @@
+{
+ "id": "jd-6457",
+ "kind": "jd",
+ "text_file": "jd-6457.txt",
+ "source": {
+  "job_id": 6457,
+  "title": "Staff Data Scientist, Finance & Business Ops",
+  "first_seen_at": "2026-07-16T12:08:24.616474",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "proficiency in Python or similar language"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Fluency in SQL and proficiency in Python"
+  },
+  {
+   "skill": "Time Series Forecasting",
+   "evidence": "Strong applied background in time-series forecasting and quantitative analysis"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "from data pipeline to user interface"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "Python, SQL, JavaScript, TypeScript, Tableau, Superset, Looker"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Python, SQL, JavaScript, TypeScript, Tableau, Superset, Looker"
+  },
+  {
+   "skill": "Data Visualization",
+   "evidence": "interactive data visualization tools"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "AI assistants, agentic tooling"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "advanced degree is a plus"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "advanced degree is a plus"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "Data Pipelines",
+  "Data Visualization",
+  "JavaScript",
+  "Python",
+  "SQL",
+  "Stakeholder Management",
+  "Time Series Forecasting",
+  "TypeScript"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Agents, Data Visualization, PhD.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Data Visualization",
+    "evidence": "Tableau, Superset, Looker"
+   },
+   {
+    "skill": "Agents",
+    "evidence": "agentic tooling"
+   },
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "partner with executive leadership and cross-functional stakeholders"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Master's Degree",
+    "reason": "only 'advanced degree is a plus', no Master's named"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "proficiency in Python or similar language"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Fluency in SQL and proficiency in Python"
+  },
+  {
+   "skill": "Time Series Forecasting",
+   "evidence": "Strong applied background in time-series forecasting and quantitative analysis"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "from data pipeline to user interface"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "Python, SQL, JavaScript, TypeScript, Tableau, Superset, Looker"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Python, SQL, JavaScript, TypeScript, Tableau, Superset, Looker"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "advanced degree is a plus"
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "id": "jd-15386",
+ "kind": "jd",
+ "text_file": "jd-15386.txt",
+ "source": {
+  "job_id": 15386,
+  "title": "Applied AI Engineer",
+  "first_seen_at": "2026-09-06T22:27:47.264735",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "Tech Stack PythonPyTorch / JAX"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "Tech Stack PythonPyTorch / JAX"
+  },
+  {
+   "skill": "JAX",
+   "evidence": "Tech Stack PythonPyTorch / JAX"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "LLMs (OpenAI-style APIs, LLaMA, Qwen, etc.)"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "LLMs (OpenAI-style APIs, LLaMA, Qwen, etc.)"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "Vector DB"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "prompts, tools, memory, and agent workflows"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "prompts, tools, memory, and agent workflows"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Develop lightweight evaluation frameworks to measure real-world performance"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "training, fine-tuning, or deploying ML models"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "modern neural network architectures"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "Data pipelines, training loops, and inference systems"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "Design and iterate on prompts, tools, memory"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "Data Pipelines",
+  "Deep Learning",
+  "Fine-tuning",
+  "JAX",
+  "LLM",
+  "LLM Evaluation",
+  "OpenAI API",
+  "Prompt Engineering",
+  "PyTorch",
+  "Python",
+  "Tool Use / Function Calling",
+  "Vector Database"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added LLM Evaluation, Tool Use / Function Calling. removed Hallucination Detection.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "Develop lightweight evaluation frameworks to measure real-world performance"
+   },
+   {
+    "skill": "Tool Use / Function Calling",
+    "evidence": "Design and iterate on prompts, tools, memory"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Hallucination Detection",
+    "reason": "company mission statement, not a skill"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Tech Stack PythonPyTorch / JAX"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "Tech Stack PythonPyTorch / JAX"
+  },
+  {
+   "skill": "JAX",
+   "evidence": "Tech Stack PythonPyTorch / JAX"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "LLMs (OpenAI-style APIs, LLaMA, Qwen, etc.)"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "LLMs (OpenAI-style APIs, LLaMA, Qwen, etc.)"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "Vector DB"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "prompts, tools, memory, and agent workflows"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "training, fine-tuning, or deploying ML models"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "modern neural network architectures"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "Data pipelines, training loops, and inference systems"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "Design and iterate on prompts, tools, memory"
+  },
+  {
+   "skill": "Hallucination Detection",
+   "evidence": "products will greatly reduce hallucinations"
+  }
+ ]
+}

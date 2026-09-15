@@ -27,9 +27,24 @@ def skill_match_score(resume_text: str, job_text: str) -> dict:
     without real calibration data (see CONTEXT.md discussion). group_matched
     is reported separately from matched_skills so it stays visible which
     skills were a direct hit vs. a group substitution."""
-    job_skills = set(extract_skills(job_text))
-    resume_skills = set(extract_skills(resume_text))
+    # Deliberately scores the WHOLE JD, not just its requirements section.
+    # Section-aware scoring was built and measured (analysis/jd_sections.py)
+    # and rejected here: it fixes the ~4% of postings that name technology only
+    # in their company blurb, but introduces a worse, silent failure — on the
+    # full 14,098-JD corpus it dropped 379 postings (2.7%) from a mean of 4.9
+    # skills to ZERO, because a mis-detected heading strands the real
+    # requirements outside the body. Whole-JD parsing can only over-include,
+    # which is visible; sectioning can under-include to nothing, which is not.
+    # It also moved 33% of already-screened scores (mean -0.245), far too much
+    # churn for the size of the problem it solves. jd_sections stays available
+    # for analysis, where a wrong split is inspectable rather than silent.
+    return skill_match_from_skills(set(extract_skills(job_text)), set(extract_skills(resume_text)))
 
+
+def skill_match_from_skills(job_skills: set[str], resume_skills: set[str]) -> dict:
+    """skill_match_score() over skills already extracted and stored — once
+    per JD, once per resume version — so matching a user against every job
+    never re-reads text. Same result shape and banding as skill_match_score."""
     if not job_skills:
         return {
             "criterion": "skill_match",

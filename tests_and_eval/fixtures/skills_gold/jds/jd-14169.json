@@ -1,0 +1,202 @@
+{
+ "id": "jd-14169",
+ "kind": "jd",
+ "text_file": "jd-14169.txt",
+ "source": {
+  "job_id": 14169,
+  "title": "Lead Engineer, Agentic AI Engineering",
+  "first_seen_at": "2026-09-03T02:27:24.330933",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "Python as the primary language"
+  },
+  {
+   "skill": "Terraform",
+   "evidence": "Terraform for infrastructure"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "GitHub and GitHub Actions for CI/CD"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Amazon Bedrock AgentCore"
+  },
+  {
+   "skill": "AWS Bedrock",
+   "evidence": "AWS Bedrock AgentCore"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "building LLM-based applications"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Production AI agents and multi-agent orchestration patterns"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "multi-agent orchestration patterns"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "Model Context Protocol (MCP) servers"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "MCP) servers, tool integrations, and secure API gateways"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "Retrieval-Augmented Generation (RAG) pipelines"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "reliability, observability, and monitoring of agentic workloads"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "online quality monitoring of production agents"
+  },
+  {
+   "skill": "Databricks",
+   "evidence": "the Databricks lakehouse environment"
+  },
+  {
+   "skill": "Git",
+   "evidence": "GitHub and GitHub Actions"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Eval-driven development — offline eval sets"
+  },
+  {
+   "skill": "LLM-as-a-Judge",
+   "evidence": "rubric and LLM-as-judge scoring"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "AWS Bedrock",
+  "Agents",
+  "CI/CD",
+  "Databricks",
+  "Git",
+  "LLM",
+  "LLM Evaluation",
+  "LLM-as-a-Judge",
+  "MCP",
+  "Model Monitoring",
+  "Multi-Agent Systems",
+  "Observability",
+  "Python",
+  "RAG",
+  "Terraform",
+  "Tool Use / Function Calling"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added LLM Evaluation, Model Monitoring, Tool Use / Function Calling. removed Embeddings, Prompt Engineering, REST API.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "Eval-driven development — offline eval sets"
+   },
+   {
+    "skill": "Model Monitoring",
+    "evidence": "online quality monitoring of production agents"
+   },
+   {
+    "skill": "Tool Use / Function Calling",
+    "evidence": "Model Context Protocol (MCP) servers, tool integrations"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "REST API",
+    "reason": "'secure API gateways' does not state REST"
+   },
+   {
+    "skill": "Prompt Engineering",
+    "reason": "only prompt injection defence"
+   },
+   {
+    "skill": "Embeddings",
+    "reason": "no mention; evidence is 'Eval-driven development'"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Python as the primary language"
+  },
+  {
+   "skill": "Terraform",
+   "evidence": "Terraform for infrastructure"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "GitHub and GitHub Actions for CI/CD"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Amazon Bedrock AgentCore"
+  },
+  {
+   "skill": "AWS Bedrock",
+   "evidence": "AWS Bedrock AgentCore"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "building LLM-based applications"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Production AI agents and multi-agent orchestration patterns"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "multi-agent orchestration patterns"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "Model Context Protocol (MCP) servers"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "Retrieval-Augmented Generation (RAG) pipelines"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "secure API gateways"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "reliability, observability, and monitoring of agentic workloads"
+  },
+  {
+   "skill": "Databricks",
+   "evidence": "the Databricks lakehouse environment"
+  },
+  {
+   "skill": "Git",
+   "evidence": "GitHub and GitHub Actions"
+  },
+  {
+   "skill": "LLM-as-a-Judge",
+   "evidence": "rubric and LLM-as-judge scoring"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "defences against prompt injection"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "Eval-driven development"
+  }
+ ]
+}

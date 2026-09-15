@@ -1,0 +1,122 @@
+{
+ "id": "jd-5773",
+ "kind": "jd",
+ "text_file": "jd-5773.txt",
+ "source": {
+  "job_id": 5773,
+  "title": "Data Engineer - TDM, Python, Julia",
+  "first_seen_at": "2026-07-14T14:05:19.847338",
+  "picked_for": "julia"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "Develop scalable processing solutions using Python and/or Julia"
+  },
+  {
+   "skill": "Julia",
+   "evidence": "Develop scalable processing solutions using Python and/or Julia"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Strong SQL and data transformation skills"
+  },
+  {
+   "skill": "ETL",
+   "evidence": "build, and maintain ETL/ELT data pipelines"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "maintain ETL/ELT data pipelines for enterprise data ingestion"
+  },
+  {
+   "skill": "Databricks",
+   "evidence": "Data platforms (Databricks, Snowflake, Azure Data Lake, etc.)"
+  },
+  {
+   "skill": "Snowflake",
+   "evidence": "Data platforms (Databricks, Snowflake, Azure Data Lake, etc.)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "cloud data platforms (Azure preferred)"
+  },
+  {
+   "skill": "HIPAA",
+   "evidence": "Knowledge of HIPAA and regulatory compliance requirements"
+  },
+  {
+   "skill": "Agile",
+   "evidence": "Participate in Agile development cycles and code reviews"
+  }
+ ],
+ "gold": [
+  "Agile",
+  "Azure",
+  "Data Pipelines",
+  "Databricks",
+  "ETL",
+  "HIPAA",
+  "Julia",
+  "Python",
+  "SQL",
+  "Snowflake"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): removed Data Modeling.",
+ "manual_review": {
+  "added": [],
+  "removed": [
+   {
+    "skill": "Data Modeling",
+    "reason": "no data modeling mentioned; only source-to-target mapping"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Develop scalable processing solutions using Python and/or Julia"
+  },
+  {
+   "skill": "Julia",
+   "evidence": "Develop scalable processing solutions using Python and/or Julia"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Strong SQL and data transformation skills"
+  },
+  {
+   "skill": "ETL",
+   "evidence": "build, and maintain ETL/ELT data pipelines"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "maintain ETL/ELT data pipelines for enterprise data ingestion"
+  },
+  {
+   "skill": "Databricks",
+   "evidence": "Data platforms (Databricks, Snowflake, Azure Data Lake, etc.)"
+  },
+  {
+   "skill": "Snowflake",
+   "evidence": "Data platforms (Databricks, Snowflake, Azure Data Lake, etc.)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "cloud data platforms (Azure preferred)"
+  },
+  {
+   "skill": "HIPAA",
+   "evidence": "Knowledge of HIPAA and regulatory compliance requirements"
+  },
+  {
+   "skill": "Data Modeling",
+   "evidence": "Maintain data lineage, metadata, and technical documentation"
+  },
+  {
+   "skill": "Agile",
+   "evidence": "Participate in Agile development cycles and code reviews"
+  }
+ ]
+}

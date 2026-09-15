@@ -1,0 +1,141 @@
+{
+ "id": "jd-5480",
+ "kind": "jd",
+ "text_file": "jd-5480.txt",
+ "source": {
+  "job_id": 5480,
+  "title": "Senior Staff / Principal Machine Learning Scientist, AI Inference & Optimization",
+  "first_seen_at": "2026-07-14T10:24:27.878187",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Fine-tuning",
+   "evidence": "fine-tune and evaluate models"
+  },
+  {
+   "skill": "ONNX",
+   "evidence": "ONNX Runtime"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Strong Python"
+  },
+  {
+   "skill": "C++",
+   "evidence": "reaching into C++ for low-level interop"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "transformer internals"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "agentic coding systems"
+  },
+  {
+   "skill": "Claude Code",
+   "evidence": "agent harnesses like Claude Code"
+  },
+  {
+   "skill": "Codex",
+   "evidence": "Codex"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "inference runtimes (vLLM/SGLang, TensorRT-LLM"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "PhD in a related field strongly preferred"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "MS in Computer Science"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "build eval harnesses that gate a capability to release"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "C++",
+  "Claude Code",
+  "Codex",
+  "Fine-tuning",
+  "LLM",
+  "LLM Evaluation",
+  "Master's Degree",
+  "ONNX",
+  "PhD",
+  "Python",
+  "Transformers"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added LLM Evaluation. removed MLflow.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "build eval harnesses that gate a capability to release"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "MLflow",
+    "reason": "text says MLX/CoreML, not MLflow"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Fine-tuning",
+   "evidence": "fine-tune and evaluate models"
+  },
+  {
+   "skill": "ONNX",
+   "evidence": "ONNX Runtime"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Strong Python"
+  },
+  {
+   "skill": "C++",
+   "evidence": "reaching into C++ for low-level interop"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "transformer internals"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "agentic coding systems"
+  },
+  {
+   "skill": "Claude Code",
+   "evidence": "agent harnesses like Claude Code"
+  },
+  {
+   "skill": "Codex",
+   "evidence": "Codex"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "LLM"
+  },
+  {
+   "skill": "MLflow",
+   "evidence": "MLX/CoreML"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "PhD in a related field strongly preferred"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "MS in Computer Science"
+  }
+ ]
+}

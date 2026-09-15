@@ -1,0 +1,105 @@
+{
+ "id": "jd-15331",
+ "kind": "jd",
+ "text_file": "jd-15331.txt",
+ "source": {
+  "job_id": 15331,
+  "title": "Machine Learning Engineer - Vision",
+  "first_seen_at": "2026-09-06T21:50:28.340792",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Computer Vision",
+   "evidence": "building and shipping computer vision models, with an emphasis on detection"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Strong Python and PyTorch fluency"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "Strong Python and PyTorch fluency"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "modern architectures using transformer backbones (ViT, Swin, etc…)"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "responsible for endpoint and model health"
+  },
+  {
+   "skill": "Roadmapping",
+   "evidence": "set the technical and product roadmaps for the AI platform"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "MS or PhD in Computer Science"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "MS or PhD in Computer Science, Electrical Engineering"
+  }
+ ],
+ "gold": [
+  "Computer Vision",
+  "Master's Degree",
+  "Model Monitoring",
+  "PhD",
+  "PyTorch",
+  "Python",
+  "Roadmapping",
+  "Transformers"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Model Monitoring, Roadmapping. removed Deep Learning.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Roadmapping",
+    "evidence": "set the technical and product roadmaps"
+   },
+   {
+    "skill": "Model Monitoring",
+    "evidence": "responsible for endpoint and model health"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Deep Learning",
+    "reason": "'active learning' is not deep learning; DL not stated"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Computer Vision",
+   "evidence": "building and shipping computer vision models, with an emphasis on detection"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Strong Python and PyTorch fluency"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "Strong Python and PyTorch fluency"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "modern architectures using transformer backbones (ViT, Swin, etc…)"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "active learning loops"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "MS or PhD in Computer Science"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "MS or PhD in Computer Science, Electrical Engineering"
+  }
+ ]
+}

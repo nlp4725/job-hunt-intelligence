@@ -1,0 +1,114 @@
+{
+ "id": "jd-15913",
+ "kind": "jd",
+ "text_file": "jd-15913.txt",
+ "source": {
+  "job_id": 15913,
+  "title": "AI Engineer",
+  "first_seen_at": "2026-09-09T09:53:04.866120",
+  "picked_for": "resume_cv"
+ },
+ "draft": [
+  {
+   "skill": "RAG",
+   "evidence": "Build RAG pipelines, agents, and AI products"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Build RAG pipelines, agents, and AI products"
+  },
+  {
+   "skill": "Anthropic API",
+   "evidence": "on Claude and OpenAI"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "on Claude and OpenAI"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Design and ship LLM-powered features for client products"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Build retrieval pipelines, agent workflows, and eval suites"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "Understanding of retrieval, embeddings, and evaluation"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Strong Python or TypeScript engineering background"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Strong Python or TypeScript engineering background"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "Anthropic API",
+  "Embeddings",
+  "LLM",
+  "LLM Evaluation",
+  "OpenAI API",
+  "Python",
+  "RAG",
+  "TypeScript"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Anthropic API, OpenAI API. removed Claude Agent SDK.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Anthropic API",
+    "evidence": "AI products on Claude and OpenAI"
+   },
+   {
+    "skill": "OpenAI API",
+    "evidence": "AI products on Claude and OpenAI"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Claude Agent SDK",
+    "reason": "only 'on Claude' as provider; no Agent SDK mentioned"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "RAG",
+   "evidence": "Build RAG pipelines, agents, and AI products"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Build RAG pipelines, agents, and AI products"
+  },
+  {
+   "skill": "Claude Agent SDK",
+   "evidence": "on Claude and OpenAI"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Design and ship LLM-powered features for client products"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Build retrieval pipelines, agent workflows, and eval suites"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "Understanding of retrieval, embeddings, and evaluation"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Strong Python or TypeScript engineering background"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Strong Python or TypeScript engineering background"
+  }
+ ]
+}

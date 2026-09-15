@@ -1,0 +1,83 @@
+{
+ "id": "jd-1559",
+ "kind": "jd",
+ "text_file": "jd-1559.txt",
+ "source": {
+  "job_id": 1559,
+  "title": "Software Engineer",
+  "first_seen_at": "2026-07-07T03:12:54.898508",
+  "picked_for": "resume_cv"
+ },
+ "draft": [
+  {
+   "skill": "REST API",
+   "evidence": "Develop and maintain REST and gRPC APIs"
+  },
+  {
+   "skill": "gRPC",
+   "evidence": "Develop and maintain REST and gRPC APIs"
+  },
+  {
+   "skill": "Event-Driven Architecture",
+   "evidence": "Knowledge of Event-Driven Architecture"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "Experience working with PostgreSQL"
+  },
+  {
+   "skill": "A/B Testing",
+   "evidence": "Familiarity with A/B testing, product experimentation, and analytics"
+  },
+  {
+   "skill": "Product Analytics",
+   "evidence": "Instrument experiments with analytics and performance tracking"
+  }
+ ],
+ "gold": [
+  "A/B Testing",
+  "API Design & Development",
+  "Event-Driven Architecture",
+  "PostgreSQL",
+  "Product Analytics",
+  "REST API",
+  "gRPC"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Product Analytics.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "API Design & Development",
+    "evidence": "Develop and maintain REST and gRPC APIs"
+   },
+   {
+    "skill": "Product Analytics",
+    "evidence": "Instrument experiments with analytics and performance tracking"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "REST API",
+   "evidence": "Develop and maintain REST and gRPC APIs"
+  },
+  {
+   "skill": "gRPC",
+   "evidence": "Develop and maintain REST and gRPC APIs"
+  },
+  {
+   "skill": "Event-Driven Architecture",
+   "evidence": "Knowledge of Event-Driven Architecture"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "Experience working with PostgreSQL"
+  },
+  {
+   "skill": "A/B Testing",
+   "evidence": "Familiarity with A/B testing, product experimentation, and analytics"
+  }
+ ]
+}

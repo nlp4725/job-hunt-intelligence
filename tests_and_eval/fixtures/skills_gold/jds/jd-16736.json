@@ -1,0 +1,260 @@
+{
+ "id": "jd-16736",
+ "kind": "jd",
+ "text_file": "jd-16736.txt",
+ "source": {
+  "job_id": 16736,
+  "title": "AI Lead Engineer",
+  "first_seen_at": "2026-09-10T16:29:04.367284",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "RAG",
+   "evidence": "Retrieval-Augmented Generation (RAG) pipelines, semantic caching, and context window optimization"
+  },
+  {
+   "skill": "Semantic Search",
+   "evidence": "for high-speed similarity search"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "Function calling, tool use, and structured data extraction schemas"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Evaluation metrics, tracing, and hallucination reduction guardrails"
+  },
+  {
+   "skill": "Hallucination Detection",
+   "evidence": "hallucination reduction guardrails"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Designing agentic-first workflows and autonomous decision loops"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "Multi-agent coordination patterns (supervisor-worker, decentralized collaboration, stateful graphs)"
+  },
+  {
+   "skill": "LangChain",
+   "evidence": "Frameworks like LangChain/LangGraph/Bedrock Core Runtime for state and memory"
+  },
+  {
+   "skill": "LangGraph",
+   "evidence": "Frameworks like LangChain/LangGraph/Bedrock Core Runtime for state and memory"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "Model Context Protocol (MCP) and Agent-to-Agent (A2A) protocols"
+  },
+  {
+   "skill": "A2A Protocol",
+   "evidence": "Agent-to-Agent (A2A) protocols"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "Vector databases (e.g., Milvus, Amazon Aurora PostgreSQL) for high-speed similarity search"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "Amazon Aurora PostgreSQL"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "Data pipelines and embedding generation workflows"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "embedding generation workflows"
+  },
+  {
+   "skill": "Python",
+   "evidence": "using Python, FastAPI, or Apache Spark"
+  },
+  {
+   "skill": "Spark",
+   "evidence": "Apache Spark"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Cloud-native deployment on platforms like AWS"
+  },
+  {
+   "skill": "AWS Bedrock",
+   "evidence": "Amazon Bedrock"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "Containerization and orchestration tools including Docker and Kubernetes"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "Containerization and orchestration tools including Docker and Kubernetes"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "CI/CD pipelines for automated testing of non-deterministic AI outputs"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "automated testing of non-deterministic AI outputs"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Observability and logging pipelines for tracking agent token usage"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "Responsible AI frameworks, data privacy compliance, and bias mitigation guardrails"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "context window optimization"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "using Python, FastAPI, or Apache Spark"
+  }
+ ],
+ "gold": [
+  "A2A Protocol",
+  "AWS",
+  "AWS Bedrock",
+  "Agents",
+  "CI/CD",
+  "Data Pipelines",
+  "Docker",
+  "Embeddings",
+  "Hallucination Detection",
+  "Kubernetes",
+  "LLM Evaluation",
+  "LangChain",
+  "LangGraph",
+  "MCP",
+  "Multi-Agent Systems",
+  "Observability",
+  "PostgreSQL",
+  "Python",
+  "RAG",
+  "Responsible AI",
+  "Software Testing",
+  "Spark",
+  "Tool Use / Function Calling",
+  "Vector Database"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added API Design & Development, LLM.",
+ "manual_review": {
+  "added": [],
+  "removed": [
+   {
+    "skill": "Semantic Search",
+    "reason": "semantic caching/similarity search is not semantic search"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "RAG",
+   "evidence": "Retrieval-Augmented Generation (RAG) pipelines, semantic caching, and context window optimization"
+  },
+  {
+   "skill": "Semantic Search",
+   "evidence": "semantic caching"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "Function calling, tool use, and structured data extraction schemas"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Evaluation metrics, tracing, and hallucination reduction guardrails"
+  },
+  {
+   "skill": "Hallucination Detection",
+   "evidence": "hallucination reduction guardrails"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Designing agentic-first workflows and autonomous decision loops"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "Multi-agent coordination patterns (supervisor-worker, decentralized collaboration, stateful graphs)"
+  },
+  {
+   "skill": "LangChain",
+   "evidence": "Frameworks like LangChain/LangGraph/Bedrock Core Runtime for state and memory"
+  },
+  {
+   "skill": "LangGraph",
+   "evidence": "Frameworks like LangChain/LangGraph/Bedrock Core Runtime for state and memory"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "Model Context Protocol (MCP) and Agent-to-Agent (A2A) protocols"
+  },
+  {
+   "skill": "A2A Protocol",
+   "evidence": "Agent-to-Agent (A2A) protocols"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "Vector databases (e.g., Milvus, Amazon Aurora PostgreSQL) for high-speed similarity search"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "Amazon Aurora PostgreSQL"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "Data pipelines and embedding generation workflows"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "embedding generation workflows"
+  },
+  {
+   "skill": "Python",
+   "evidence": "using Python, FastAPI, or Apache Spark"
+  },
+  {
+   "skill": "Spark",
+   "evidence": "Apache Spark"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Cloud-native deployment on platforms like AWS"
+  },
+  {
+   "skill": "AWS Bedrock",
+   "evidence": "Amazon Bedrock"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "Containerization and orchestration tools including Docker and Kubernetes"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "Containerization and orchestration tools including Docker and Kubernetes"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "CI/CD pipelines for automated testing of non-deterministic AI outputs"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "automated testing of non-deterministic AI outputs"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Observability and logging pipelines for tracking agent token usage"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "Responsible AI frameworks, data privacy compliance, and bias mitigation guardrails"
+  }
+ ]
+}

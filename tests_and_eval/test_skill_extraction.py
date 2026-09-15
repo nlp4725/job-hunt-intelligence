@@ -6,7 +6,7 @@ variants that match inside a longer word. Each case below is a false positive
 that was measured in the real corpus.
 """
 
-from analysis.skill_match import skill_match_score
+from analysis.skill_match import skill_match_from_skills, skill_match_score
 from analysis.skills_extractor import extract_skills
 
 
@@ -79,6 +79,15 @@ class TestSkillMatchScoring:
     def test_score_is_banded_0_to_5(self):
         jd = "Responsibilities " + "Use Python and SQL daily. " * 12
         assert 0 <= skill_match_score(self.RESUME, jd)["score"] <= 5
+
+    def test_matching_stored_skill_sets_equals_matching_text(self):
+        """Per-user matching compares skills extracted once per JD and once
+        per resume version, never re-reading text. It must give exactly the
+        result the text path gives, including group credit and banding."""
+        jd = "Python, SQL, GCP, Kubernetes, LangGraph and RAG. Nice to have: Spark."
+        from_text = skill_match_score(self.RESUME, jd)
+        from_sets = skill_match_from_skills(set(extract_skills(jd)), set(extract_skills(self.RESUME)))
+        assert from_sets == from_text
 
 
 class TestTaxonomyRefresh20260915:
@@ -156,3 +165,51 @@ class TestTaxonomyRefresh20260915:
             assert "Spark" not in extract_skills(jd), jd
         for jd in ("SQL, Python and spark", "tools like Airflow, Kafka, or Spark.", "Apache Spark", "PySpark"):
             assert "Spark" in extract_skills(jd), jd
+
+
+class TestEvalToolGroups:
+    """LangSmith/Arize are tracing and observability platforms; Ragas/DeepEval
+    are evaluation libraries. They were one group, so a LangSmith resume got
+    credit for a JD asking for Ragas. Credit now stays within each kind."""
+
+    JD = "Responsibilities " + "Evaluate RAG quality with Ragas. " * 10
+
+    def test_observability_platform_does_not_cover_an_eval_framework(self):
+        r = skill_match_score("Traced every LLM call with LangSmith.", self.JD)
+        assert "Ragas" in r["missing_skills"]
+
+    def test_eval_frameworks_substitute_for_each_other(self):
+        r = skill_match_score("Built eval suites with DeepEval.", self.JD)
+        assert "Ragas" in r["group_matched_skills"]
+
+    def test_observability_platforms_substitute_for_each_other(self):
+        jd = "Responsibilities " + "Monitor agents in LangSmith. " * 10
+        r = skill_match_score("Monitored production models in Arize.", jd)
+        assert "LangSmith" in r["group_matched_skills"]
+
+
+class TestStakeholderManagement:
+    """Gold labels count working with stakeholders as the skill, but only the
+    exact phrase "stakeholder management" matched (1 of 13 gold JDs). A bare
+    "stakeholders" pattern tags 37% of ml_ai JDs and doubled wrong tags on
+    gold, so the rule needs a verb of managing or working with them."""
+
+    def test_managing_or_working_with_stakeholders_counts(self):
+        for jd in (
+            "Partner with scientists, engineers, and cross-functional stakeholders",
+            "influence senior technical and non-technical stakeholders",
+            "working closely with product stakeholders to agree on MVP requirements",
+            "Strong stakeholder partnership skills",
+            "Drive stakeholder alignment across teams",
+            "Stakeholder management experience",
+        ):
+            assert "Stakeholder Management" in extract_skills(jd), jd
+
+    def test_merely_mentioning_stakeholders_does_not(self):
+        for jd in (
+            "Our stakeholders include patients and providers.",
+            "explain tradeoffs and expected value to both technical and business stakeholders",
+            # gold jd-15955: "management" here is the audience, not the skill
+            "explain concepts for non-technical stakeholders and executive management",
+        ):
+            assert "Stakeholder Management" not in extract_skills(jd), jd

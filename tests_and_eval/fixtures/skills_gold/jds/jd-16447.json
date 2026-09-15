@@ -1,0 +1,194 @@
+{
+ "id": "jd-16447",
+ "kind": "jd",
+ "text_file": "jd-16447.txt",
+ "source": {
+  "job_id": 16447,
+  "title": "Senior Software Engineer - Applied AI / Cloud",
+  "first_seen_at": "2026-09-09T20:29:15.949641",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "LLM",
+   "evidence": "platform that leverages Large Language Models"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS-based microservices and asynchronous workflows"
+  },
+  {
+   "skill": "Microservices",
+   "evidence": "building the AWS-based microservices and asynchronous workflows"
+  },
+  {
+   "skill": "Event-Driven Architecture",
+   "evidence": "message-driven communication"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "designing RESTful APIs"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "including API design, service boundaries"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "tradeoffs involved in scaling distributed systems"
+  },
+  {
+   "skill": "NLP",
+   "evidence": "NLP pipelines for parsing scientist input"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "retrieval-augmented generation (RAG) pipelines"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "embedding infrastructure that grounds model output"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "production AI/ML or LLM-powered applications"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "evaluation frameworks or rubrics to measure AI output quality"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Instrument services for observability"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Proficiency in React/TypeScript and Python/FastAPI"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Proficiency in React/TypeScript and Python/FastAPI"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Familiarity with Git workflows"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Git workflows and CI/CD practices"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "Solid software engineering fundamentals: testing, debugging"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "Practical understanding of AI safety and cost discipline"
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "AWS",
+  "CI/CD",
+  "Distributed Systems",
+  "Embeddings",
+  "Git",
+  "LLM",
+  "LLM Evaluation",
+  "Microservices",
+  "NLP",
+  "Observability",
+  "Python",
+  "RAG",
+  "REST API",
+  "Responsible AI",
+  "Software Testing",
+  "TypeScript"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Event-Driven Architecture, LLM Evaluation.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "evaluation frameworks and rubrics to benchmark model"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Generative AI",
+    "reason": "generative AI not stated; RAG/LLM only"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "LLM",
+   "evidence": "platform that leverages Large Language Models"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS-based microservices and asynchronous workflows"
+  },
+  {
+   "skill": "Microservices",
+   "evidence": "building the AWS-based microservices and asynchronous workflows"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "designing RESTful APIs"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "including API design, service boundaries"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "tradeoffs involved in scaling distributed systems"
+  },
+  {
+   "skill": "NLP",
+   "evidence": "NLP pipelines for parsing scientist input"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "retrieval-augmented generation (RAG) pipelines"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "embedding infrastructure that grounds model output"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "production AI/ML or LLM-powered applications"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Instrument services for observability"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Proficiency in React/TypeScript and Python/FastAPI"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Proficiency in React/TypeScript and Python/FastAPI"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Familiarity with Git workflows"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Git workflows and CI/CD practices"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "Solid software engineering fundamentals: testing, debugging"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "Practical understanding of AI safety and cost discipline"
+  }
+ ]
+}

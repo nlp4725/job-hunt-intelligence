@@ -1,0 +1,210 @@
+{
+ "id": "jd-16065",
+ "kind": "jd",
+ "text_file": "jd-16065.txt",
+ "source": {
+  "job_id": 16065,
+  "title": "AI Forward Deployed Engineer",
+  "first_seen_at": "2026-09-09T18:01:03.968139",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "hands-on coding experience in Python, JavaScript/TypeScript"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "hands-on coding experience in Python, JavaScript/TypeScript"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Python, JavaScript/TypeScript, Java, .NET/C#, or Go"
+  },
+  {
+   "skill": "Java",
+   "evidence": "Python, JavaScript/TypeScript, Java, .NET/C#, or Go"
+  },
+  {
+   "skill": "C#",
+   "evidence": "Python, JavaScript/TypeScript, Java, .NET/C#, or Go"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Experience with GenAI, LLMs, RAG, agents"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "Experience with GenAI, LLMs, RAG, agents"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "GenAI, LLMs, RAG, agents, AI workflow automation"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "AI workflow automation, prompt engineering, model integration"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Experience with GenAI, LLMs, RAG, agents"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "model building, deployment, deep learning, and NLP"
+  },
+  {
+   "skill": "NLP",
+   "evidence": "model building, deployment, deep learning, and NLP"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Cloud experience across AWS, Azure, or Google Cloud"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Cloud experience across AWS, Azure, or Google Cloud"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "Cloud experience across AWS, Azure, or Google Cloud"
+  },
+  {
+   "skill": "ETL",
+   "evidence": "data engineering, ETL/ELT pipelines, BI dashboards"
+  },
+  {
+   "skill": "Data Visualization",
+   "evidence": "ETL/ELT pipelines, BI dashboards, analytics"
+  },
+  {
+   "skill": "Jira",
+   "evidence": "Experience integrating with Salesforce, Jira, Rally, Oracle, ServiceNow"
+  },
+  {
+   "skill": "Go-to-Market",
+   "evidence": "accelerators, and go-to-market propositions"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "Agents",
+  "Azure",
+  "C#",
+  "Data Pipelines",
+  "Data Visualization",
+  "Deep Learning",
+  "ETL",
+  "GCP",
+  "Generative AI",
+  "Go-to-Market",
+  "Java",
+  "JavaScript",
+  "Jira",
+  "LLM",
+  "NLP",
+  "Prompt Engineering",
+  "Python",
+  "RAG",
+  "TypeScript"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Data Visualization, Go-to-Market, TypeScript. removed REST API.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "TypeScript",
+    "evidence": "JavaScript/TypeScript"
+   },
+   {
+    "skill": "Data Pipelines",
+    "evidence": "ETL/ELT pipelines"
+   },
+   {
+    "skill": "Data Visualization",
+    "evidence": "BI dashboards"
+   },
+   {
+    "skill": "Go-to-Market",
+    "evidence": "product roadmap, accelerators, and go-to-market propositions",
+    "pass": "2026-09-15 double-check"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "REST API",
+    "reason": "only generic 'APIs'; REST not stated"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "hands-on coding experience in Python, JavaScript/TypeScript, Java, .NET/C#, or Go"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "hands-on coding experience in Python, JavaScript/TypeScript, Java, .NET/C#, or Go"
+  },
+  {
+   "skill": "Java",
+   "evidence": "hands-on coding experience in Python, JavaScript/TypeScript, Java, .NET/C#, or Go"
+  },
+  {
+   "skill": "C#",
+   "evidence": "hands-on coding experience in Python, JavaScript/TypeScript, Java, .NET/C#, or Go"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Experience with GenAI, LLMs, RAG, agents, AI workflow automation"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "Experience with GenAI, LLMs, RAG, agents, AI workflow automation"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "GenAI, LLMs, RAG, agents, AI workflow automation, prompt engineering"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "agents, AI workflow automation, prompt engineering, model integration and model training"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Experience with GenAI, LLMs, RAG, agents, AI workflow automation"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "Knowledge of ML algorithms, model building, deployment, deep learning, and NLP"
+  },
+  {
+   "skill": "NLP",
+   "evidence": "model building, deployment, deep learning, and NLP"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Cloud experience across AWS, Azure, or Google Cloud"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Cloud experience across AWS, Azure, or Google Cloud"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "Cloud experience across AWS, Azure, or Google Cloud"
+  },
+  {
+   "skill": "ETL",
+   "evidence": "Familiarity with data engineering, ETL/ELT pipelines, BI dashboards, analytics"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "Strong understanding of APIs, databases, cloud services, authentication, integrations"
+  },
+  {
+   "skill": "Jira",
+   "evidence": "Experience integrating with Salesforce, Jira, Rally, Oracle, ServiceNow"
+  }
+ ]
+}

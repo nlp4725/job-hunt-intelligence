@@ -1,0 +1,245 @@
+{
+ "id": "jd-14950",
+ "kind": "jd",
+ "text_file": "jd-14950.txt",
+ "source": {
+  "job_id": 14950,
+  "title": "AI Engineer – Agentforce & Data Cloud",
+  "first_seen_at": "2026-09-05T12:15:23.720960",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Generative AI",
+   "evidence": "experience with Generative AI, LLMs, prompt engineering, or conversational AI"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "experience with Generative AI, LLMs, prompt engineering, or conversational AI"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "prompt engineering"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "design, test, optimize, and support AI-powered agent solutions"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "Agentforce agents, prompts, instructions, tools, and workflows"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Develop AI evaluation frameworks and test plans"
+  },
+  {
+   "skill": "Hallucination Detection",
+   "evidence": "covering accuracy, hallucinations, safety, consistency, and instruction following"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "Perform regression testing and track defects"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "Monitor AI/agent performance using Arize AI"
+  },
+  {
+   "skill": "Arize",
+   "evidence": "using Arize AI or similar observability tools"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Arize AI or similar observability tools"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Support CI/CD, automation, Agile ceremonies"
+  },
+  {
+   "skill": "Agile",
+   "evidence": "Agile ceremonies"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "Experience with Azure DevOps, REST APIs, and JSON"
+  },
+  {
+   "skill": "Azure OpenAI",
+   "evidence": "Azure OpenAI, OpenAI, Anthropic, or Gemini"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "Azure OpenAI, OpenAI, Anthropic, or Gemini"
+  },
+  {
+   "skill": "Anthropic API",
+   "evidence": "OpenAI, Anthropic, or Gemini"
+  },
+  {
+   "skill": "Gemini",
+   "evidence": "OpenAI, Anthropic, or Gemini"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "RAG and vector databases"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "RAG and vector databases"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Python, SQL, JavaScript, or C#"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Python, SQL, JavaScript, or C#"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "Python, SQL, JavaScript, or C#"
+  },
+  {
+   "skill": "C#",
+   "evidence": "Python, SQL, JavaScript, or C#"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "Agile",
+  "Anthropic API",
+  "Arize",
+  "Azure",
+  "Azure OpenAI",
+  "C#",
+  "CI/CD",
+  "Gemini",
+  "Generative AI",
+  "Hallucination Detection",
+  "JavaScript",
+  "LLM",
+  "LLM Evaluation",
+  "Model Monitoring",
+  "Observability",
+  "OpenAI API",
+  "Prompt Engineering",
+  "Python",
+  "RAG",
+  "REST API",
+  "SQL",
+  "Software Testing",
+  "Tool Use / Function Calling",
+  "Vector Database"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Agents, LLM Evaluation, Model Monitoring, Software Testing, Tool Use / Function Calling.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Agents",
+    "evidence": "Design and optimize Agentforce agents, prompts"
+   },
+   {
+    "skill": "Tool Use / Function Calling",
+    "evidence": "Agentforce agents, prompts, instructions, tools, and workflows"
+   },
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "Develop AI evaluation frameworks and test plans"
+   },
+   {
+    "skill": "Software Testing",
+    "evidence": "Perform regression testing and track defects"
+   },
+   {
+    "skill": "Azure",
+    "evidence": "Experience with Azure DevOps, REST APIs"
+   },
+   {
+    "skill": "Model Monitoring",
+    "evidence": "Monitor AI/agent performance using Arize AI"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Generative AI",
+   "evidence": "experience with Generative AI, LLMs, prompt engineering, or conversational AI"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "experience with Generative AI, LLMs, prompt engineering, or conversational AI"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "prompt engineering"
+  },
+  {
+   "skill": "Hallucination Detection",
+   "evidence": "covering accuracy, hallucinations, safety, consistency, and instruction following"
+  },
+  {
+   "skill": "Arize",
+   "evidence": "using Arize AI or similar observability tools"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Arize AI or similar observability tools"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Support CI/CD, automation, Agile ceremonies"
+  },
+  {
+   "skill": "Agile",
+   "evidence": "Agile ceremonies"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "Experience with Azure DevOps, REST APIs, and JSON"
+  },
+  {
+   "skill": "Azure OpenAI",
+   "evidence": "Azure OpenAI, OpenAI, Anthropic, or Gemini"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "Azure OpenAI, OpenAI, Anthropic, or Gemini"
+  },
+  {
+   "skill": "Anthropic API",
+   "evidence": "OpenAI, Anthropic, or Gemini"
+  },
+  {
+   "skill": "Gemini",
+   "evidence": "OpenAI, Anthropic, or Gemini"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "RAG and vector databases"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "RAG and vector databases"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Python, SQL, JavaScript, or C#"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Python, SQL, JavaScript, or C#"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "Python, SQL, JavaScript, or C#"
+  },
+  {
+   "skill": "C#",
+   "evidence": "Python, SQL, JavaScript, or C#"
+  }
+ ]
+}

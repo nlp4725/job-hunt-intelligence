@@ -1,0 +1,138 @@
+{
+ "id": "jd-7176",
+ "kind": "jd",
+ "text_file": "jd-7176.txt",
+ "source": {
+  "job_id": 7176,
+  "title": "Associate Principal, AI Engineer",
+  "first_seen_at": "2026-07-17T14:00:19.492089",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "Apply strong Python skills to build production ready Gen AI"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "enterprise LLM gateway (AWS Launchpad)"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Good knowledge of AWS AI Infrastructure and AI services"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "next-generation Gen AI and Agentic AI capabilities"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "build production ready Gen AI and Agentic AI solutions"
+  },
+  {
+   "skill": "LangChain",
+   "evidence": "agentic frameworks (inc. Strands SDK, LangChain, A2A, and MCP)"
+  },
+  {
+   "skill": "A2A Protocol",
+   "evidence": "agentic frameworks (inc. Strands SDK, LangChain, A2A, and MCP)"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "agentic frameworks (inc. Strands SDK, LangChain, A2A, and MCP)"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "containerization and orchestration tools such as Kubernetes and Docker"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "containerization and orchestration tools such as Kubernetes and Docker"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Master’s degree in computer science, Artificial Intelligence, Data Science"
+  }
+ ],
+ "gold": [
+  "A2A Protocol",
+  "AWS",
+  "Agents",
+  "Docker",
+  "Generative AI",
+  "Kubernetes",
+  "LLM",
+  "LangChain",
+  "MCP",
+  "Master's Degree",
+  "Python",
+  "Stakeholder Management"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Agents. removed LLM Evaluation.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Agents",
+    "evidence": "Gen AI and Agentic AI solutions"
+   },
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "working with a diverse set of stakeholders to deliver AI solutions",
+    "pass": "2026-09-15 double-check"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "LLM Evaluation",
+    "reason": "no evaluation of LLMs mentioned"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Apply strong Python skills to build production ready Gen AI"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "enterprise LLM gateway (AWS Launchpad)"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Good knowledge of AWS AI Infrastructure and AI services"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "next-generation Gen AI and Agentic AI capabilities"
+  },
+  {
+   "skill": "LangChain",
+   "evidence": "agentic frameworks (inc. Strands SDK, LangChain, A2A, and MCP)"
+  },
+  {
+   "skill": "A2A Protocol",
+   "evidence": "agentic frameworks (inc. Strands SDK, LangChain, A2A, and MCP)"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "agentic frameworks (inc. Strands SDK, LangChain, A2A, and MCP)"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "containerization and orchestration tools such as Kubernetes and Docker"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "containerization and orchestration tools such as Kubernetes and Docker"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Master’s degree in computer science, Artificial Intelligence, Data Science"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "full model lifecycle – planning, training, deploying and maintaining AI systems"
+  }
+ ]
+}

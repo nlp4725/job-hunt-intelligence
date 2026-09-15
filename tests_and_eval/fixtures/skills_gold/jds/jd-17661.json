@@ -1,0 +1,159 @@
+{
+ "id": "jd-17661",
+ "kind": "jd",
+ "text_file": "jd-17661.txt",
+ "source": {
+  "job_id": 17661,
+  "title": "AI Engineer, Advanced Solutions Lab, Google Cloud",
+  "first_seen_at": "2026-09-12T01:15:58.109691",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Java",
+   "evidence": "Java"
+  },
+  {
+   "skill": "C++",
+   "evidence": "C/C++"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Python"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "TensorFlow"
+  },
+  {
+   "skill": "Keras",
+   "evidence": "Keras"
+  },
+  {
+   "skill": "JAX",
+   "evidence": "JAX"
+  },
+  {
+   "skill": "scikit-learn",
+   "evidence": "Scikit Learn"
+  },
+  {
+   "skill": "Spark",
+   "evidence": "Spark ML"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Generative AI curriculum"
+  },
+  {
+   "skill": "Hadoop",
+   "evidence": "Hadoop"
+  },
+  {
+   "skill": "ETL",
+   "evidence": "ETL/ELT"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "Google Cloud Platform"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Master's degree"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "PhD"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "agentic solutions models"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "C++",
+  "ETL",
+  "GCP",
+  "Generative AI",
+  "Hadoop",
+  "JAX",
+  "Java",
+  "Keras",
+  "Master's Degree",
+  "PhD",
+  "Python",
+  "Spark",
+  "TensorFlow",
+  "scikit-learn"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Agents.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Agents",
+    "evidence": "machine learning (ML) models or agentic solutions models"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Java",
+   "evidence": "Java"
+  },
+  {
+   "skill": "C++",
+   "evidence": "C/C++"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Python"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "TensorFlow"
+  },
+  {
+   "skill": "Keras",
+   "evidence": "Keras"
+  },
+  {
+   "skill": "JAX",
+   "evidence": "JAX"
+  },
+  {
+   "skill": "scikit-learn",
+   "evidence": "Scikit Learn"
+  },
+  {
+   "skill": "Spark",
+   "evidence": "Spark ML"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Generative AI curriculum"
+  },
+  {
+   "skill": "Hadoop",
+   "evidence": "Hadoop"
+  },
+  {
+   "skill": "ETL",
+   "evidence": "ETL/ELT"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "Google Cloud Platform"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Master's degree"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "PhD"
+  }
+ ]
+}

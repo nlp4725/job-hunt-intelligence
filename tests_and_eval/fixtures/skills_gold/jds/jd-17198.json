@@ -1,0 +1,96 @@
+{
+ "id": "jd-17198",
+ "kind": "jd",
+ "text_file": "jd-17198.txt",
+ "source": {
+  "job_id": 17198,
+  "title": "AI Engineer, Evaluation",
+  "first_seen_at": "2026-09-11T21:00:31.067381",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "write production Python code"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "designing and implementing the evaluation systems"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "define, calibrate, and operate LLM-based graders"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "evaluation results inform prompt design, agent logic, model selection"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "evaluation results inform prompt design, agent logic, model selection"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "build and maintain golden test cases and regression suites"
+  },
+  {
+   "skill": "LLM-as-a-Judge",
+   "evidence": "operate LLM-based graders, aligning automated judgments"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "LLM",
+  "LLM Evaluation",
+  "LLM-as-a-Judge",
+  "Prompt Engineering",
+  "Python",
+  "Software Testing"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added LLM-as-a-Judge. removed Data Pipelines.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "LLM-as-a-Judge",
+    "evidence": "Define, calibrate, and operate LLM-based graders"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Data Pipelines",
+    "reason": "only evaluation pipelines, not data pipelines"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "write production Python code"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "designing and implementing the evaluation systems"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "define, calibrate, and operate LLM-based graders"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "evaluation results inform prompt design, agent logic, model selection"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "evaluation results inform prompt design, agent logic, model selection"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "build and maintain golden test cases and regression suites"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "develop and maintain evaluation pipelines"
+  }
+ ]
+}

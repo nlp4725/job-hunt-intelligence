@@ -1,0 +1,142 @@
+{
+ "id": "jd-6675",
+ "kind": "jd",
+ "text_file": "jd-6675.txt",
+ "source": {
+  "job_id": 6675,
+  "title": "Staff PHP Engineer (Mexico)",
+  "first_seen_at": "2026-07-16T13:50:48.620603",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "AWS",
+   "evidence": "Backend: PHP 8, Symfony, AWS, PostgreSQL, RabbitMQ, Docker, Kubernetes"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "Backend: PHP 8, Symfony, AWS, PostgreSQL, RabbitMQ, Docker, Kubernetes"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "Backend: PHP 8, Symfony, AWS, PostgreSQL, RabbitMQ, Docker, Kubernetes"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "Backend: PHP 8, Symfony, AWS, PostgreSQL, RabbitMQ, Docker, Kubernetes"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "CI/CD: Datadog, GitHub Actions and ArgoCD"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "Excellent automated testing skills (unit, integration, functional)"
+  },
+  {
+   "skill": "Jira",
+   "evidence": "Productivity: Github, Slack, Jira & Confluence"
+  },
+  {
+   "skill": "Confluence",
+   "evidence": "Productivity: Github, Slack, Jira & Confluence"
+  },
+  {
+   "skill": "Microservices",
+   "evidence": "Familiarity with microservices architecture and working on financial systems"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Productivity: Github, Slack, Jira & Confluence"
+  },
+  {
+   "skill": "Event-Driven Architecture",
+   "evidence": "Message-Driven Systems, Event Sourcing and CQRS"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "agree API behaviours and expectations through documented contracts"
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "AWS",
+  "CI/CD",
+  "Confluence",
+  "Docker",
+  "Event-Driven Architecture",
+  "Git",
+  "Jira",
+  "Kubernetes",
+  "Microservices",
+  "Observability",
+  "PostgreSQL",
+  "Software Testing",
+  "Stakeholder Management"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added API Design & Development, Event-Driven Architecture.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Event-Driven Architecture",
+    "evidence": "Message-Driven Systems, Event Sourcing and CQRS"
+   },
+   {
+    "skill": "API Design & Development",
+    "evidence": "guide and agree API behaviours and expectations"
+   },
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "working closely with product stakeholders to agree on MVP requirements"
+   },
+   {
+    "skill": "Observability",
+    "evidence": "Datadog for monitoring"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "AWS",
+   "evidence": "Backend: PHP 8, Symfony, AWS, PostgreSQL, RabbitMQ, Docker, Kubernetes"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "Backend: PHP 8, Symfony, AWS, PostgreSQL, RabbitMQ, Docker, Kubernetes"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "Backend: PHP 8, Symfony, AWS, PostgreSQL, RabbitMQ, Docker, Kubernetes"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "Backend: PHP 8, Symfony, AWS, PostgreSQL, RabbitMQ, Docker, Kubernetes"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "CI/CD: Datadog, GitHub Actions and ArgoCD"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "Excellent automated testing skills (unit, integration, functional)"
+  },
+  {
+   "skill": "Jira",
+   "evidence": "Productivity: Github, Slack, Jira & Confluence"
+  },
+  {
+   "skill": "Confluence",
+   "evidence": "Productivity: Github, Slack, Jira & Confluence"
+  },
+  {
+   "skill": "Microservices",
+   "evidence": "Familiarity with microservices architecture and working on financial systems"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Productivity: Github, Slack, Jira & Confluence"
+  }
+ ]
+}

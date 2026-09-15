@@ -1,0 +1,150 @@
+{
+ "id": "jd-17082",
+ "kind": "jd",
+ "text_file": "jd-17082.txt",
+ "source": {
+  "job_id": 17082,
+  "title": "Applied AI Engineer",
+  "first_seen_at": "2026-09-10T18:36:46.454217",
+  "picked_for": "redis_substring"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "proficiency in Python or a comparable programming language"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "supporting large language models (LLMs)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Experience with Azure, AWS, Google Cloud Platform"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Experience with Azure, AWS, Google Cloud Platform"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "Experience with Azure, AWS, Google Cloud Platform"
+  },
+  {
+   "skill": "MLflow",
+   "evidence": "Azure Machine Learning, MLflow, Databricks, SageMaker"
+  },
+  {
+   "skill": "Databricks",
+   "evidence": "Azure Machine Learning, MLflow, Databricks, SageMaker"
+  },
+  {
+   "skill": "Vertex AI",
+   "evidence": "SageMaker, Vertex AI, or similar technologies"
+  },
+  {
+   "skill": "Azure OpenAI",
+   "evidence": "Azure OpenAI, Copilot Studio"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "implementing MLOps practices and supporting production AI environments"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "responsible AI practices"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "deployment, monitoring, drift detection, and retraining processes"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "building and managing machine learning pipelines"
+  },
+  {
+   "skill": "Copilot",
+   "evidence": "Azure OpenAI, Copilot Studio"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "Azure",
+  "Azure OpenAI",
+  "Copilot",
+  "Data Pipelines",
+  "Databricks",
+  "GCP",
+  "LLM",
+  "MLOps",
+  "MLflow",
+  "Model Monitoring",
+  "Python",
+  "Responsible AI",
+  "Vertex AI"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Copilot.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Copilot",
+    "evidence": "Azure OpenAI, Copilot Studio, or similar technologies"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "proficiency in Python or a comparable programming language"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "supporting large language models (LLMs)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Experience with Azure, AWS, Google Cloud Platform"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Experience with Azure, AWS, Google Cloud Platform"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "Experience with Azure, AWS, Google Cloud Platform"
+  },
+  {
+   "skill": "MLflow",
+   "evidence": "Azure Machine Learning, MLflow, Databricks, SageMaker"
+  },
+  {
+   "skill": "Databricks",
+   "evidence": "Azure Machine Learning, MLflow, Databricks, SageMaker"
+  },
+  {
+   "skill": "Vertex AI",
+   "evidence": "SageMaker, Vertex AI, or similar technologies"
+  },
+  {
+   "skill": "Azure OpenAI",
+   "evidence": "Azure OpenAI, Copilot Studio"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "implementing MLOps practices and supporting production AI environments"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "responsible AI practices"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "deployment, monitoring, drift detection, and retraining processes"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "building and managing machine learning pipelines"
+  }
+ ]
+}

@@ -1,0 +1,177 @@
+{
+ "id": "jd-291",
+ "kind": "jd",
+ "text_file": "jd-291.txt",
+ "source": {
+  "job_id": 291,
+  "title": "Senior Software Engineer - AI Platform Team",
+  "first_seen_at": "2026-07-06T20:37:04.186453",
+  "picked_for": "embedding_verb"
+ },
+ "draft": [
+  {
+   "skill": "LLM",
+   "evidence": "single path to large language models"
+  },
+  {
+   "skill": "PII",
+   "evidence": "auth, PII redaction, fallbacks"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "agent runtime with microVM sandboxes and governed MCP gateway"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "vector databases, and model serving infrastructure"
+  },
+  {
+   "skill": "LLM-as-a-Judge",
+   "evidence": "evaluation and observability tooling including LLM-as-judge harnesses"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "build production agents, applying fine-tuning and traditional ML"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "observability tooling including LLM-as-judge harnesses"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Fluency in Python"
+  },
+  {
+   "skill": "C++",
+   "evidence": "Rust, or C++"
+  },
+  {
+   "skill": "Microservices",
+   "evidence": "building APIs, microservices, and runtime environments"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "feedback loops that let subject matter experts refine production agents"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "the vision for GenAI at Coinbase"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "LLM orchestration patterns, agent frameworks, vector databases"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Build evaluation and observability tooling"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "distributed platform services at scale"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "production experience building APIs, microservices"
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "Agents",
+  "C++",
+  "Distributed Systems",
+  "Fine-tuning",
+  "Generative AI",
+  "Human-in-the-Loop",
+  "LLM",
+  "LLM Evaluation",
+  "LLM-as-a-Judge",
+  "MCP",
+  "Microservices",
+  "Observability",
+  "PII",
+  "Python",
+  "Vector Database"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added API Design & Development, Agents, Distributed Systems, LLM Evaluation. removed AWS.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Agents",
+    "evidence": "build and operate the LLM and agent infrastructure"
+   },
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "Build evaluation and observability tooling including LLM-as-judge harnesses"
+   },
+   {
+    "skill": "API Design & Development",
+    "evidence": "production experience building APIs, microservices"
+   },
+   {
+    "skill": "Distributed Systems",
+    "evidence": "distributed platform services at scale"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "AWS",
+    "reason": "only appears in blog title 'AWS re:Invent', an event"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "LLM",
+   "evidence": "single path to large language models"
+  },
+  {
+   "skill": "PII",
+   "evidence": "auth, PII redaction, fallbacks"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "agent runtime with microVM sandboxes and governed MCP gateway"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "vector databases, and model serving infrastructure"
+  },
+  {
+   "skill": "LLM-as-a-Judge",
+   "evidence": "build evaluation and observability tooling including LLM-as-judge harnesses"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "build production agents, applying fine-tuning and traditional ML"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "observability tooling including LLM-as-judge harnesses"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Fluency in Python"
+  },
+  {
+   "skill": "C++",
+   "evidence": "Rust, or C++"
+  },
+  {
+   "skill": "Microservices",
+   "evidence": "building APIs, microservices, and runtime environments"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "Utilizes generative AI responsibly, maintaining human oversight"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "the vision for GenAI at Coinbase"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS re:Invent 2025 - Scaling support"
+  }
+ ]
+}

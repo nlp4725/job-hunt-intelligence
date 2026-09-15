@@ -1,0 +1,42 @@
+{
+ "id": "jd-16819",
+ "kind": "jd",
+ "text_file": "jd-16819.txt",
+ "source": {
+  "job_id": 16819,
+  "title": "Business Solutions Developer",
+  "first_seen_at": "2026-09-10T16:59:07.798879",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "SQL",
+   "evidence": "Business Objects, Access, Crystal Reports, SQL, VBA, etc."
+  },
+  {
+   "skill": "Data Visualization",
+   "evidence": "Familiarity with SAS PROC SQL, Tableau, and VBA"
+  }
+ ],
+ "gold": [
+  "Data Visualization",
+  "SQL"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Data Visualization.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Data Visualization",
+    "evidence": "Familiarity with SAS PROC SQL, Tableau, and VBA"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "SQL",
+   "evidence": "Business Objects, Access, Crystal Reports, SQL, VBA, etc."
+  }
+ ]
+}

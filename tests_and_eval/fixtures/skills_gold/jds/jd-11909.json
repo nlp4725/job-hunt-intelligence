@@ -1,0 +1,144 @@
+{
+ "id": "jd-11909",
+ "kind": "jd",
+ "text_file": "jd-11909.txt",
+ "source": {
+  "job_id": 11909,
+  "title": "Data Scientist (Technical Leadership)",
+  "first_seen_at": "2026-07-29T05:39:17.218289",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Statistics",
+   "evidence": "different analytical and statistical approaches"
+  },
+  {
+   "skill": "Causal Inference",
+   "evidence": "experimentation/causal inference methods"
+  },
+  {
+   "skill": "A/B Testing",
+   "evidence": "experimentation/causal inference methods"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "prompt/context engineering, agent orchestration"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "prompt/context engineering, agent orchestration"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "responsible, ethical AI practices"
+  },
+  {
+   "skill": "Time Series Forecasting",
+   "evidence": "goal setting, forecasting, and monitoring of key product metrics"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "Masters or Ph.D. Degree in a quantitative field"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Masters or Ph.D. Degree in a quantitative field"
+  },
+  {
+   "skill": "Roadmapping",
+   "evidence": "drive roadmaps through your insights and recommendations"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "working effectively with multiple stakeholders and cross-functional teams"
+  },
+  {
+   "skill": "Product Analytics",
+   "evidence": "guiding data-influenced product planning, prioritization and strategy"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "Causal Inference",
+  "Master's Degree",
+  "Multi-Agent Systems",
+  "PhD",
+  "Product Analytics",
+  "Prompt Engineering",
+  "Responsible AI",
+  "Roadmapping",
+  "Stakeholder Management",
+  "Statistics"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added A/B Testing. removed Hypothesis Testing.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Multi-Agent Systems",
+    "evidence": "prompt/context engineering, agent orchestration"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Hypothesis Testing",
+    "reason": "generic hypothesis-driven analysis, not statistical testing"
+   },
+   {
+    "skill": "Time Series Forecasting",
+    "reason": "bare 'forecasting' of metrics, no time-series method"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Statistics",
+   "evidence": "different analytical and statistical approaches"
+  },
+  {
+   "skill": "Hypothesis Testing",
+   "evidence": "developing hypotheses and employ a varied toolkit"
+  },
+  {
+   "skill": "Causal Inference",
+   "evidence": "experimentation/causal inference methods"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "prompt/context engineering, agent orchestration"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "prompt/context engineering, agent orchestration"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "responsible, ethical AI practices"
+  },
+  {
+   "skill": "Time Series Forecasting",
+   "evidence": "goal setting, forecasting, and monitoring of key product metrics"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "Masters or Ph.D. Degree in a quantitative field"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Masters or Ph.D. Degree in a quantitative field"
+  },
+  {
+   "skill": "Roadmapping",
+   "evidence": "drive roadmaps through your insights and recommendations"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "working effectively with multiple stakeholders and cross-functional teams"
+  },
+  {
+   "skill": "Product Analytics",
+   "evidence": "guiding data-influenced product planning, prioritization and strategy"
+  }
+ ]
+}

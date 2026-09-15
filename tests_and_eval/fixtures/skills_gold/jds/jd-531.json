@@ -1,0 +1,263 @@
+{
+ "id": "jd-531",
+ "kind": "jd",
+ "text_file": "jd-531.txt",
+ "source": {
+  "job_id": 531,
+  "title": "AI Engineer - Microsoft Power Platform",
+  "first_seen_at": "2026-07-06T20:38:41.201602",
+  "picked_for": "embedding_verb"
+ },
+ "draft": [
+  {
+   "skill": "RAG",
+   "evidence": "retrieval-augmented generation (RAG)"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "prompt engineering, function calling"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "function calling"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "embeddings"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "human-in-the-loop processing"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "Responsible AI principles"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "secure REST APIs"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "working with Dataverse, SQL, SharePoint"
+  },
+  {
+   "skill": "C#",
+   "evidence": "such as C#, Python, or JavaScript/TypeScript"
+  },
+  {
+   "skill": "Python",
+   "evidence": "such as C#, Python, or JavaScript/TypeScript"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "or JavaScript/TypeScript"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "or JavaScript/TypeScript"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "CI/CD pipelines"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "automated testing"
+  },
+  {
+   "skill": "Red-teaming",
+   "evidence": "red-teaming exercises"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "vector search concepts"
+  },
+  {
+   "skill": "Semantic Search",
+   "evidence": "vector search concepts"
+  },
+  {
+   "skill": "Azure OpenAI",
+   "evidence": "Azure OpenAI/OpenAI APIs"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "OpenAI APIs"
+  },
+  {
+   "skill": "Copilot",
+   "evidence": "Copilot Studio"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "with Azure AI services"
+  },
+  {
+   "skill": "Data Visualization",
+   "evidence": "Power Apps, Power Automate, Power BI, Dataverse"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "vector search concepts, and AI evaluation techniques"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Implement monitoring, logging, and alerting for AI-enabled workflows"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "Experience building and securing APIs and integrations"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "Strong stakeholder partnership skills"
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "Azure",
+  "Azure OpenAI",
+  "C#",
+  "CI/CD",
+  "Copilot",
+  "Data Visualization",
+  "Embeddings",
+  "Human-in-the-Loop",
+  "JavaScript",
+  "LLM Evaluation",
+  "Observability",
+  "OpenAI API",
+  "Prompt Engineering",
+  "Python",
+  "RAG",
+  "REST API",
+  "Red-teaming",
+  "Responsible AI",
+  "Roadmapping",
+  "SQL",
+  "Semantic Search",
+  "Software Testing",
+  "Stakeholder Management",
+  "Tool Use / Function Calling",
+  "TypeScript",
+  "Vector Database"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added API Design & Development, Azure, Data Visualization, LLM Evaluation, Observability, Stakeholder Management.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Azure",
+    "evidence": "Azure AI services and Azure OpenAI/OpenAI APIs"
+   },
+   {
+    "skill": "Data Visualization",
+    "evidence": "Power Apps, Power Automate, Power BI, Dataverse"
+   },
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "vector search concepts, and AI evaluation techniques"
+   },
+   {
+    "skill": "API Design & Development",
+    "evidence": "Experience building and securing APIs and integrations"
+   },
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "Strong stakeholder partnership skills, balancing innovation with compliance"
+   },
+   {
+    "skill": "Observability",
+    "evidence": "Implement monitoring, logging, and alerting for AI-enabled workflows"
+   },
+   {
+    "skill": "Roadmapping",
+    "evidence": "technical designs and AI-enabled roadmaps with clear success metrics"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "RAG",
+   "evidence": "retrieval-augmented generation (RAG)"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "prompt engineering, function calling"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "function calling"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "embeddings"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "human-in-the-loop processing"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "Responsible AI principles"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "secure REST APIs"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "working with Dataverse, SQL, SharePoint"
+  },
+  {
+   "skill": "C#",
+   "evidence": "such as C#, Python, or JavaScript/TypeScript"
+  },
+  {
+   "skill": "Python",
+   "evidence": "such as C#, Python, or JavaScript/TypeScript"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "or JavaScript/TypeScript"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "or JavaScript/TypeScript"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "CI/CD pipelines"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "automated testing"
+  },
+  {
+   "skill": "Red-teaming",
+   "evidence": "red-teaming exercises"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "vector search concepts"
+  },
+  {
+   "skill": "Semantic Search",
+   "evidence": "vector search concepts"
+  },
+  {
+   "skill": "Azure OpenAI",
+   "evidence": "Azure OpenAI/OpenAI APIs"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "OpenAI APIs"
+  },
+  {
+   "skill": "Copilot",
+   "evidence": "Copilot Studio"
+  }
+ ]
+}

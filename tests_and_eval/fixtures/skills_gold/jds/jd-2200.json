@@ -1,0 +1,69 @@
+{
+ "id": "jd-2200",
+ "kind": "jd",
+ "text_file": "jd-2200.txt",
+ "source": {
+  "job_id": 2200,
+  "title": "Principal Applied Scientist",
+  "first_seen_at": "2026-07-07T05:52:29.786248",
+  "picked_for": "spark_verb"
+ },
+ "draft": [
+  {
+   "skill": "Statistics",
+   "evidence": "Strong grounding in statistics and probability"
+  },
+  {
+   "skill": "Causal Inference",
+   "evidence": "Working knowledge of causal inference or causal machine learning"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "PhD in operations research, statistics, economics, computer science"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Advanced degree in a quantitative field"
+  }
+ ],
+ "gold": [
+  "Causal Inference",
+  "PhD",
+  "Stakeholder Management",
+  "Statistics"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Master's Degree. removed MLOps.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "leading large cross-functional technical initiatives with multiple stakeholders"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "MLOps",
+    "reason": "only generic deploying models to production; no MLOps practice"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Statistics",
+   "evidence": "quantitative field such as statistics, mathematics, economics, computer science, operations research"
+  },
+  {
+   "skill": "Causal Inference",
+   "evidence": "Working knowledge of causal inference or causal machine learning"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "PhD in operations research, statistics, economics, computer science, or another quantitative field"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "end-to-end modeling from problem framing through productionization"
+  }
+ ]
+}

@@ -1,0 +1,222 @@
+{
+ "id": "jd-13004",
+ "kind": "jd",
+ "text_file": "jd-13004.txt",
+ "source": {
+  "job_id": 13004,
+  "title": "Senior Machine Learning Engineer, Trust",
+  "first_seen_at": "2026-08-19T21:00:15.217061",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "Strong programming skills in Python (required)"
+  },
+  {
+   "skill": "Scala",
+   "evidence": "familiarity with Scala, Java, or equivalent"
+  },
+  {
+   "skill": "Java",
+   "evidence": "familiarity with Scala, Java, or equivalent"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "hands-on experience with LLMs and GenAI technologies"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "experience with LLMs and GenAI technologies"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "building with agentic frameworks, orchestration, and evaluation"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "including orchestration, tool interfaces, and the guardrails"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "designing evaluation methodology for ML or LLM systems"
+  },
+  {
+   "skill": "A/B Testing",
+   "evidence": "A/B testing, feature engineering, model selection"
+  },
+  {
+   "skill": "Gradient Boosting",
+   "evidence": "algorithms such as gradient boosted trees"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "neural networks, transformers, and deep learning"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "neural networks, transformers, and deep learning"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "ML frameworks and tooling such as TensorFlow, PyTorch"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "such as TensorFlow, PyTorch, or equivalent"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "high-volume data pipelines"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "well-designed APIs"
+  },
+  {
+   "skill": "Computer Vision",
+   "evidence": "multimodal models (vision, document, or speech)"
+  },
+  {
+   "skill": "Speech Recognition",
+   "evidence": "multimodal models (vision, document, or speech)"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "A Bachelor's, Master's, or PhD in CS/ML"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "A Bachelor's, Master's, or PhD in CS/ML"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "Experience with test-driven development"
+  }
+ ],
+ "gold": [
+  "A/B Testing",
+  "API Design & Development",
+  "Agents",
+  "Computer Vision",
+  "Data Pipelines",
+  "Deep Learning",
+  "Generative AI",
+  "Gradient Boosting",
+  "Java",
+  "LLM",
+  "LLM Evaluation",
+  "Master's Degree",
+  "Multi-Agent Systems",
+  "PhD",
+  "PyTorch",
+  "Python",
+  "Scala",
+  "Software Testing",
+  "TensorFlow",
+  "Tool Use / Function Calling",
+  "Transformers"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added LLM Evaluation, Tool Use / Function Calling.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "designing evaluation methodology for ML or LLM systems"
+   },
+   {
+    "skill": "Multi-Agent Systems",
+    "evidence": "AI agents that automate trust decisions, including orchestration"
+   },
+   {
+    "skill": "Tool Use / Function Calling",
+    "evidence": "including orchestration, tool interfaces, and the guardrails"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Speech Recognition",
+    "reason": "'speech' multimodal models, not speech recognition"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Strong programming skills in Python (required)"
+  },
+  {
+   "skill": "Scala",
+   "evidence": "familiarity with Scala, Java, or equivalent"
+  },
+  {
+   "skill": "Java",
+   "evidence": "familiarity with Scala, Java, or equivalent"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "hands-on experience with LLMs and GenAI technologies"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "experience with LLMs and GenAI technologies"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "building with agentic frameworks, orchestration, and evaluation"
+  },
+  {
+   "skill": "A/B Testing",
+   "evidence": "A/B testing, feature engineering, model selection"
+  },
+  {
+   "skill": "Gradient Boosting",
+   "evidence": "algorithms such as gradient boosted trees"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "neural networks, transformers, and deep learning"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "neural networks, transformers, and deep learning"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "ML frameworks and tooling such as TensorFlow, PyTorch"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "such as TensorFlow, PyTorch, or equivalent"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "building end-to-end ML pipelines"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "well-designed APIs"
+  },
+  {
+   "skill": "Computer Vision",
+   "evidence": "multimodal models (vision, document, or speech)"
+  },
+  {
+   "skill": "Speech Recognition",
+   "evidence": "multimodal models (vision, document, or speech)"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "A Bachelor's, Master's, or PhD in CS/ML"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "A Bachelor's, Master's, or PhD in CS/ML"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "Experience with test-driven development"
+  }
+ ]
+}

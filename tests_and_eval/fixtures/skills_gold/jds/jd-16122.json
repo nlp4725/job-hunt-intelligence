@@ -1,0 +1,173 @@
+{
+ "id": "jd-16122",
+ "kind": "jd",
+ "text_file": "jd-16122.txt",
+ "source": {
+  "job_id": 16122,
+  "title": "AI/ML Engineer – Generative AI",
+  "first_seen_at": "2026-09-09T18:32:46.916573",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "Strong software development experience in Python and C++"
+  },
+  {
+   "skill": "C++",
+   "evidence": "Strong software development experience in Python and C++"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "passionate about Generative AI, machine learning"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "machine learning, deep learning, and neural network architectures"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "Hands-on experience with PyTorch, TensorFlow, JAX"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "Hands-on experience with PyTorch, TensorFlow, JAX"
+  },
+  {
+   "skill": "JAX",
+   "evidence": "Hands-on experience with PyTorch, TensorFlow, JAX"
+  },
+  {
+   "skill": "Computer Vision",
+   "evidence": "Knowledge of computer vision, image synthesis"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "Experience fine-tuning and deploying large-scale AI models"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "Experience with MLOps, CI/CD workflows, Git"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Experience with MLOps, CI/CD workflows, Git"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Experience with MLOps, CI/CD workflows, Git"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "image generation models, GANs, transformers"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "agentic AI systems"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Master's degree or PhD in Computer Science"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "Master's degree or PhD in Computer Science"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "C++",
+  "CI/CD",
+  "Computer Vision",
+  "Data Pipelines",
+  "Deep Learning",
+  "Fine-tuning",
+  "Generative AI",
+  "Git",
+  "JAX",
+  "MLOps",
+  "Master's Degree",
+  "PhD",
+  "PyTorch",
+  "Python",
+  "TensorFlow",
+  "Transformers"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Agents.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Agents",
+    "evidence": "agentic AI systems"
+   },
+   {
+    "skill": "Data Pipelines",
+    "evidence": "Build scalable training and inference pipelines"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Strong software development experience in Python and C++"
+  },
+  {
+   "skill": "C++",
+   "evidence": "Strong software development experience in Python and C++"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "passionate about Generative AI, machine learning, and developing cutting-edge models"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "Deep understanding of machine learning, deep learning, and neural network architectures"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "Hands-on experience with PyTorch, TensorFlow, JAX, or similar machine learning frameworks"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "Hands-on experience with PyTorch, TensorFlow, JAX, or similar machine learning frameworks"
+  },
+  {
+   "skill": "JAX",
+   "evidence": "Hands-on experience with PyTorch, TensorFlow, JAX, or similar machine learning frameworks"
+  },
+  {
+   "skill": "Computer Vision",
+   "evidence": "Knowledge of computer vision, image synthesis, and multimodal learning techniques"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "Experience fine-tuning and deploying large-scale AI models"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "Experience with MLOps, CI/CD workflows, Git, and modern software engineering practices"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Experience with MLOps, CI/CD workflows, Git, and modern software engineering practices"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Experience with MLOps, CI/CD workflows, Git, and modern software engineering practices"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "image generation models, GANs, transformers, or multimodal AI systems"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Master's degree or PhD in Computer Science"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "Master's degree or PhD in Computer Science"
+  }
+ ]
+}

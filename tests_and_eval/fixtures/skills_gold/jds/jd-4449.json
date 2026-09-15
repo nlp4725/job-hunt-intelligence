@@ -1,0 +1,87 @@
+{
+ "id": "jd-4449",
+ "kind": "jd",
+ "text_file": "jd-4449.txt",
+ "source": {
+  "job_id": 4449,
+  "title": "Technical Program Manager, CX Intelligence & AI",
+  "first_seen_at": "2026-07-13T12:37:07.174039",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Snowflake",
+   "evidence": "BI tools (e.g., Looker, Snowflake)"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "automation platforms, data pipelines, and CX technologies"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Utilizes generative AI responsibly"
+  },
+  {
+   "skill": "Roadmapping",
+   "evidence": "ongoing and annual roadmapping for priority programs"
+  },
+  {
+   "skill": "OKRs",
+   "evidence": "managing the source of truth for OKR performance"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "advising L8+/VP leadership on optimal execution paths"
+  },
+  {
+   "skill": "Data Visualization",
+   "evidence": "analytics partners and BI tools (e.g., Looker, Snowflake)"
+  }
+ ],
+ "gold": [
+  "Data Pipelines",
+  "Data Visualization",
+  "Generative AI",
+  "OKRs",
+  "Roadmapping",
+  "Snowflake",
+  "Stakeholder Management"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Data Visualization.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Data Visualization",
+    "evidence": "BI tools (e.g., Looker, Snowflake)"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Snowflake",
+   "evidence": "BI tools (e.g., Looker, Snowflake)"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "automation platforms, data pipelines, and CX technologies"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Utilizes generative AI responsibly"
+  },
+  {
+   "skill": "Roadmapping",
+   "evidence": "ongoing and annual roadmapping for priority programs"
+  },
+  {
+   "skill": "OKRs",
+   "evidence": "program reporting to leadership (WBR/QBR)"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "advising L8+/VP leadership on optimal execution paths"
+  }
+ ]
+}

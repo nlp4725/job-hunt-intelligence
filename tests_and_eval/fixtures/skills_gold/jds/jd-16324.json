@@ -1,0 +1,180 @@
+{
+ "id": "jd-16324",
+ "kind": "jd",
+ "text_file": "jd-16324.txt",
+ "source": {
+  "job_id": 16324,
+  "title": "Software Engineer",
+  "first_seen_at": "2026-09-09T19:49:26.019821",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "software engineers who specialize in .NET, Python, AWS"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "software engineers who specialize in .NET, Python, AWS"
+  },
+  {
+   "skill": "C#",
+   "evidence": "Strong programming skills in C# and Python."
+  },
+  {
+   "skill": "REST API",
+   "evidence": "Design and implement RESTful APIs and backend services"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "Design and implement RESTful APIs and backend services"
+  },
+  {
+   "skill": "Semantic Search",
+   "evidence": "summarization, semantic search, and workflow automation."
+  },
+  {
+   "skill": "LLM",
+   "evidence": "integrating external AI/LLM services"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "external AI/LLM services (e.g., OpenAI, AWS Bedrock"
+  },
+  {
+   "skill": "AWS Bedrock",
+   "evidence": "external AI/LLM services (e.g., OpenAI, AWS Bedrock"
+  },
+  {
+   "skill": "Kafka",
+   "evidence": "messaging technologies (Kafka, AWS SQS/Kinesis)"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "relational databases (SQL Server, Postgres)"
+  },
+  {
+   "skill": "NoSQL",
+   "evidence": "Experience with Amazon Neptune, graph databases"
+  },
+  {
+   "skill": "Data Modeling",
+   "evidence": "Gremlin for modeling and querying taxonomy hierarchies"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "continuous integration/continuous delivery (CI/CD)."
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "test-driven development, automated unit testing and functional testing"
+  },
+  {
+   "skill": "Elasticsearch",
+   "evidence": "search technologies such as Elasticsearch or OpenSearch."
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "AWS",
+  "AWS Bedrock",
+  "C#",
+  "CI/CD",
+  "Data Modeling",
+  "Elasticsearch",
+  "Kafka",
+  "LLM",
+  "OpenAI API",
+  "PostgreSQL",
+  "Python",
+  "REST API",
+  "Semantic Search",
+  "Software Testing"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added API Design & Development, Data Modeling, LLM, NoSQL, Software Testing. removed Docker, Master's Degree.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "LLM",
+    "evidence": "external AI/LLM services"
+   },
+   {
+    "skill": "Software Testing",
+    "evidence": "test-driven development, automated unit testing"
+   },
+   {
+    "skill": "API Design & Development",
+    "evidence": "Design and implement RESTful APIs"
+   },
+   {
+    "skill": "Data Modeling",
+    "evidence": "Gremlin for modeling and querying taxonomy hierarchies"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Master's Degree",
+    "reason": "only a bachelor's degree is mentioned"
+   },
+   {
+    "skill": "Docker",
+    "reason": "Docker never stated; only ECS/ECR"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "software engineers who specialize in .NET, Python, AWS"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "software engineers who specialize in .NET, Python, AWS"
+  },
+  {
+   "skill": "C#",
+   "evidence": "Strong programming skills in C# and Python."
+  },
+  {
+   "skill": "REST API",
+   "evidence": "Design and implement RESTful APIs and backend services"
+  },
+  {
+   "skill": "Semantic Search",
+   "evidence": "summarization, semantic search, and workflow automation."
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "external AI/LLM services (e.g., OpenAI, AWS Bedrock"
+  },
+  {
+   "skill": "AWS Bedrock",
+   "evidence": "external AI/LLM services (e.g., OpenAI, AWS Bedrock"
+  },
+  {
+   "skill": "Kafka",
+   "evidence": "messaging technologies (Kafka, AWS SQS/Kinesis)"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "relational databases (SQL Server, Postgres)"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "continuous integration/continuous delivery (CI/CD)."
+  },
+  {
+   "skill": "Docker",
+   "evidence": "AWS compute technologies (Lambda, ECS/ECR, EC2"
+  },
+  {
+   "skill": "Elasticsearch",
+   "evidence": "search technologies such as Elasticsearch or OpenSearch."
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": ""
+  }
+ ]
+}

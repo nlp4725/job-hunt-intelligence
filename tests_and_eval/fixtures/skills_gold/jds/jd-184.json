@@ -1,0 +1,177 @@
+{
+ "id": "jd-184",
+ "kind": "jd",
+ "text_file": "jd-184.txt",
+ "source": {
+  "job_id": 184,
+  "title": "Data Scientist 5 - AI Evals",
+  "first_seen_at": "2026-07-06T19:48:42.598137",
+  "picked_for": "r_and_d"
+ },
+ "draft": [
+  {
+   "skill": "Generative AI",
+   "evidence": "measure, validate, and optimize GenAI systems"
+  },
+  {
+   "skill": "LLM-as-a-Judge",
+   "evidence": "using a mix of automated metrics, LLM-as-a-Judge frameworks"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "modern AI Evals and observability frameworks"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "evaluating LLM and agentic systems"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "Deep understanding of prompt engineering, RAG Evals"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "prompt engineering, RAG Evals, and agentic Evals"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "long-horizon reasoning and complex tool-use"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "including MLOps best practices"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "Ph.D. in Data Science, Computer Science, Statistics"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "human-in-the-loop grading"
+  },
+  {
+   "skill": "Red-teaming",
+   "evidence": "Design red-teaming protocols"
+  },
+  {
+   "skill": "Hallucination Detection",
+   "evidence": "detect and mitigate toxicity, hallucinations"
+  },
+  {
+   "skill": "Causal Inference",
+   "evidence": "experimental design, causal inference, A/B testing"
+  },
+  {
+   "skill": "A/B Testing",
+   "evidence": "causal inference, A/B testing"
+  },
+  {
+   "skill": "Uncertainty Quantification",
+   "evidence": "A/B testing, and uncertainty quantification"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Understanding of agent architectures"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Proven track record of evaluating LLM and agentic systems"
+  }
+ ],
+ "gold": [
+  "A/B Testing",
+  "Agents",
+  "Causal Inference",
+  "Generative AI",
+  "Hallucination Detection",
+  "Human-in-the-Loop",
+  "LLM",
+  "LLM Evaluation",
+  "LLM-as-a-Judge",
+  "MLOps",
+  "Observability",
+  "PhD",
+  "Prompt Engineering",
+  "RAG",
+  "Red-teaming",
+  "Tool Use / Function Calling",
+  "Uncertainty Quantification"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added A/B Testing, Agents, Causal Inference, Hallucination Detection, Human-in-the-Loop, LLM Evaluation, Red-teaming, Uncertainty Quantification.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "designing evaluation harnesses for agentic system"
+   },
+   {
+    "skill": "Agents",
+    "evidence": "Proven track record of evaluating LLM and agentic systems"
+   },
+   {
+    "skill": "Human-in-the-Loop",
+    "evidence": "human-in-the-loop grading"
+   },
+   {
+    "skill": "Red-teaming",
+    "evidence": "Design red-teaming protocols and safety evaluators"
+   },
+   {
+    "skill": "Hallucination Detection",
+    "evidence": "detect and mitigate toxicity, hallucinations, jailbreaks"
+   },
+   {
+    "skill": "Causal Inference",
+    "evidence": "experimental design, causal inference, A/B testing"
+   },
+   {
+    "skill": "A/B Testing",
+    "evidence": "causal inference, A/B testing, and uncertainty quantification"
+   },
+   {
+    "skill": "Uncertainty Quantification",
+    "evidence": "A/B testing, and uncertainty quantification"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Generative AI",
+   "evidence": "measure, validate, and optimize GenAI systems"
+  },
+  {
+   "skill": "LLM-as-a-Judge",
+   "evidence": "using a mix of automated metrics, LLM-as-a-Judge frameworks"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "modern AI Evals and observability frameworks"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "evaluating LLM and agentic systems"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "Deep understanding of prompt engineering, RAG Evals"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "prompt engineering, RAG Evals, and agentic Evals"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "long-horizon reasoning and complex tool-use"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "including MLOps best practices"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "Ph.D. in Data Science, Computer Science, Statistics"
+  }
+ ]
+}

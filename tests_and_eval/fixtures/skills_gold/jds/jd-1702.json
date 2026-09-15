@@ -1,0 +1,50 @@
+{
+ "id": "jd-1702",
+ "kind": "jd",
+ "text_file": "jd-1702.txt",
+ "source": {
+  "job_id": 1702,
+  "title": "Senior Security Engineer, Data Security",
+  "first_seen_at": "2026-07-07T03:47:55.019618",
+  "picked_for": "spark_verb"
+ },
+ "draft": [
+  {
+   "skill": "API Design & Development",
+   "evidence": "build software solutions (APIs, services, and internal tools)"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "influence senior technical and non-technical stakeholders"
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "Stakeholder Management"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): removed REST API.",
+ "manual_review": {
+  "added": [],
+  "removed": [
+   {
+    "skill": "REST API",
+    "reason": "REST/RESTful never stated; generic APIs only"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "API Design & Development",
+   "evidence": "build software solutions (APIs, services, and internal tools)"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "design and build production-quality systems (e.g., APIs, services, or internal web applications)"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "influence senior technical and non-technical stakeholders"
+  }
+ ]
+}

@@ -1,0 +1,78 @@
+{
+ "id": "jd-8000",
+ "kind": "jd",
+ "text_file": "jd-8000.txt",
+ "source": {
+  "job_id": 8000,
+  "title": "AI Automation Engineer",
+  "first_seen_at": "2026-07-18T16:34:33.684850",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Selenium",
+   "evidence": "automation frameworks such as Playwright, Selenium, Cypress, and API testing tools"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Strong understanding of CI/CD pipelines and DevOps practices"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "communication, and stakeholder management skills"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Experience with AWS and cloud-based testing environments"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "Background in performance, regression, and integration testing"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "CI/CD",
+  "Selenium",
+  "Software Testing",
+  "Stakeholder Management"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Software Testing. removed API Design & Development.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Software Testing",
+    "evidence": "Design and implement automated testing solutions"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "API Design & Development",
+    "reason": "only API testing tools; no building APIs"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Selenium",
+   "evidence": "automation frameworks such as Playwright, Selenium, Cypress, and API testing tools"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Strong understanding of CI/CD pipelines and DevOps practices"
+  },
+  {
+   "skill": "Stakeholder Management",
+   "evidence": "communication, and stakeholder management skills"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Experience with AWS and cloud-based testing environments"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "Playwright, Selenium, Cypress, and API testing tools"
+  }
+ ]
+}

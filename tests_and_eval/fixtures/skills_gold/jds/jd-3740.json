@@ -1,0 +1,154 @@
+{
+ "id": "jd-3740",
+ "kind": "jd",
+ "text_file": "jd-3740.txt",
+ "source": {
+  "job_id": 3740,
+  "title": "Staff Applied AI Engineer",
+  "first_seen_at": "2026-07-13T07:01:13.787253",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "well-tested code in Python (or a comparable language)"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "LLM-based systems for patient and provider-facing products"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "including generative AI (LLMS)"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "prompting, retrieval-augmented generation, fine-tuning, evaluation"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "retrieval-augmented generation, fine-tuning, evaluation"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "fine-tuning, evaluation, and the trade-offs between them"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "human-in-the-loop review, online experiments"
+  },
+  {
+   "skill": "NLP",
+   "evidence": "Experience with clinical NLP"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Experience building agentic systems, tool-using LLMs"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "tool-using LLMs, in production"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "data pipelines, training and inference infrastructure"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Develop robust evaluation frameworks"
+  },
+  {
+   "skill": "A/B Testing",
+   "evidence": "offline benchmarks, human-in-the-loop review, online experiments"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "ship to production with the right monitoring and guardrails"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "training pipelines, distributed inference, evaluation platforms"
+  }
+ ],
+ "gold": [
+  "A/B Testing",
+  "Agents",
+  "Data Pipelines",
+  "Fine-tuning",
+  "Generative AI",
+  "Human-in-the-Loop",
+  "LLM",
+  "LLM Evaluation",
+  "Model Monitoring",
+  "NLP",
+  "Prompt Engineering",
+  "Python",
+  "RAG",
+  "Tool Use / Function Calling"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added A/B Testing, Distributed Systems, LLM Evaluation, Model Monitoring.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "A/B Testing",
+    "evidence": "human-in-the-loop review, online experiments"
+   },
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "prompting, retrieval-augmented generation, fine-tuning, evaluation"
+   },
+   {
+    "skill": "Model Monitoring",
+    "evidence": "ship to production with the right monitoring and guardrails"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "well-tested code in Python (or a comparable language)"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "LLM-based systems for patient and provider-facing products"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "including generative AI (LLMS)"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "prompting, retrieval-augmented generation, fine-tuning, evaluation"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "retrieval-augmented generation, fine-tuning, evaluation"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "fine-tuning, evaluation, and the trade-offs between them"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "human-in-the-loop review, online experiments"
+  },
+  {
+   "skill": "NLP",
+   "evidence": "Experience with clinical NLP"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Experience building agentic systems, tool-using LLMs"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "tool-using LLMs, in production"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "data pipelines, training and inference infrastructure"
+  }
+ ]
+}

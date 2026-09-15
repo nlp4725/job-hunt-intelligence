@@ -1,0 +1,213 @@
+{
+ "id": "jd-4060",
+ "kind": "jd",
+ "text_file": "jd-4060.txt",
+ "source": {
+  "job_id": 4060,
+  "title": "Senior Machine Learning Scientist",
+  "first_seen_at": "2026-07-13T09:27:59.248939",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "production-quality code using Python, Spark, and SQL"
+  },
+  {
+   "skill": "Spark",
+   "evidence": "production-quality code using Python, Spark, and SQL"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "production-quality code using Python, Spark, and SQL"
+  },
+  {
+   "skill": "Time Series Forecasting",
+   "evidence": "Build production ready time series models to predict real time KPIs"
+  },
+  {
+   "skill": "MLflow",
+   "evidence": "model versioning, MLflow, automated testing, CI/CD"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "model versioning, MLflow, automated testing, CI/CD"
+  },
+  {
+   "skill": "Databricks",
+   "evidence": "Build and optimize scalable Spark and Databricks workloads"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Design, evaluate and integrate Large Language Models (LLMs)"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "retrieval-augmented generation (RAG), agentic workflows"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "retrieval-augmented generation (RAG), agentic workflows"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "using Large Language Models (LLMs), embeddings, vector databases"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "embeddings, vector databases, retrieval-augmented generation (RAG)"
+  },
+  {
+   "skill": "Statistics",
+   "evidence": "Strong understanding of statistical modeling"
+  },
+  {
+   "skill": "Airflow",
+   "evidence": "Databricks, MLflow, Delta Lake, Airflow, Terraform"
+  },
+  {
+   "skill": "Terraform",
+   "evidence": "Databricks, MLflow, Delta Lake, Airflow, Terraform"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "Monitor production models and data pipelines for data quality"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "deployment, monitoring, retraining, and experiment tracking"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "model versioning, MLflow, automated testing, CI/CD"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "leveraging distributed computing best practices for large-scale data processing"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "A Master’s degree or higher in computer science"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "robust model lifecycle management through model versioning"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "Airflow",
+  "CI/CD",
+  "Data Pipelines",
+  "Databricks",
+  "Distributed Systems",
+  "Embeddings",
+  "LLM",
+  "MLflow",
+  "Master's Degree",
+  "Model Monitoring",
+  "Python",
+  "RAG",
+  "SQL",
+  "Software Testing",
+  "Spark",
+  "Stakeholder Management",
+  "Statistics",
+  "Terraform",
+  "Time Series Forecasting",
+  "Vector Database"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Distributed Systems, MLOps, Master's Degree, Software Testing.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Master's Degree",
+    "evidence": "A Master’s degree or higher in computer science"
+   },
+   {
+    "skill": "Software Testing",
+    "evidence": "model versioning, MLflow, automated testing, CI/CD"
+   },
+   {
+    "skill": "Distributed Systems",
+    "evidence": "leveraging distributed computing best practices"
+   },
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "Collaborate closely with peers and stakeholders to discover"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "production-quality code using Python, Spark, and SQL"
+  },
+  {
+   "skill": "Spark",
+   "evidence": "production-quality code using Python, Spark, and SQL"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "production-quality code using Python, Spark, and SQL"
+  },
+  {
+   "skill": "Time Series Forecasting",
+   "evidence": "Build production ready time series models to predict real time KPIs"
+  },
+  {
+   "skill": "MLflow",
+   "evidence": "model versioning, MLflow, automated testing, CI/CD"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "model versioning, MLflow, automated testing, CI/CD"
+  },
+  {
+   "skill": "Databricks",
+   "evidence": "Build and optimize scalable Spark and Databricks workloads"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Design, evaluate and integrate Large Language Models (LLMs)"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "retrieval-augmented generation (RAG), agentic workflows"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "retrieval-augmented generation (RAG), agentic workflows"
+  },
+  {
+   "skill": "Embeddings",
+   "evidence": "using Large Language Models (LLMs), embeddings, vector databases"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "embeddings, vector databases, retrieval-augmented generation (RAG)"
+  },
+  {
+   "skill": "Statistics",
+   "evidence": "Strong understanding of statistical modeling"
+  },
+  {
+   "skill": "Airflow",
+   "evidence": "Databricks, MLflow, Delta Lake, Airflow, Terraform"
+  },
+  {
+   "skill": "Terraform",
+   "evidence": "Databricks, MLflow, Delta Lake, Airflow, Terraform"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "Monitor production models and data pipelines for data quality"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "deployment, monitoring, retraining, and experiment tracking"
+  }
+ ]
+}

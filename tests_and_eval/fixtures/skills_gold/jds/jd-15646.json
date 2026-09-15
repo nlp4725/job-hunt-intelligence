@@ -1,0 +1,172 @@
+{
+ "id": "jd-15646",
+ "kind": "jd",
+ "text_file": "jd-15646.txt",
+ "source": {
+  "job_id": 15646,
+  "title": "Founding Engineer",
+  "first_seen_at": "2026-09-08T21:03:43.278199",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "LLM",
+   "evidence": "grounded in modern LLMs"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "TypeScript end to end"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "Postgres as the single source of truth"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "Vector search for retrieval"
+  },
+  {
+   "skill": "Anthropic API",
+   "evidence": "Anthropic and OpenAI under zero-retention terms"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "Anthropic and OpenAI under zero-retention terms"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "LLM observability from day one"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS KMS for per-member envelope encryption"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "GitHub Actions for CI"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "agents on structured member and ETP context"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "evaluation harness that turns every ME override"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "shipping LLM-based products in production"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "retrieval grounded in the graph"
+  },
+  {
+   "skill": "Data Modeling",
+   "evidence": "schema design, event modelling"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "owning a Postgres schema and the API layer above it"
+  },
+  {
+   "skill": "Copilot",
+   "evidence": "AI copilot grounded in the Mavalis graph"
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "AWS",
+  "Agents",
+  "Anthropic API",
+  "CI/CD",
+  "Data Modeling",
+  "Git",
+  "LLM",
+  "LLM Evaluation",
+  "Observability",
+  "OpenAI API",
+  "PostgreSQL",
+  "RAG",
+  "TypeScript",
+  "Vector Database"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added API Design & Development, Copilot, Data Modeling.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Git",
+    "evidence": "GitHub Actions for CI"
+   },
+   {
+    "skill": "Data Modeling",
+    "evidence": "schema design, event modelling, relational and vector data patterns"
+   },
+   {
+    "skill": "API Design & Development",
+    "evidence": "owning a Postgres schema and the API layer above it"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "Generative AI",
+    "reason": "generative AI never stated; only LLMs"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "LLM",
+   "evidence": "grounded in modern LLMs"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "TypeScript end to end"
+  },
+  {
+   "skill": "PostgreSQL",
+   "evidence": "Postgres as the single source of truth"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "Vector search for retrieval"
+  },
+  {
+   "skill": "Anthropic API",
+   "evidence": "Anthropic and OpenAI under zero-retention terms"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "Anthropic and OpenAI under zero-retention terms"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "LLM observability from day one"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS KMS for per-member envelope encryption"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "GitHub Actions for CI"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "agents on structured member and ETP context"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "evaluation harness that turns every ME override"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "shipping LLM-based products in production"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "retrieval grounded in the graph"
+  }
+ ]
+}

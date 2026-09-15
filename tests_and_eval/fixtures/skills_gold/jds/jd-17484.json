@@ -1,0 +1,159 @@
+{
+ "id": "jd-17484",
+ "kind": "jd",
+ "text_file": "jd-17484.txt",
+ "source": {
+  "job_id": 17484,
+  "title": "Artificial Intelligence/Machine Learning Data Science Engineer",
+  "first_seen_at": "2026-09-11T23:28:57.449548",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "application development in Python"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "modern AI/ML frameworks such as TensorFlow"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "machine learning, deep learning, AI, big data"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "large language models, predictive analytics"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "large language models, generative AI, multimodal models"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "AI agents, reinforcement learning"
+  },
+  {
+   "skill": "Reinforcement Learning",
+   "evidence": "AI agents, reinforcement learning, optimization-based machine learning"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "scientific computing, SQL, R, MATLAB"
+  },
+  {
+   "skill": "R",
+   "evidence": "SQL, R, MATLAB, C/C++"
+  },
+  {
+   "skill": "C++",
+   "evidence": "MATLAB, C/C++, Power BI"
+  },
+  {
+   "skill": "Linux",
+   "evidence": "Linux-based computing"
+  },
+  {
+   "skill": "Statistics",
+   "evidence": "statistical modeling, or predictive analytics"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "A PhD in Machine Learning"
+  },
+  {
+   "skill": "Data Visualization",
+   "evidence": "MATLAB, C/C++, Power BI"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "distributed or cluster-based systems"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "C++",
+  "Data Visualization",
+  "Deep Learning",
+  "Distributed Systems",
+  "Generative AI",
+  "LLM",
+  "Linux",
+  "PhD",
+  "Python",
+  "R",
+  "Reinforcement Learning",
+  "SQL",
+  "Statistics",
+  "TensorFlow"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Data Visualization, Distributed Systems.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Data Visualization",
+    "evidence": "MATLAB, C/C++, Power BI, or related tools"
+   },
+   {
+    "skill": "Distributed Systems",
+    "evidence": "distributed or cluster-based systems"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "application development in Python"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "modern AI/ML frameworks such as TensorFlow"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "machine learning, deep learning, AI, big data"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "large language models, predictive analytics"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "large language models, generative AI, multimodal models"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "AI agents, reinforcement learning"
+  },
+  {
+   "skill": "Reinforcement Learning",
+   "evidence": "AI agents, reinforcement learning, optimization-based machine learning"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "scientific computing, SQL, R, MATLAB"
+  },
+  {
+   "skill": "R",
+   "evidence": "SQL, R, MATLAB, C/C++"
+  },
+  {
+   "skill": "C++",
+   "evidence": "MATLAB, C/C++, Power BI"
+  },
+  {
+   "skill": "Linux",
+   "evidence": "Linux-based computing"
+  },
+  {
+   "skill": "Statistics",
+   "evidence": "Computer Science, Statistics, Data Science"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "A PhD in Machine Learning"
+  }
+ ]
+}

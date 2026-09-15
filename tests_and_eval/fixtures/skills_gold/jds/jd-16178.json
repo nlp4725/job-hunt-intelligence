@@ -1,0 +1,267 @@
+{
+ "id": "jd-16178",
+ "kind": "jd",
+ "text_file": "jd-16178.txt",
+ "source": {
+  "job_id": 16178,
+  "title": "Lead Agentic AI Developer",
+  "first_seen_at": "2026-09-09T19:01:20.943825",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "hands-on experience in Python and .NET/C#"
+  },
+  {
+   "skill": "C#",
+   "evidence": "integrate them with .NET/C# applications and enterprise platforms"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "experience building GenAI, Agentic AI, AI coding assistants"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Build AI coding agents for feature development"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "Design and build multi-agent systems including planner, developer, reviewer"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "dependency analysis, tool calling, memory, and task decomposition"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Integrate AI coding agents with Git, GitHub, GitLab, Jira"
+  },
+  {
+   "skill": "Jira",
+   "evidence": "Integrate AI coding agents with Git, GitHub, GitLab, Jira"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Jira, CI/CD pipelines, IDEs, APIs"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "Build and integrate MCP servers/tools and A2A communication"
+  },
+  {
+   "skill": "A2A Protocol",
+   "evidence": "Build and integrate MCP servers/tools and A2A communication"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "functional testing, regression testing, code validation, and quality gates"
+  },
+  {
+   "skill": "Hallucination Detection",
+   "evidence": "test success, hallucinations, cost, and execution traces"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Build agent evaluation and observability capabilities"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "Build agent evaluation and observability capabilities"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "permissions, human approvals, and guardrails"
+  },
+  {
+   "skill": "LangGraph",
+   "evidence": "agent frameworks such as LangGraph, OpenAI Agents SDK, Semantic Kernel"
+  },
+  {
+   "skill": "AutoGen",
+   "evidence": "Semantic Kernel, AutoGen, CrewAI, or similar technologies"
+  },
+  {
+   "skill": "CrewAI",
+   "evidence": "Semantic Kernel, AutoGen, CrewAI, or similar technologies"
+  },
+  {
+   "skill": "Semantic Kernel",
+   "evidence": "agent frameworks such as LangGraph, OpenAI Agents SDK, Semantic Kernel"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Experience integrating LLMs with source-code repositories"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "Experience with Git, GitHub/GitLab, Docker, Kubernetes, CI/CD"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "Git, GitHub/GitLab, Docker, Kubernetes, CI/CD"
+  },
+  {
+   "skill": "LangSmith",
+   "evidence": "Langfuse, OpenTelemetry, LangSmith, MLflow, or Phoenix"
+  },
+  {
+   "skill": "MLflow",
+   "evidence": "Langfuse, OpenTelemetry, LangSmith, MLflow, or Phoenix"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "enterprise SaaS, AWS, knowledge graphs, RAG"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "AWS, knowledge graphs, RAG, and large-scale codebase understanding"
+  }
+ ],
+ "gold": [
+  "A2A Protocol",
+  "AWS",
+  "Agents",
+  "AutoGen",
+  "C#",
+  "CI/CD",
+  "CrewAI",
+  "Docker",
+  "Generative AI",
+  "Git",
+  "Hallucination Detection",
+  "Human-in-the-Loop",
+  "Jira",
+  "Kubernetes",
+  "LLM",
+  "LLM Evaluation",
+  "LangGraph",
+  "LangSmith",
+  "MCP",
+  "MLflow",
+  "Multi-Agent Systems",
+  "Observability",
+  "Python",
+  "RAG",
+  "Semantic Kernel",
+  "Software Testing",
+  "Tool Use / Function Calling"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Agents, Human-in-the-Loop, LLM Evaluation.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Agents",
+    "evidence": "autonomous coding agents"
+   },
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "Build agent evaluation and observability capabilities"
+   },
+   {
+    "skill": "Human-in-the-Loop",
+    "evidence": "human approvals, and guardrails for autonomous coding agents"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "hands-on experience in Python and .NET/C#"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "experience building GenAI, Agentic AI, AI coding assistants"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "Design and build multi-agent systems including planner, developer, reviewer"
+  },
+  {
+   "skill": "Tool Use / Function Calling",
+   "evidence": "dependency analysis, tool calling, memory, and task decomposition"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Integrate AI coding agents with Git, GitHub, GitLab, Jira"
+  },
+  {
+   "skill": "Jira",
+   "evidence": "Integrate AI coding agents with Git, GitHub, GitLab, Jira"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Jira, CI/CD pipelines, IDEs, APIs"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "Build and integrate MCP servers/tools and A2A communication"
+  },
+  {
+   "skill": "A2A Protocol",
+   "evidence": "Build and integrate MCP servers/tools and A2A communication"
+  },
+  {
+   "skill": "C#",
+   "evidence": "integrate them with .NET/C# applications and enterprise platforms"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "functional testing, regression testing, code validation, and quality gates"
+  },
+  {
+   "skill": "Hallucination Detection",
+   "evidence": "test success, hallucinations, cost, and execution traces"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Build agent evaluation and observability capabilities"
+  },
+  {
+   "skill": "LangGraph",
+   "evidence": "agent frameworks such as LangGraph, OpenAI Agents SDK, Semantic Kernel"
+  },
+  {
+   "skill": "AutoGen",
+   "evidence": "Semantic Kernel, AutoGen, CrewAI, or similar technologies"
+  },
+  {
+   "skill": "CrewAI",
+   "evidence": "Semantic Kernel, AutoGen, CrewAI, or similar technologies"
+  },
+  {
+   "skill": "Semantic Kernel",
+   "evidence": "agent frameworks such as LangGraph, OpenAI Agents SDK, Semantic Kernel"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Experience integrating LLMs with source-code repositories"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "Experience with Git, GitHub/GitLab, Docker, Kubernetes, CI/CD"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "Git, GitHub/GitLab, Docker, Kubernetes, CI/CD"
+  },
+  {
+   "skill": "LangSmith",
+   "evidence": "Langfuse, OpenTelemetry, LangSmith, MLflow, or Phoenix"
+  },
+  {
+   "skill": "MLflow",
+   "evidence": "Langfuse, OpenTelemetry, LangSmith, MLflow, or Phoenix"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "enterprise SaaS, AWS, knowledge graphs, RAG"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "AWS, knowledge graphs, RAG, and large-scale codebase understanding"
+  }
+ ]
+}

@@ -1,0 +1,238 @@
+{
+ "id": "jd-15955",
+ "kind": "jd",
+ "text_file": "jd-15955.txt",
+ "source": {
+  "job_id": 15955,
+  "title": "Senior Agentic AI Software Engineer",
+  "first_seen_at": "2026-09-09T10:20:07.664571",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "grounded in Python, .NET, or Node.js"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "Python, .NET, or Node.js"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "3+ years of experience with Angular and TypeScript"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "using SQL and/or NoSQL"
+  },
+  {
+   "skill": "NoSQL",
+   "evidence": "using SQL and/or NoSQL"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "Deploy agentic workflows and MCP-enabled tools"
+  },
+  {
+   "skill": "Cursor",
+   "evidence": "AI development tools such as Cursor"
+  },
+  {
+   "skill": "Copilot",
+   "evidence": "GitHub Copilot agent mode"
+  },
+  {
+   "skill": "Claude Code",
+   "evidence": "and/or Claude Code on real production codebases"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Use agentic AI tools and MCP"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "Experience with multi-agent systems, orchestration"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "or RAG workflows"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "Lead human-in-the-loop reviews of AI-generated commits"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "Deep knowledge of system prompts"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Experience with application telemetry and observability"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Proven experience with Azure AI Services"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS Bedrock AgentCore"
+  },
+  {
+   "skill": "AWS Bedrock",
+   "evidence": "AWS Bedrock AgentCore"
+  },
+  {
+   "skill": "Vertex AI",
+   "evidence": "Google Vertex AI Agent Builder"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "Google Vertex AI Agent Builder"
+  },
+  {
+   "skill": "Data Modeling",
+   "evidence": "3+ years of experience with database modeling"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "unit, integration, and property-based tests"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Azure DevOps or equivalent build and release pipelines"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "AWS Bedrock",
+  "Agents",
+  "Azure",
+  "CI/CD",
+  "Claude Code",
+  "Copilot",
+  "Cursor",
+  "Data Modeling",
+  "Human-in-the-Loop",
+  "MCP",
+  "Multi-Agent Systems",
+  "NoSQL",
+  "Observability",
+  "Prompt Engineering",
+  "Python",
+  "RAG",
+  "SQL",
+  "Software Testing",
+  "TypeScript",
+  "Vertex AI"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added AWS Bedrock, GCP, JavaScript. removed Azure OpenAI, LLM.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "AWS Bedrock",
+    "evidence": "AWS Bedrock AgentCore"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "LLM",
+    "reason": "LLM / large language model never stated"
+   },
+   {
+    "skill": "Azure OpenAI",
+    "reason": "only 'Azure AI Services', not Azure OpenAI"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "grounded in Python, .NET, or Node.js"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "3+ years of experience with Angular and TypeScript"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "using SQL and/or NoSQL"
+  },
+  {
+   "skill": "NoSQL",
+   "evidence": "using SQL and/or NoSQL"
+  },
+  {
+   "skill": "MCP",
+   "evidence": "Deploy agentic workflows and MCP-enabled tools"
+  },
+  {
+   "skill": "Cursor",
+   "evidence": "AI development tools such as Cursor"
+  },
+  {
+   "skill": "Copilot",
+   "evidence": "GitHub Copilot agent mode"
+  },
+  {
+   "skill": "Claude Code",
+   "evidence": "and/or Claude Code on real production codebases"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Use agentic AI tools and MCP"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "Experience with multi-agent systems, orchestration"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "or RAG workflows"
+  },
+  {
+   "skill": "Human-in-the-Loop",
+   "evidence": "Lead human-in-the-loop reviews of AI-generated commits"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "Deep knowledge of system prompts"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "Experience with application telemetry and observability"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "chain-of-thought prompting"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Proven experience with Azure AI Services"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS Bedrock AgentCore"
+  },
+  {
+   "skill": "Vertex AI",
+   "evidence": "Google Vertex AI Agent Builder"
+  },
+  {
+   "skill": "Azure OpenAI",
+   "evidence": "Advanced certifications in Azure AI or cloud architecture"
+  },
+  {
+   "skill": "Data Modeling",
+   "evidence": "3+ years of experience with database modeling"
+  },
+  {
+   "skill": "Software Testing",
+   "evidence": "unit, integration, and property-based tests"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "Azure DevOps or equivalent build and release pipelines"
+  }
+ ]
+}

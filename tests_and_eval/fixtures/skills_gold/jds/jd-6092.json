@@ -1,0 +1,47 @@
+{
+ "id": "jd-6092",
+ "kind": "jd",
+ "text_file": "jd-6092.txt",
+ "source": {
+  "job_id": 6092,
+  "title": "Sr. FinOps Engineer",
+  "first_seen_at": "2026-07-15T12:46:28.650320",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "OS scripting and automation (Python, Bash)"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "Cloud technologies (AWS, AliCloud, Azure)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Cloud technologies (AWS, AliCloud, Azure)"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "AI/ML and GenAI workloads"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "Azure",
+  "Generative AI",
+  "Python",
+  "Stakeholder Management"
+ ],
+ "status": "verified",
+ "notes": "",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "Familiarity with AI/ML cost management and stakeholder leadership"
+   }
+  ],
+  "removed": []
+ }
+}

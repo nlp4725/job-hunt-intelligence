@@ -1,0 +1,126 @@
+{
+ "id": "jd-16145",
+ "kind": "jd",
+ "text_file": "jd-16145.txt",
+ "source": {
+  "job_id": 16145,
+  "title": "Agentic AI Engineer (T02)",
+  "first_seen_at": "2026-09-09T18:44:50.215972",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "Proficiency with Python and common AI/ML frameworks"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "(e.g., PyTorch, TensorFlow, JAX, LangChain-style orchestration)"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "(e.g., PyTorch, TensorFlow, JAX, LangChain-style orchestration)"
+  },
+  {
+   "skill": "JAX",
+   "evidence": "(e.g., PyTorch, TensorFlow, JAX, LangChain-style orchestration)"
+  },
+  {
+   "skill": "LangChain",
+   "evidence": "JAX, LangChain-style orchestration"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "developing multi-agent systems or coordinating agentic workflows"
+  },
+  {
+   "skill": "Reinforcement Learning",
+   "evidence": "Familiarity with reinforcement learning, planning algorithms"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "model governance, ML Ops, or lifecycle management tooling"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "Familiarity with distributed systems, cloud technologies"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "designing and implementing agentic AI components"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "Knowledge of mission data pipelines, sensor fusion"
+  },
+  {
+   "skill": "Responsible AI",
+   "evidence": "human-machine teaming concepts or explainable AI practices"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "Data Pipelines",
+  "Distributed Systems",
+  "JAX",
+  "LangChain",
+  "MLOps",
+  "Multi-Agent Systems",
+  "PyTorch",
+  "Python",
+  "Reinforcement Learning",
+  "TensorFlow"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Responsible AI.",
+ "manual_review": {
+  "added": [],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Proficiency with Python and common AI/ML frameworks"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "common AI/ML frameworks (e.g., PyTorch, TensorFlow, JAX, LangChain-style orchestration)"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "common AI/ML frameworks (e.g., PyTorch, TensorFlow, JAX, LangChain-style orchestration)"
+  },
+  {
+   "skill": "JAX",
+   "evidence": "common AI/ML frameworks (e.g., PyTorch, TensorFlow, JAX, LangChain-style orchestration)"
+  },
+  {
+   "skill": "LangChain",
+   "evidence": "JAX, LangChain-style orchestration"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "developing multi-agent systems or coordinating agentic workflows"
+  },
+  {
+   "skill": "Reinforcement Learning",
+   "evidence": "Familiarity with reinforcement learning, planning algorithms, or neuro-symbolic methods"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "model governance, ML Ops, or lifecycle management tooling"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "Familiarity with distributed systems, cloud technologies, or edge compute environments"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "designing and implementing agentic AI components"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "Knowledge of mission data pipelines, sensor fusion, or real-time decision-support systems"
+  }
+ ]
+}

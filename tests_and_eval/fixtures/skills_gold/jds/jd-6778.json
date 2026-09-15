@@ -1,0 +1,119 @@
+{
+ "id": "jd-6778",
+ "kind": "jd",
+ "text_file": "jd-6778.txt",
+ "source": {
+  "job_id": 6778,
+  "title": "Field Solutions Engineer Brazil (US based)",
+  "first_seen_at": "2026-07-16T14:35:47.616020",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "scripting or programming language (e.g., Python, JavaScript, Bash"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "scripting or programming language (e.g., Python, JavaScript, Bash"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "multi-cloud/hybrid environments (AWS, GCP, Azure)"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "multi-cloud/hybrid environments (AWS, GCP, Azure)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "multi-cloud/hybrid environments (AWS, GCP, Azure)"
+  },
+  {
+   "skill": "Terraform",
+   "evidence": "Infrastructure-as-Code (IaC) via tools like the Cloudflare Terraform provider"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "utilize RESTful APIs"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "experimented with emerging generative AI security architectures"
+  },
+  {
+   "skill": "HIPAA",
+   "evidence": "including PCI DSS, HIPAA, GDPR, SOC-2, and FedRAMP"
+  },
+  {
+   "skill": "Roadmapping",
+   "evidence": "multi-product roadmap development"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "Azure",
+  "GCP",
+  "Generative AI",
+  "HIPAA",
+  "JavaScript",
+  "Python",
+  "REST API",
+  "Roadmapping",
+  "Stakeholder Management",
+  "Terraform"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Roadmapping.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Stakeholder Management",
+    "evidence": "account planning, stakeholder mapping"
+   },
+   {
+    "skill": "Roadmapping",
+    "evidence": "multi-product roadmap development"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Demonstrated proficiency with a scripting or programming language (e.g., Python, JavaScript, Bash, Lua, Go)"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "scripting or programming language (e.g., Python, JavaScript, Bash, Lua, Go)"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "multi-cloud/hybrid environments (AWS, GCP, Azure)"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "multi-cloud/hybrid environments (AWS, GCP, Azure)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "multi-cloud/hybrid environments (AWS, GCP, Azure)"
+  },
+  {
+   "skill": "Terraform",
+   "evidence": "Infrastructure-as-Code (IaC) via tools like the Cloudflare Terraform provider"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "utilize RESTful APIs"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "experimented with emerging generative AI security architectures"
+  },
+  {
+   "skill": "HIPAA",
+   "evidence": "including PCI DSS, HIPAA, GDPR, SOC-2, and FedRAMP"
+  }
+ ]
+}

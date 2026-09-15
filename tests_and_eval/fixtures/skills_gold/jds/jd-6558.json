@@ -1,0 +1,68 @@
+{
+ "id": "jd-6558",
+ "kind": "jd",
+ "text_file": "jd-6558.txt",
+ "source": {
+  "job_id": 6558,
+  "title": "Basketball Data Scientist (Equity Only)",
+  "first_seen_at": "2026-07-16T12:59:08.418257",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "Strong Python and SQL"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Strong Python and SQL"
+  },
+  {
+   "skill": "Statistics",
+   "evidence": "statistical modeling, validation, and knowing what a number actually means"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "reproducible pipelines"
+  }
+ ],
+ "gold": [
+  "Data Pipelines",
+  "Python",
+  "SQL",
+  "Statistics"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): removed Git.",
+ "manual_review": {
+  "added": [],
+  "removed": [
+   {
+    "skill": "Git",
+    "reason": "GitHub only as a link to show work, not a used tool"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "Strong Python and SQL"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Strong Python and SQL"
+  },
+  {
+   "skill": "Statistics",
+   "evidence": "statistical modeling, validation, and knowing what a number actually means"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "reproducible pipelines"
+  },
+  {
+   "skill": "Git",
+   "evidence": "Links that show your analytical work (GitHub, projects, research)"
+  }
+ ]
+}

@@ -1,0 +1,96 @@
+{
+ "id": "jd-3952",
+ "kind": "jd",
+ "text_file": "jd-3952.txt",
+ "source": {
+  "job_id": 3952,
+  "title": "LLM Software Engineer - AI-Native Development - $160,000 - $190,000",
+  "first_seen_at": "2026-07-13T08:35:31.680023",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Generative AI",
+   "evidence": "takes generative AI from experiment to enterprise reality"
+  },
+  {
+   "skill": "LangGraph",
+   "evidence": "frameworks across OpenAI, Anthropic, Google, and LangGraph"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "You are building out LLMs"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "owning AI observability"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "You bring solid MLOps experience"
+  },
+  {
+   "skill": "OpenAI API",
+   "evidence": "frontier models and frameworks across OpenAI, Anthropic, Google"
+  },
+  {
+   "skill": "Anthropic API",
+   "evidence": "frontier models and frameworks across OpenAI, Anthropic, Google"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "AI governance, evaluation pipelines, deployment automation"
+  }
+ ],
+ "gold": [
+  "Anthropic API",
+  "Generative AI",
+  "LLM",
+  "LLM Evaluation",
+  "LangGraph",
+  "MLOps",
+  "Observability",
+  "OpenAI API"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Anthropic API, LLM Evaluation, OpenAI API.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "OpenAI API",
+    "evidence": "frontier models and frameworks across OpenAI, Anthropic, Google"
+   },
+   {
+    "skill": "Anthropic API",
+    "evidence": "frontier models and frameworks across OpenAI, Anthropic, Google"
+   },
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "AI governance, evaluation pipelines, deployment automation"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Generative AI",
+   "evidence": "takes generative AI from experiment to enterprise reality"
+  },
+  {
+   "skill": "LangGraph",
+   "evidence": "frameworks across OpenAI, Anthropic, Google, and LangGraph"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "You are building out LLMs"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "owning AI observability"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "You bring solid MLOps experience"
+  }
+ ]
+}

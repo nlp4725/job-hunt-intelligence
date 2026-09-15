@@ -1,0 +1,108 @@
+{
+ "id": "jd-6280",
+ "kind": "jd",
+ "text_file": "jd-6280.txt",
+ "source": {
+  "job_id": 6280,
+  "title": "Senior Data Scientist III - GEOINT/Remote Sensing",
+  "first_seen_at": "2026-07-15T14:18:42.769346",
+  "picked_for": "r_and_d"
+ },
+ "draft": [
+  {
+   "skill": "PyTorch",
+   "evidence": "machine learning frameworks (e.g., TensorFlow, PyTorch)"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "machine learning frameworks (e.g., TensorFlow, PyTorch)"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "applying deep learning models for remote sensing"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "training, fine-tuning, and applying deep learning models"
+  },
+  {
+   "skill": "Computer Vision",
+   "evidence": "object detection, and segmentation"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "Vision Transformers"
+  },
+  {
+   "skill": "Data Visualization",
+   "evidence": "hyperspectral analysis and visualization tools (e.g., ENVI/IDL)"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "PhD with 1+ year of relevant experience"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "MS/MA and 3+ years of relevant work experience"
+  }
+ ],
+ "gold": [
+  "Computer Vision",
+  "Deep Learning",
+  "Fine-tuning",
+  "Master's Degree",
+  "PhD",
+  "PyTorch",
+  "TensorFlow",
+  "Transformers"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Data Visualization. removed Python.",
+ "manual_review": {
+  "added": [],
+  "removed": [
+   {
+    "skill": "Python",
+    "reason": "Python not mentioned; GeoPandas is not Python/Pandas skill"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "GeoPandas"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "machine learning frameworks (e.g., TensorFlow, PyTorch)"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "machine learning frameworks (e.g., TensorFlow, PyTorch)"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "applying deep learning models for remote sensing"
+  },
+  {
+   "skill": "Fine-tuning",
+   "evidence": "training, fine-tuning, and applying deep learning models"
+  },
+  {
+   "skill": "Computer Vision",
+   "evidence": "object detection, and segmentation"
+  },
+  {
+   "skill": "Transformers",
+   "evidence": "Vision Transformers"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "PhD with 1+ year of relevant experience"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "MS/MA and 3+ years of relevant work experience"
+  }
+ ]
+}

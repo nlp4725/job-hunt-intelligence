@@ -1,0 +1,281 @@
+{
+ "id": "jd-13184",
+ "kind": "jd",
+ "text_file": "jd-13184.txt",
+ "source": {
+  "job_id": 13184,
+  "title": "AI/ML Engineer",
+  "first_seen_at": "2026-08-24T14:26:21.264141",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "AI/ML applications using Python"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "cloud platforms ( GCP preferred)"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Build and operationalize generative AI solutions"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "enterprise AI agents"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "multi-agent orchestration frameworks"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "Apply prompt engineering and model interaction strategies"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "Retrieval-Augmented Generation (RAG) architectures"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "develop robust data pipelines"
+  },
+  {
+   "skill": "Agile",
+   "evidence": "agile teams"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "including TensorFlow, PyTorch, NumPy, Pandas"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "including TensorFlow, PyTorch, NumPy, Pandas"
+  },
+  {
+   "skill": "NumPy",
+   "evidence": "including TensorFlow, PyTorch, NumPy, Pandas"
+  },
+  {
+   "skill": "Pandas",
+   "evidence": "including TensorFlow, PyTorch, NumPy, Pandas"
+  },
+  {
+   "skill": "Flask",
+   "evidence": "FastAPI or Flask"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "API and service development using FastAPI or Flask"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS/Azure acceptable"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "AWS/Azure acceptable"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "RAG architectures and vector databases"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "working with LLMs, prompt engineering"
+  },
+  {
+   "skill": "LLM Evaluation",
+   "evidence": "LLMs, prompt engineering, and model evaluation techniques"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "evaluating and monitoring AI/LLM systems in production"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Proficiency in TypeScript/JavaScript, Java, SQL"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "Proficiency in TypeScript/JavaScript, Java, SQL"
+  },
+  {
+   "skill": "Java",
+   "evidence": "Proficiency in TypeScript/JavaScript, Java, SQL"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Proficiency in TypeScript/JavaScript, Java, SQL"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "CI/CD pipeline implementation and maintenance"
+  },
+  {
+   "skill": "Terraform",
+   "evidence": "Infrastructure-as-code experience with Terraform"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "including observability and performance frameworks"
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "AWS",
+  "Agents",
+  "Agile",
+  "Azure",
+  "CI/CD",
+  "Data Pipelines",
+  "Flask",
+  "GCP",
+  "Generative AI",
+  "Git",
+  "Java",
+  "JavaScript",
+  "LLM",
+  "LLM Evaluation",
+  "Model Monitoring",
+  "Multi-Agent Systems",
+  "NumPy",
+  "Observability",
+  "Pandas",
+  "Prompt Engineering",
+  "PyTorch",
+  "Python",
+  "RAG",
+  "SQL",
+  "TensorFlow",
+  "Terraform",
+  "TypeScript",
+  "Vector Database"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added API Design & Development, LLM Evaluation, Model Monitoring.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Git",
+    "evidence": "using Jenkins or GitLab CI/CD"
+   },
+   {
+    "skill": "API Design & Development",
+    "evidence": "API and service development using FastAPI or Flask"
+   },
+   {
+    "skill": "LLM Evaluation",
+    "evidence": "evaluating and monitoring AI/LLM systems in production"
+   },
+   {
+    "skill": "Model Monitoring",
+    "evidence": "evaluating and monitoring AI/LLM systems in production"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "AI/ML applications using Python"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "cloud platforms ( GCP preferred)"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Build and operationalize generative AI solutions"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "enterprise AI agents"
+  },
+  {
+   "skill": "Multi-Agent Systems",
+   "evidence": "multi-agent orchestration frameworks"
+  },
+  {
+   "skill": "Prompt Engineering",
+   "evidence": "Apply prompt engineering and model interaction strategies"
+  },
+  {
+   "skill": "RAG",
+   "evidence": "Retrieval-Augmented Generation (RAG) architectures"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "develop robust data pipelines"
+  },
+  {
+   "skill": "Agile",
+   "evidence": "agile teams"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "including TensorFlow, PyTorch, NumPy, Pandas"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "including TensorFlow, PyTorch, NumPy, Pandas"
+  },
+  {
+   "skill": "NumPy",
+   "evidence": "including TensorFlow, PyTorch, NumPy, Pandas"
+  },
+  {
+   "skill": "Pandas",
+   "evidence": "including TensorFlow, PyTorch, NumPy, Pandas"
+  },
+  {
+   "skill": "Flask",
+   "evidence": "FastAPI or Flask"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "AWS/Azure acceptable"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "AWS/Azure acceptable"
+  },
+  {
+   "skill": "Vector Database",
+   "evidence": "RAG architectures and vector databases"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "working with LLMs, prompt engineering"
+  },
+  {
+   "skill": "TypeScript",
+   "evidence": "Proficiency in TypeScript/JavaScript, Java, SQL"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "Proficiency in TypeScript/JavaScript, Java, SQL"
+  },
+  {
+   "skill": "Java",
+   "evidence": "Proficiency in TypeScript/JavaScript, Java, SQL"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Proficiency in TypeScript/JavaScript, Java, SQL"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "CI/CD pipeline implementation and maintenance"
+  },
+  {
+   "skill": "Terraform",
+   "evidence": "Infrastructure-as-code experience with Terraform"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "including observability and performance frameworks"
+  }
+ ]
+}

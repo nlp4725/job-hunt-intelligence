@@ -1,0 +1,159 @@
+{
+ "id": "jd-18064",
+ "kind": "jd",
+ "text_file": "jd-18064.txt",
+ "source": {
+  "job_id": 18064,
+  "title": "Software Engineer",
+  "first_seen_at": "2026-09-14T20:11:08.505026",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "strong Python skills"
+  },
+  {
+   "skill": "Selenium",
+   "evidence": "using Python, Selenium, and OpenCV"
+  },
+  {
+   "skill": "OpenCV",
+   "evidence": "Utilize OpenCV for image recognition"
+  },
+  {
+   "skill": "NLP",
+   "evidence": "OCR, NLP, predictive analytics"
+  },
+  {
+   "skill": "HIPAA",
+   "evidence": "healthcare data privacy and security regulations (e.g., HIPAA)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Leverage Azure services"
+  },
+  {
+   "skill": "ETL",
+   "evidence": "Use Python to build ETL data pipelines"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "build ETL data pipelines"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "importance of DevOps and CI/CD"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Knowledge of APIs and SQL databases"
+  },
+  {
+   "skill": "Git",
+   "evidence": "version control tools (e.g., Git)"
+  },
+  {
+   "skill": "API Design & Development",
+   "evidence": "Experience developing APIs"
+  },
+  {
+   "skill": "Computer Vision",
+   "evidence": "Utilize OpenCV for image recognition"
+  },
+  {
+   "skill": "Observability",
+   "evidence": "logging, alerting, or observability tools"
+  }
+ ],
+ "gold": [
+  "API Design & Development",
+  "Azure",
+  "CI/CD",
+  "Computer Vision",
+  "Data Pipelines",
+  "ETL",
+  "Git",
+  "HIPAA",
+  "NLP",
+  "Observability",
+  "OpenCV",
+  "Python",
+  "SQL",
+  "Selenium"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added API Design & Development, Computer Vision, Observability. removed REST API.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "API Design & Development",
+    "evidence": "Experience developing APIs or integrating with third-party APIs"
+   },
+   {
+    "skill": "Computer Vision",
+    "evidence": "Utilize OpenCV for image recognition"
+   },
+   {
+    "skill": "Observability",
+    "evidence": "logging, alerting, or observability tools"
+   }
+  ],
+  "removed": [
+   {
+    "skill": "REST API",
+    "reason": "REST/RESTful never stated"
+   }
+  ]
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "strong Python skills"
+  },
+  {
+   "skill": "Selenium",
+   "evidence": "using Python, Selenium, and OpenCV"
+  },
+  {
+   "skill": "OpenCV",
+   "evidence": "Utilize OpenCV for image recognition"
+  },
+  {
+   "skill": "NLP",
+   "evidence": "OCR, NLP, predictive analytics"
+  },
+  {
+   "skill": "HIPAA",
+   "evidence": "healthcare data privacy and security regulations (e.g., HIPAA)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "Leverage Azure services"
+  },
+  {
+   "skill": "ETL",
+   "evidence": "Use Python to build ETL data pipelines"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "build ETL data pipelines"
+  },
+  {
+   "skill": "CI/CD",
+   "evidence": "importance of DevOps and CI/CD"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "Knowledge of APIs and SQL databases"
+  },
+  {
+   "skill": "Git",
+   "evidence": "version control tools (e.g., Git)"
+  },
+  {
+   "skill": "REST API",
+   "evidence": "Experience developing APIs"
+  }
+ ]
+}

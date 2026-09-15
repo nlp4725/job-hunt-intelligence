@@ -1,0 +1,66 @@
+{
+ "id": "jd-15959",
+ "kind": "jd",
+ "text_file": "jd-15959.txt",
+ "source": {
+  "job_id": 15959,
+  "title": "Sr. Software Development Engineer",
+  "first_seen_at": "2026-09-09T10:22:03.848141",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "languages such as Python, C, Rust, C++, C#, Java"
+  },
+  {
+   "skill": "C++",
+   "evidence": "languages such as Python, C, Rust, C++, C#, Java"
+  },
+  {
+   "skill": "C#",
+   "evidence": "C, Rust, C++, C#, Java, Javascript, Shell/Bash"
+  },
+  {
+   "skill": "Java",
+   "evidence": "C++, C#, Java, Javascript, Shell/Bash, or Powershell"
+  },
+  {
+   "skill": "JavaScript",
+   "evidence": "C#, Java, Javascript, Shell/Bash, or Powershell"
+  },
+  {
+   "skill": "Docker",
+   "evidence": "containerization technologies such as Docker or Containerd"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "orchestration frameworks like Kubernetes or Slurm"
+  },
+  {
+   "skill": "Linux",
+   "evidence": "Deep understanding of Linux and Windows operating systems"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "Bachelor’s or Master’s degree in Computer/Software Engineering"
+  }
+ ],
+ "gold": [
+  "C#",
+  "C++",
+  "Docker",
+  "Java",
+  "JavaScript",
+  "Kubernetes",
+  "Linux",
+  "Master's Degree",
+  "Python"
+ ],
+ "status": "verified",
+ "notes": "",
+ "manual_review": {
+  "added": [],
+  "removed": []
+ }
+}

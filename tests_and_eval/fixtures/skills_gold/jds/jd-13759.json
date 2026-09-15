@@ -1,0 +1,186 @@
+{
+ "id": "jd-13759",
+ "kind": "jd",
+ "text_file": "jd-13759.txt",
+ "source": {
+  "job_id": 13759,
+  "title": "Snowflake Advanced AI Engineer",
+  "first_seen_at": "2026-08-31T22:11:55.644574",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Deep Learning",
+   "evidence": "including Deep Learning, Generative AI, and Large Language Models"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Deep Learning, Generative AI, and Large Language Models"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Large Language Models"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "designing scalable data and MLOps/LLMOps pipelines"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "build scalable data pipelines to support model training"
+  },
+  {
+   "skill": "Snowflake",
+   "evidence": "Snowflake Cortex AI - Cortex Agents, Cortex Analyst, Cortex Search"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Cortex Agents"
+  },
+  {
+   "skill": "Model Monitoring",
+   "evidence": "deploying models in production at scale, including monitoring, alerting"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Proficiency in Python and python-based AI/ML framework"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "(e.g., TensorFlow, PyTorch)"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "(e.g., TensorFlow, PyTorch)"
+  },
+  {
+   "skill": "C++",
+   "evidence": "programming languages: Python, C++, Java, R, SQL"
+  },
+  {
+   "skill": "Java",
+   "evidence": "programming languages: Python, C++, Java, R, SQL"
+  },
+  {
+   "skill": "R",
+   "evidence": "programming languages: Python, C++, Java, R, SQL"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "programming languages: Python, C++, Java, R, SQL"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "MS or PhD in related field preferred"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "MS or PhD in related field preferred"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "distributed computing systems and architecture"
+  }
+ ],
+ "gold": [
+  "Agents",
+  "C++",
+  "Data Pipelines",
+  "Deep Learning",
+  "Distributed Systems",
+  "Generative AI",
+  "Java",
+  "LLM",
+  "MLOps",
+  "Master's Degree",
+  "Model Monitoring",
+  "PhD",
+  "PyTorch",
+  "Python",
+  "R",
+  "SQL",
+  "Snowflake",
+  "TensorFlow"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Model Monitoring.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Model Monitoring",
+    "evidence": "deploying models in production at scale, including monitoring, alerting"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Deep Learning",
+   "evidence": "including Deep Learning, Generative AI, and Large Language Models"
+  },
+  {
+   "skill": "Generative AI",
+   "evidence": "Deep Learning, Generative AI, and Large Language Models"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "Large Language Models"
+  },
+  {
+   "skill": "MLOps",
+   "evidence": "designing scalable data and MLOps/LLMOps pipelines"
+  },
+  {
+   "skill": "Data Pipelines",
+   "evidence": "build scalable data pipelines to support model training"
+  },
+  {
+   "skill": "Snowflake",
+   "evidence": "Snowflake Cortex AI - Cortex Agents, Cortex Analyst, Cortex Search"
+  },
+  {
+   "skill": "Agents",
+   "evidence": "Cortex Agents"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Proficiency in Python and python-based AI/ML framework"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "(e.g., TensorFlow, PyTorch)"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "(e.g., TensorFlow, PyTorch)"
+  },
+  {
+   "skill": "C++",
+   "evidence": "programming languages: Python, C++, Java, R, SQL"
+  },
+  {
+   "skill": "Java",
+   "evidence": "programming languages: Python, C++, Java, R, SQL"
+  },
+  {
+   "skill": "R",
+   "evidence": "programming languages: Python, C++, Java, R, SQL"
+  },
+  {
+   "skill": "SQL",
+   "evidence": "programming languages: Python, C++, Java, R, SQL"
+  },
+  {
+   "skill": "Master's Degree",
+   "evidence": "MS or PhD in related field preferred"
+  },
+  {
+   "skill": "PhD",
+   "evidence": "MS or PhD in related field preferred"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "distributed computing systems and architecture"
+  }
+ ]
+}

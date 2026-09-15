@@ -300,7 +300,14 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Scrum": ["scrum"],
     "Product Analytics": ["product analytics", "amplitude", "mixpanel"],
     "SQL Analytics": ["sql querying"],
-    "Stakeholder Management": ["stakeholder management"],
+    # Gold labels count managing or working with stakeholders, but only the
+    # exact phrase matched (1 of 13 gold JDs). Bare "stakeholders" tags 37% of
+    # ml_ai JDs, so a verb of managing/working-with is required (2026-09-15).
+    # \b before the verb: "work" must not match inside "network"/"framework".
+    "Stakeholder Management": [
+        r"stakeholder (?:management|alignment|engagement|communication|relationships?|mapping|leadership|partnership)",
+        r"\b(?:manag|influenc|align|engag|partner|work|collaborat)\w*\s+(?:[\w,/-]+\s+){0,5}stakeholders",
+    ],
     "Go-to-Market": ["go-to-market", "gtm strategy"],
     "PRD Writing": ["prd", "product requirements document"],
     "Wireframing": ["wireframe", "figma"],
@@ -410,7 +417,10 @@ SKILL_GROUPS: dict[str, list[str]] = {
     "Tree Ensemble Method": ["Random Forest", "Gradient Boosting", "XGBoost", "LightGBM"],
     "Enterprise LLM Platform": ["Gemini", "AWS Bedrock", "Vertex AI", "Azure OpenAI"],
     "LLM Provider API": ["OpenAI API", "Anthropic API"],
-    "LLM Eval/Observability Tool": ["LangSmith", "Ragas", "DeepEval", "Arize"],
+    # Split 2026-09-15: evaluation libraries and tracing/observability platforms
+    # are different jobs, so a LangSmith resume no longer covers a JD's Ragas.
+    "LLM Eval Framework": ["Ragas", "DeepEval"],
+    "LLM Observability Platform": ["LangSmith", "Arize"],
     "LLM Orchestration Framework": [
         "LangChain", "LangGraph", "LlamaIndex", "Semantic Kernel", "AutoGen", "CrewAI", "Claude Agent SDK",
     ],

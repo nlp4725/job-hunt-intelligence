@@ -44,3 +44,8 @@ frontend/dist/
 
 # Node (jsdom, used only by tests_and_eval/extraction_fixtures.js)
 /node_modules/
+
+# Resumes and resume labels (real people, or identifiable even when anonymised)
+docs/test_resume/
+tests_and_eval/fixtures/skills_gold/resumes/
+tests_and_eval/fixtures/skills_gold/test_resume_skill_labels.md

@@ -1,0 +1,26 @@
+{
+ "id": "jd-10986",
+ "kind": "jd",
+ "text_file": "jd-10986.txt",
+ "source": {
+  "job_id": 10986,
+  "title": "Robotic Deployment Engineer",
+  "first_seen_at": "2026-07-28T21:40:29.366869",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Computer Vision",
+   "evidence": "computer vision applications"
+  }
+ ],
+ "gold": [
+  "Computer Vision"
+ ],
+ "status": "verified",
+ "notes": "",
+ "manual_review": {
+  "added": [],
+  "removed": []
+ }
+}

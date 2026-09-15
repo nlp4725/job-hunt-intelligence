@@ -1,0 +1,106 @@
+{
+ "id": "jd-1846",
+ "kind": "jd",
+ "text_file": "jd-1846.txt",
+ "source": {
+  "job_id": 1846,
+  "title": "Senior AI Performance and Efficiency Engineer",
+  "first_seen_at": "2026-07-07T04:18:36.923346",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Python",
+   "evidence": "programming & scripting languages such as Python, Go, Bash"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "cloud computing platforms (e.g., AWS, GCP, Azure)"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "cloud computing platforms (e.g., AWS, GCP, Azure)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "cloud computing platforms (e.g., AWS, GCP, Azure)"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "Experience with Machine Learning and Deep Learning concepts, algorithms"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "deep learning frameworks like PyTorch and TensorFlow"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "deep learning frameworks like PyTorch and TensorFlow"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "ML workloads across Robotics, Autonomous vehicles, LLM’s, Videos"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "fast, distributed storage systems like Lustre and GPFS"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "Azure",
+  "Deep Learning",
+  "Distributed Systems",
+  "GCP",
+  "LLM",
+  "PyTorch",
+  "Python",
+  "TensorFlow"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Distributed Systems.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Distributed Systems",
+    "evidence": "Understanding of fast, distributed storage systems like Lustre and GPFS",
+    "pass": "2026-09-15 double-check"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "Python",
+   "evidence": "programming & scripting languages such as Python, Go, Bash"
+  },
+  {
+   "skill": "AWS",
+   "evidence": "cloud computing platforms (e.g., AWS, GCP, Azure)"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "cloud computing platforms (e.g., AWS, GCP, Azure)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "cloud computing platforms (e.g., AWS, GCP, Azure)"
+  },
+  {
+   "skill": "Deep Learning",
+   "evidence": "Experience with Machine Learning and Deep Learning concepts, algorithms"
+  },
+  {
+   "skill": "PyTorch",
+   "evidence": "deep learning frameworks like PyTorch and TensorFlow"
+  },
+  {
+   "skill": "TensorFlow",
+   "evidence": "deep learning frameworks like PyTorch and TensorFlow"
+  },
+  {
+   "skill": "LLM",
+   "evidence": "ML workloads across Robotics, Autonomous vehicles, LLM’s, Videos"
+  }
+ ]
+}

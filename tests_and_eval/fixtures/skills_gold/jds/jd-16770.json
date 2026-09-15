@@ -1,0 +1,56 @@
+{
+ "id": "jd-16770",
+ "kind": "jd",
+ "text_file": "jd-16770.txt",
+ "source": {
+  "job_id": 16770,
+  "title": "HPC Development Engineer",
+  "first_seen_at": "2026-09-10T16:41:56.381904",
+  "picked_for": "random_since_sep1"
+ },
+ "draft": [
+  {
+   "skill": "Linux",
+   "evidence": "understanding of Linux and Cloud infrastructure"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "Extensive experience with GoLang, Pulumi, Kubernetes, and other tools/technologies"
+  },
+  {
+   "skill": "Python",
+   "evidence": "writing software in Go, Python, Scala, etc."
+  },
+  {
+   "skill": "Scala",
+   "evidence": "writing software in Go, Python, Scala, etc."
+  },
+  {
+   "skill": "AWS",
+   "evidence": "mastery of Linux and cloud(AWS/Azure/GCP)"
+  },
+  {
+   "skill": "Azure",
+   "evidence": "mastery of Linux and cloud(AWS/Azure/GCP)"
+  },
+  {
+   "skill": "GCP",
+   "evidence": "mastery of Linux and cloud(AWS/Azure/GCP)"
+  }
+ ],
+ "gold": [
+  "AWS",
+  "Azure",
+  "GCP",
+  "Kubernetes",
+  "Linux",
+  "Python",
+  "Scala"
+ ],
+ "status": "verified",
+ "notes": "",
+ "manual_review": {
+  "added": [],
+  "removed": []
+ }
+}

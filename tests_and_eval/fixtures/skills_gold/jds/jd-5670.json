@@ -1,0 +1,70 @@
+{
+ "id": "jd-5670",
+ "kind": "jd",
+ "text_file": "jd-5670.txt",
+ "source": {
+  "job_id": 5670,
+  "title": "Tech Lead - AI Inference",
+  "first_seen_at": "2026-07-14T13:06:53.064344",
+  "picked_for": "random_before_sep1"
+ },
+ "draft": [
+  {
+   "skill": "LLM",
+   "evidence": "Large Language Model (LLM) serving"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Python, C++, CUDA, vLLM, NIXL/Dynamo, Kubernetes"
+  },
+  {
+   "skill": "C++",
+   "evidence": "Python, C++, CUDA, vLLM, NIXL/Dynamo, Kubernetes"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "deploying and scaling GPU workloads on Kubernetes"
+  },
+  {
+   "skill": "Distributed Systems",
+   "evidence": "high-throughput distributed storage"
+  }
+ ],
+ "gold": [
+  "C++",
+  "Distributed Systems",
+  "Kubernetes",
+  "LLM",
+  "Python"
+ ],
+ "status": "verified",
+ "notes": "Relabelled by Claude reading the JD (not the pipeline): added Distributed Systems.",
+ "manual_review": {
+  "added": [
+   {
+    "skill": "Distributed Systems",
+    "evidence": "bare-metal GPU clusters (H100/A100), and high-throughput distributed storage",
+    "pass": "2026-09-15 double-check"
+   }
+  ],
+  "removed": []
+ },
+ "draft_previous": [
+  {
+   "skill": "LLM",
+   "evidence": "Large Language Model (LLM) serving"
+  },
+  {
+   "skill": "Python",
+   "evidence": "Python, C++, CUDA, vLLM, NIXL/Dynamo, Kubernetes"
+  },
+  {
+   "skill": "C++",
+   "evidence": "Python, C++, CUDA, vLLM, NIXL/Dynamo, Kubernetes"
+  },
+  {
+   "skill": "Kubernetes",
+   "evidence": "deploying and scaling GPU workloads on Kubernetes"
+  }
+ ]
+}
