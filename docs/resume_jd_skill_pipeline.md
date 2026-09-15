@@ -2,7 +2,11 @@
 
 Status: plan, 2026-09-15. Built test-first; see §6 for the order.
 
-**Progress (2026-09-15):** §6 steps 1–11 are built and green (`test_text_normalize.py`, `test_skill_extraction.py`, `test_resume_text.py`, `test_resume_pii.py`). Step 12 (`process_resume`) waits for the test resumes. The JD-side `normalize()` in `db/job_writer.py` (§3) is not wired in yet. Where the build differs from the sketch below:
+**Progress (2026-09-15):** §6 steps 1–12 are built and green (`test_text_normalize.py`, `test_skill_extraction.py`, `test_resume_text.py`, `test_resume_pii.py`, `test_resume_pipeline.py`). §3's JD-side `normalize()` runs in `db/job_writer.py`, `skill_match_score` and the taxonomy-refresh tagger (`test_jd_normalize.py`). Where the build differs from the sketch below:
+
+- Step 12 runs on 29 real resume PDFs kept on Nasi's machine (`tests_and_eval/fixtures/skills_gold/resumes/`, gitignored): no email, phone or profile link survives redaction on any of them, and every one yields skills. The test skips on a clone without them. Resume files and resume labels are never committed.
+- Layer 3 also recognises markdown and bold headings (`## SUMMARY`, `**SKILLS**`).
+- `normalize()` on the 15,186 stored JDs changes tags on 78, all additions (Event-Driven Architecture 21, Go-to-Market 12, Fine-tuning 11, scikit-learn 9, …; R on 3, not yet checked). Stored `job_skills` are **not** re-extracted yet: `reextract_job_skills.py --apply` would also apply the taxonomy changes from `5d6fd51` that were never applied to stored rows (+12,382 / −2,853 rows), which needs its own review.
 
 - `ResumeDocument` holds `text` only. `lines` (layout) will be added when project chunking needs it.
 - `redact_pii(text, identity)` takes text. Layer 3 detects a heading as a line that is only a known section name, so it needs no layout.
@@ -150,7 +154,7 @@ This is the single entry point for the upload endpoint and for tests.
 | 11 | Redaction still removes pattern PII when no heading is detected | `test_resume_pii.py` |
 | 12 | `process_resume` end to end on each test resume: expected skills present, no PII in `redacted_text` | `test_resume_pipeline.py` |
 
-**Test resumes:** text resumes supplied by Nasi, stored under `tests_and_eval/fixtures/resumes/`, each with a hand-labelled expected-skills list. PDF and DOCX versions are rendered from the same text in the tests (fpdf2 / python-docx), so one labelled source covers all formats. Real resumes must be anonymised before they are committed.
+**Test resumes:** real resume PDFs stay on Nasi's machine under `tests_and_eval/fixtures/skills_gold/resumes/`, with draft skill labels in `test_resume_skill_labels.md`; both are gitignored and never committed. The committed suite uses synthetic resumes rendered as PDF and DOCX in the tests (fpdf2 / python-docx) for format handling.
 
 ---
 

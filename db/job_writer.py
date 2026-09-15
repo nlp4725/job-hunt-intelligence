@@ -12,6 +12,7 @@ from analysis.duplicate_detector import find_duplicate_job
 from analysis.salary_parser import parse_salary_range
 from analysis.workplace_from_raw_text import WRITEBACK_ALLOWED, infer_workplace_type
 from analysis.skills_extractor import extract_skills
+from analysis.text_normalize import normalize
 from db.models import Company, Job, JobSkill, utcnow
 
 
@@ -133,7 +134,9 @@ def save_new_job(session, keyword: str, track: str, job_id: str, detail: dict) -
         existing_skills = {
             row[0] for row in session.query(JobSkill.skill_name).filter(JobSkill.job_id == job.id).all()
         }
-        for skill_name in extract_skills(detail["raw_text"]):
+        # normalize() only for the extractor, the same as resume text; the
+        # stored raw_text stays exactly as captured.
+        for skill_name in extract_skills(normalize(detail["raw_text"])):
             if skill_name not in existing_skills:
                 session.add(JobSkill(job_id=job.id, skill_name=skill_name))
 

@@ -144,7 +144,11 @@ def _init_tag_worker(ref: str | None) -> None:
 
 
 def _tag_one(text: str) -> list[str]:
-    return _worker_taxonomy.extract_skills(text)
+    # The same normalize() db/job_writer.py applies at capture, so corpus-wide
+    # tags agree with stored job_skills.
+    from analysis.text_normalize import normalize
+
+    return _worker_taxonomy.extract_skills(normalize(text))
 
 
 def tag_texts(texts: list[str], ref: str | None = None, workers: int | None = None) -> list[list[str]]:

@@ -8,6 +8,7 @@ analysis/skills_extractor.py's existing taxonomy.
 """
 
 from analysis.skills_extractor import SKILL_GROUPS, extract_skills, skill_group_of
+from analysis.text_normalize import normalize
 
 
 def skill_match_score(resume_text: str, job_text: str) -> dict:
@@ -38,7 +39,9 @@ def skill_match_score(resume_text: str, job_text: str) -> dict:
     # It also moved 33% of already-screened scores (mean -0.245), far too much
     # churn for the size of the problem it solves. jd_sections stays available
     # for analysis, where a wrong split is inspectable rather than silent.
-    return skill_match_from_skills(set(extract_skills(job_text)), set(extract_skills(resume_text)))
+    # normalize() both sides, as job_writer and process_resume do before storing
+    # skills, so text matching agrees with stored-set matching.
+    return skill_match_from_skills(set(extract_skills(normalize(job_text))), set(extract_skills(normalize(resume_text))))
 
 
 def skill_match_from_skills(job_skills: set[str], resume_skills: set[str]) -> dict:

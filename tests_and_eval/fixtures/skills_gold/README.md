@@ -5,7 +5,7 @@ Human-verified skill labels for measuring the deterministic skill pipeline (`nor
 | Folder | Contents |
 |---|---|
 | `jds/` | 50 ml_ai job descriptions (`<id>.txt`, anonymised) + labels (`<id>.json`) |
-| `resumes/` | Anonymised resumes (`<slug>.txt`) + labels |
+| `resumes/` | **Local only, gitignored.** Real resume files; their draft labels are in `test_resume_skill_labels.md` (also gitignored) |
 | `baseline.json` | Precision / recall / score error the gate compares against |
 
 ## Workflow
@@ -39,5 +39,5 @@ Human-verified skill labels for measuring the deterministic skill pipeline (`nor
 
 ## Known gaps
 
-- All four resumes are versions of one person's resume. Add anonymised resumes from other people and other fields.
-- PDF resumes are stored as extracted text until `resume_to_text` supports PDF; after that, keep the original PDF next to its label.
+- Resumes and resume labels are never committed: a resume identifies its owner even after anonymising. `test_resume_pipeline.py` runs on them locally and skips on a clone without them.
+- The resume labels in `test_resume_skill_labels.md` are unreviewed drafts, and not yet in the per-document JSON format `load_docs()` reads, so the eval's resume half reports 0 documents.

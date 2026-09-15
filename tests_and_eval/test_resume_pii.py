@@ -74,6 +74,15 @@ class TestHeaderBlock:
         assert "Wallaby" not in redacted
         assert redacted.startswith("Experience\nBuilt RAG")
 
+    def test_markdown_or_bold_heading_ends_the_header_block(self):
+        """A .md resume marks headings with '#', and templates often bold
+        them. Matching only bare names kept the whole contact block, including
+        an address no pattern catches."""
+        text = "# Jane Doe\n42 Wallaby Way, Cary, NC 27513\n\n## SUMMARY\nML engineer.\n**SKILLS**\nPython"
+        redacted = redact_pii(text, JANE)
+        assert "Wallaby" not in redacted and "27513" not in redacted
+        assert redacted.startswith("## SUMMARY")
+
     def test_no_heading_keeps_all_text(self):
         text = "42 Wallaby Way\nI build RAG systems in Python."
         assert "I build RAG systems in Python." in redact_pii(text, JANE)

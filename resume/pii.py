@@ -41,10 +41,15 @@ _SECTION_HEADINGS = {
 }
 
 
+# Markdown heading hashes and bold/italic markers around a heading name:
+# "## SUMMARY", "**SKILLS**".
+_HEADING_MARKUP = re.compile(r"^\s*#{1,6}\s*|[*_]+")
+
+
 def _drop_header_block(text: str) -> str:
     lines = text.split("\n")
     for i, line in enumerate(lines):
-        if line.strip().rstrip(":").strip().lower() in _SECTION_HEADINGS:
+        if _HEADING_MARKUP.sub("", line).strip().rstrip(":").strip().lower() in _SECTION_HEADINGS:
             return "\n".join(lines[i:])
     # No heading found: keep everything; layers 1–2 still apply.
     return text
