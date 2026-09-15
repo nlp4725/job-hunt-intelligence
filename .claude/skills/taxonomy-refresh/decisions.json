@@ -1,0 +1,39 @@
+{
+ "_doc": "Taxonomy-refresh history. runs: one entry per completed run (window_end = where the next run's sample starts). accepted/rejected: one entry per reviewed candidate — rejected names (and aliases) are never re-proposed. Edit via the skill's procedure; keep reasons short and specific.",
+ "runs": [
+  {"date": "2026-09-15", "label": "backfill-1", "track": "ml_ai",
+   "window_start": "2000-01-01T00:00:00", "window_end": "2026-09-15T00:00:00",
+   "sample": 500, "cost_usd": 1.03, "coverage_before": 0.55, "coverage_after": 0.58,
+   "churn": {"ml_ai_pct_changed": 23.34, "ml_ai_mean_delta": -0.23, "pm_pct_changed": 16.17, "pm_mean_delta": -0.208},
+   "pr": null, "note": "Pushed without PR review at the user's request."}
+ ],
+ "accepted": [
+  {"name": "Distributed Systems", "change": "new", "jds": 1538, "status": "merged"},
+  {"name": "Data Pipelines", "change": "new", "jds": 2210, "status": "merged"},
+  {"name": "Data Modeling", "change": "new", "jds": 795, "status": "merged"},
+  {"name": "API Design & Development", "change": "new", "jds": 773, "status": "merged"},
+  {"name": "Software Testing", "change": "new", "jds": 996, "status": "merged"},
+  {"name": "HIPAA", "change": "new", "jds": 475, "status": "merged"},
+  {"name": "Claude Code", "change": "new", "jds": 734, "status": "merged"},
+  {"name": "Cursor", "change": "new", "jds": 647, "status": "merged"},
+  {"name": "Codex", "change": "new", "jds": 329, "status": "merged"},
+  {"name": "Fine-tuning", "change": "patterns: space and verb forms", "jds_gained": 100, "status": "merged"},
+  {"name": "Recommendation Systems", "change": "false-match fix: ordinary 'recommendations'", "jds_lost": 1365, "status": "merged"},
+  {"name": "R", "change": "false-match fix: R&D, requisition ids", "jds_lost": 488, "status": "merged"},
+  {"name": "Master's Degree", "change": "false-match fix: unbounded msc", "jds_lost": 118, "status": "merged"},
+  {"name": "Embeddings", "change": "false-match fix: 'embedding' as a verb", "jds_lost": 163, "status": "merged"},
+  {"name": "Computer Vision", "change": "false-match fix: resume CV", "jds_lost": 156, "status": "merged"},
+  {"name": "Spark", "change": "false-match fix: 'spark' as a verb", "jds_lost": 44, "status": "merged"}
+ ],
+ "rejected": [
+  {"name": "machine learning", "aliases": ["ai/ml", "ml"], "reason": "too broad to score", "date": "2026-09-15"},
+  {"name": "apis", "aliases": ["api integration"], "reason": "too broad to score (API Design & Development added instead)", "date": "2026-09-15"},
+  {"name": "code review", "reason": "generic engineering practice nearly every resume claims", "date": "2026-09-15"},
+  {"name": "debugging", "reason": "generic engineering practice nearly every resume claims", "date": "2026-09-15"},
+  {"name": "software engineering", "aliases": ["software development"], "reason": "too broad to score", "date": "2026-09-15"},
+  {"name": "data science", "aliases": ["data analysis", "data engineering"], "reason": "too broad to score", "date": "2026-09-15"}
+ ],
+ "deferred": [
+  {"name": "A/B Testing", "reason": "removing bare 'experimentation' lost 1,281 JDs including real mentions; needs a narrower fix", "date": "2026-09-15"}
+ ]
+}

@@ -22,7 +22,12 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     # --- Programming languages ---
     "Python": ["python"],
     "SQL": [r"\bsql\b"],
-    "R": ["r programming", r"\br\b"],
+    # \b on "r programming" is load-bearing: without it the variant matches
+    # inside "pair programming" (255 of 1,360 R tags in the corpus came from
+    # that alone). The bare \br\b still carries real "Python, R, SQL" mentions.
+    # Bare \br\b also fired on "R&D" and on requisition ids like "Job ID:
+    # R-102832" — 488 JDs (2026-09-15 taxonomy refresh).
+    "R": [r"\br programming\b", r"\br\b(?!\s*&\s*d\b)(?!-\d)"],
     "Java": ["java(?!script)"],
     "C#": [r"\bc#", "c-sharp"],
     "JavaScript": ["javascript", r"\bjs\b"],
@@ -52,7 +57,13 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "RAG": [r"\brag\b", "retrieval augmented generation", "retrieval-augmented generation"],
     "LangChain": ["langchain"],
     "LlamaIndex": ["llamaindex", "llama index"],
-    "Fine-tuning": ["fine-tuning", "finetuning"],
+    # Space and verb forms added 2026-09-15 (+100 JDs): "fine tuning",
+    # "finetune open-source models". Bare "fine-tune" is left out on purpose —
+    # it is ordinary business English ("fine-tune solutions for customers").
+    "Fine-tuning": [
+        r"fine[- ]?tuning",
+        r"fine[- ]?tun(?:e|ed|es)\s+(?:[\w.-]+\s+){0,2}(?:models?|llms?|language models?|transformers?|bert|embeddings?|slms?)",
+    ],
     "Vector Database": ["vector database", "vector db", "vector store"],
     "OpenAI API": ["openai api", "gpt-4", "gpt4"],
     "Anthropic API": ["anthropic api", "claude api"],
@@ -79,7 +90,19 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "A2A Protocol": [r"\ba2a\b", "agent-to-agent", "agent to agent"],
     "Agent Skills": ["agent skills"],
     "Copilot": [r"\bcopilots?\b"],
-    "Embeddings": [r"\bembeddings?\b"],
+    # Singular "embedding" is usually the verb ("embedding AI into workflows",
+    # "by embedding these principles") — 163 JDs were tagged on that alone
+    # (2026-09-15). Plural, compound and list-position forms carry the skill.
+    "Embeddings": [
+        r"\bembeddings\b",
+        r"embedding[- ](?:models?|vectors?|spaces?|generation|search|based|pipelines?|systems?|techniques?|approach(?:es)?|strateg(?:y|ies))",
+        r"(?:vector|text|word|semantic|sentence|image) embeddings?",
+        r"chunking(?:,| and| &)\s+embedding",
+        r"embedding and (?:ingestion|retrieval)",
+        r"(?:retrieval|ingestion) and embedding",
+        r"\bembedding\b(?=\s*[,/&)])",
+        r"(?<=, )embedding\b",
+    ],
     "Semantic Search": ["semantic search"],
 
     # --- Enterprise LLM platforms ---
@@ -108,6 +131,8 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Responsible AI": ["responsible ai"],
     "Human-in-the-Loop": ["human-in-the-loop", "human in the loop"],
     "PII": [r"\bpii\b", "personally identifiable information"],
+    # Added 2026-09-15 (LLM discovery over 500 ml_ai JDs; corpus: 475 JDs).
+    "HIPAA": [r"\bhipaa\b"],
     "Differential Privacy": ["differential privacy"],
     "LangSmith": ["langsmith"],
     "Ragas": [r"\bragas\b"],
@@ -115,7 +140,14 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Arize": [r"\barize\b"],
 
     # --- Computer vision / NLP ---
-    "Computer Vision": ["computer vision", r"\bcv\b(?!\.)"],
+    # Bare "CV" is almost always a resume ("upload your CV", "Resume/CV") —
+    # 156 JDs (2026-09-15). Only CV in an ML context counts now.
+    "Computer Vision": [
+        "computer vision",
+        r"\bcv (?:models?|pipelines?|systems?|engineer(?:ing)?|research|tasks?)\b",
+        r"\b(?:ml|nlp|ai)\s*/\s*cv\b",
+        r"\bcv\s*/\s*(?:ml|nlp)\b",
+    ],
     "NLP": ["nlp", "natural language processing"],
     "OpenCV": ["opencv"],
     "Scikit-image": ["scikit-image", "skimage"],
@@ -136,7 +168,8 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Hypothesis Testing": ["hypothesis testing"],
     "Causal Inference": ["causal inference"],
     "Uncertainty Quantification": ["uncertainty quantification"],
-    "A/B Testing": ["a/b test", "ab test", "experimentation"],
+    # \b on "ab test": the bare variant matched "lab testing" in 11 JDs.
+    "A/B Testing": ["a/b test", r"\bab test", "experimentation"],
     "Data Visualization": ["data visualization", "tableau", "power bi"],
     "Jupyter": ["jupyter"],
 
@@ -160,14 +193,14 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Reinforcement Learning": [r"\brl\b", "reinforcement learning"],
     "SHAP": [r"\bshap\b"],
     "Recommendation Systems": [
-        # bare "recommendation(s)" and "recommender(s)" catch phrasing like
-        # "personalized recommendations" or "content recommender" — not just
-        # "recommendation system". The (?<!of ) exclusion guards against the
-        # one common false-positive collision: "letter(s) of recommendation"
-        # in academic/research postings, which has nothing to do with ML.
-        r"(?<!of )\brecommendations?\b",
+        # Bare "recommendation(s)" / "recommending" used to count, which tagged
+        # 1,365 JDs on ordinary English ("prioritized recommendations",
+        # "technical recommendation report") — 2026-09-15 refresh. Now only
+        # recommender-system phrasing; "recommender(s)" alone stays, it is
+        # never ordinary English.
+        r"recommend(?:ation|er)[- ](?:system|engine|model|algorithm)s?",
         r"\brecommenders?\b",
-        r"\brecommending\b",
+        r"personali[sz]ed recommendations?",
     ],
     "Collaborative Filtering": ["collaborative filtering"],
 
@@ -175,7 +208,12 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     # PySpark merged in — it's Spark's own Python API, not a different
     # technology, same class of bug as the AI Evals/LLM Evaluation and
     # Agent Orchestration/Multi-Agent Systems merges above.
-    "Spark": ["apache spark", r"\bspark\b", r"\bpyspark\b"],
+    "Spark": [
+        "apache spark",
+        r"\bpyspark\b",
+        # Excludes the verb — "spark innovation", "find your spark" — 44 JDs (2026-09-15).
+        r"(?<!your )(?<!the )(?<!a )(?<!to )\bspark\b(?!\s+(?:innovation|ideas?|new\b|curiosity|creativity|joy|change|conversations?|interest|excitement|meaningful|growth|and grow|of\b))",
+    ],
     "Hadoop": ["hadoop"],
     "Kafka": ["kafka"],
     "Airflow": ["airflow"],
@@ -184,6 +222,9 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "Snowflake": ["snowflake"],
     "Databricks": ["databricks"],
     "BigQuery": ["bigquery"],
+    # Added 2026-09-15 (LLM discovery; corpus: 2,210 / 795 JDs).
+    "Data Pipelines": [r"data (?:processing |ingestion )?pipelines?"],
+    "Data Modeling": [r"data model(?:l)?ing", r"dimensional model(?:l)?ing"],
 
     # --- Databases ---
     "PostgreSQL": ["postgresql", "postgres"],
@@ -210,6 +251,26 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
     "gRPC": [r"\bgrpc\b"],
     "Event-Driven Architecture": ["event-driven", "event driven"],
 
+    # --- Software engineering ---
+    # Added 2026-09-15 (LLM discovery; corpus: 1,538 / 773 / 996 JDs).
+    "Distributed Systems": [r"distributed systems?", "distributed computing"],
+    "API Design & Development": [
+        "api design", "api development",
+        r"designing (?:and building )?apis",
+        r"build(?:ing)? (?:scalable |robust |restful )?apis",
+    ],
+    "Software Testing": [
+        r"unit[- ]test(?:s|ing)?", r"integration[- ]test(?:s|ing)?",
+        r"end[- ]to[- ]end test(?:s|ing)?", r"automated test(?:s|ing)?", "test automation",
+    ],
+
+    # --- AI coding tools ---
+    # Added 2026-09-15 (corpus: 734 / 647 / 329 JDs). Copilot stays under
+    # Agentic AI: most of its matches are product "copilots", not GitHub Copilot.
+    "Claude Code": ["claude code"],
+    "Cursor": [r"\bcursor\b"],
+    "Codex": [r"\bcodex\b"],
+
     # --- Web scraping ---
     "Beautiful Soup": ["beautiful soup", "beautifulsoup", r"\bbs4\b"],
     "Selenium": [r"\bselenium\b"],
@@ -235,7 +296,7 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
         r"(?:own|drive|define|set|build|shape)(?:s|ed|ing)?\s+(?:the\s+|a\s+|our\s+)?(?:product\s+|technical\s+)?roadmap",
     ],
     "User Research": ["user research", "user interviews"],
-    "Agile": ["agile"],
+    "Agile": [r"\bagile\b"],  # \b: bare "agile" matched "fragile" in 38 JDs
     "Scrum": ["scrum"],
     "Product Analytics": ["product analytics", "amplitude", "mixpanel"],
     "SQL Analytics": ["sql querying"],
@@ -248,7 +309,9 @@ SKILL_TAXONOMY: dict[str, list[str]] = {
 
     # --- Education / degree signals (not skills per se, but useful tags) ---
     "PhD": [r"\bph\.?d\.?\b"],
-    "Master's Degree": ["master's degree", "ms degree", "msc"],
+    # Unbounded "msc" matched glued capture text ("systemsCollaborate") and
+    # names like MSCI — 118 JDs (2026-09-15).
+    "Master's Degree": ["master's degree", "ms degree", r"\bmsc\b"],
 }
 
 # Groups skill names into themes, e.g. "how many jobs mention ANYTHING in the
@@ -277,7 +340,7 @@ SKILL_CATEGORIES: dict[str, list[str]] = {
     "Enterprise LLM Platforms": ["Gemini", "AWS Bedrock", "Vertex AI", "Azure OpenAI"],
     "AI Evaluation & Safety": [
         "LLM Evaluation", "LLM-as-a-Judge", "Red-teaming", "Hallucination Detection", "Observability",
-        "Responsible AI", "Human-in-the-Loop", "PII", "Differential Privacy",
+        "Responsible AI", "Human-in-the-Loop", "PII", "HIPAA", "Differential Privacy",
         "LangSmith", "Ragas", "DeepEval", "Arize",
     ],
     "Computer Vision / NLP": [
@@ -296,13 +359,15 @@ SKILL_CATEGORIES: dict[str, list[str]] = {
     ],
     "Data Engineering / Big Data": [
         "Spark", "Hadoop", "Kafka", "Airflow", "ETL", "dbt", "Snowflake", "Databricks",
-        "BigQuery",
+        "BigQuery", "Data Pipelines", "Data Modeling",
     ],
     "Databases": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "DynamoDB", "NoSQL"],
     "Cloud / Infra": [
         "AWS", "GCP", "Azure", "Docker", "Kubernetes", "Terraform", "CI/CD", "Linux",
         "Flask", "Streamlit", "Microservices", "REST API", "gRPC", "Event-Driven Architecture",
     ],
+    "Software Engineering": ["Distributed Systems", "API Design & Development", "Software Testing"],
+    "AI Coding Tools": ["Claude Code", "Cursor", "Codex"],
     "Web Scraping": ["Beautiful Soup", "Selenium"],
     "MLOps": ["MLOps", "MLflow", "Model Monitoring", "Feature Store"],
     "Version Control / Collaboration": ["Git", "Jira", "Confluence"],
@@ -355,6 +420,9 @@ SKILL_GROUPS: dict[str, list[str]] = {
     "Time Series Model": ["ARIMA", "SARIMA", "Time Series Forecasting"],
     "Data Visualization Library": ["Data Visualization", "Matplotlib", "Seaborn"],
     "Clustering Method": ["K-means", "Hierarchical Clustering", "DBSCAN", "Clustering"],
+    # Interchangeable agentic coding tools — fluency in one transfers to another
+    # within days, unlike e.g. Docker vs Kubernetes (added 2026-09-15).
+    "AI Coding Assistant": ["Claude Code", "Cursor", "Codex"],
 }
 
 _grouped_skills = {name for names in SKILL_GROUPS.values() for name in names}
@@ -387,11 +455,52 @@ def category_of(skill_name: str) -> str | None:
     return None
 
 
+def _spaces_match_any_whitespace(pattern: str) -> str:
+    """A literal space in a variant matches any whitespace run, so a skill
+    wrapped across lines ("Prompt\\nEngineering", common in resume PDFs) still
+    matches. Where a variable-width \\s+ would be invalid or change meaning —
+    inside a [class], inside a lookbehind (must be fixed-width), or before a
+    quantifier (" ?" -> "\\s+?" would turn optional into lazy) — the space
+    becomes a single \\s instead."""
+    out = []
+    in_class = False
+    groups: list[bool] = []  # True for each open lookbehind group
+    i = 0
+    while i < len(pattern):
+        ch = pattern[i]
+        if ch == "\\":
+            out.append(pattern[i:i + 2])
+            i += 2
+            continue
+        if in_class:
+            if ch == "]":
+                in_class = False
+            out.append(r"\s" if ch == " " else ch)
+        elif ch == "[":
+            in_class = True
+            out.append(ch)
+        elif ch == "(":
+            groups.append(pattern.startswith(("(?<=", "(?<!"), i))
+            out.append(ch)
+        elif ch == ")":
+            if groups:
+                groups.pop()
+            out.append(ch)
+        elif ch == " ":
+            next_ch = pattern[i + 1:i + 2]
+            fixed_width = any(groups) or next_ch in ("?", "*", "+", "{")
+            out.append(r"\s" if fixed_width else r"\s+")
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 # Pre-compile one regex per skill, combining all its variants with OR (|).
 # re.IGNORECASE means "Python" matches "python"/"PYTHON"/"Python" alike.
 _COMPILED_PATTERNS: dict[str, re.Pattern] = {
     canonical: re.compile(
-        r"(?:" + "|".join(variants) + r")",
+        r"(?:" + "|".join(_spaces_match_any_whitespace(v) for v in variants) + r")",
         re.IGNORECASE,
     )
     for canonical, variants in SKILL_TAXONOMY.items()

@@ -24,6 +24,9 @@ scraper/.chrome-profile/
 # Scrape run logs
 scraper/logs/
 
+# Taxonomy-refresh run artifacts (JD samples carry raw job text; regenerable)
+.claude/skills/taxonomy-refresh/runs/
+
 # Personal documents
 nasi_v*.pdf
 nasi_resume*.pdf
