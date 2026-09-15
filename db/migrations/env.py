@@ -11,6 +11,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from db.cloud_models import CloudBase
 from db.models import Base
 
 config = context.config
@@ -24,7 +25,8 @@ if url.startswith("sqlite"):
     raise RuntimeError("Alembic manages only the cloud Postgres schema; the local SQLite DB uses db.session.init_db().")
 config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 
-target_metadata = Base.metadata
+# Shared tables (same shape as local SQLite) plus the cloud-only per-user tables.
+target_metadata = [Base.metadata, CloudBase.metadata]
 
 
 def run_migrations_offline() -> None:
