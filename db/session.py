@@ -1,5 +1,16 @@
-"""Engine + session factory for the job hunt SQLite DB."""
+"""Engine + session factory.
 
+Local (the default): the SQLite file data/job_hunt.db, its schema kept current
+by init_db()'s hand-written _migrate_* chain. Unchanged by the cloud work.
+
+Cloud: JHI_DATABASE_URL (a Postgres URL) points the same models at Postgres,
+whose schema is owned by Alembic (`alembic upgrade head`). Deliberately not the
+generic DATABASE_URL, which other tools set and which must never move the local
+app off SQLite. Set JHI_DATABASE_URL only in the cloud environment, never in
+the repo's .env: the local server loads .env too.
+"""
+
+import os
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
@@ -8,9 +19,15 @@ from sqlalchemy.orm import Session, sessionmaker
 from db.models import Base, Job
 
 DB_PATH = Path(__file__).parent.parent / "data" / "job_hunt.db"
-DB_PATH.parent.mkdir(exist_ok=True)
+CLOUD_DATABASE_URL = os.environ.get("JHI_DATABASE_URL")
 
-engine = create_engine(f"sqlite:///{DB_PATH}")
+if CLOUD_DATABASE_URL:
+    # Stored datetimes are UTC (db.models.utcnow). Pin the session time zone so
+    # they land in timestamp columns unshifted whatever the server's default.
+    engine = create_engine(CLOUD_DATABASE_URL, pool_pre_ping=True, connect_args={"options": "-c timezone=UTC"})
+else:
+    DB_PATH.parent.mkdir(exist_ok=True)
+    engine = create_engine(f"sqlite:///{DB_PATH}")
 SessionLocal = sessionmaker(bind=engine)
 
 
@@ -18,7 +35,11 @@ def init_db() -> None:
     """Create all tables that don't already exist. Safe to call every run —
     SQLAlchemy skips tables that are already there. `create_all` only adds
     missing *tables*, not missing *columns* on ones that already exist, so
-    small additive column migrations are applied by hand afterward."""
+    small additive column migrations are applied by hand afterward.
+
+    Local SQLite only: the migrations below are SQLite PRAGMA statements."""
+    if engine.dialect.name != "sqlite":
+        raise RuntimeError("init_db() manages only the local SQLite schema. For Postgres run `alembic upgrade head`.")
     Base.metadata.create_all(engine)
     _migrate_jobs_detail_fetched()
     _migrate_jobs_is_relevant_column()
