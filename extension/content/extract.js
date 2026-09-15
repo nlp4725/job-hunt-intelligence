@@ -216,6 +216,32 @@ function extractTitleAndCompany(topCard) {
   return { title, company: companyLink ? visibleText(companyLink) : null };
 }
 
+// Elements that start a new line when rendered. range.toString() ignores this
+// and concatenates text nodes directly, which glued adjacent blocks together
+// ("RequirementsPythonAWS") — no newline survived in 70% of September captures,
+// breaking word-boundary skill patterns, JD sectioning and LLM prompts.
+const BLOCK_TAGS = new Set([
+  "ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "BR", "DD", "DIV", "DL", "DT", "FIGCAPTION", "FIGURE",
+  "FOOTER", "H1", "H2", "H3", "H4", "H5", "H6", "HEADER", "HR", "LI", "OL", "P", "PRE", "SECTION",
+  "TABLE", "TD", "TH", "TR", "UL",
+]);
+
+// Text inside `range`, one line per block. Whitespace inside a text node is
+// collapsed the way a browser renders it, so source-HTML indentation never
+// becomes a line break; only block boundaries do.
+function blockText(node, range, parts) {
+  if (!range.intersectsNode(node)) return;
+  if (node.nodeType === Node.TEXT_NODE) {
+    parts.push(node.textContent.replace(/\s+/g, " "));
+    return;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return;
+  const block = BLOCK_TAGS.has(node.tagName);
+  if (block) parts.push("\n");
+  for (const child of node.childNodes) blockText(child, range, parts);
+  if (block) parts.push("\n");
+}
+
 function extractRawText() {
   const h2 = findHeading("about the job");
   if (!h2) return null;
@@ -226,7 +252,12 @@ function extractRawText() {
   range.setStartBefore(h2);
   if (nextH2) range.setEndBefore(nextH2);
   else range.setEndAfter(document.body.lastChild);
-  const text = range.toString().replace(/\s+/g, " ").trim();
+  const parts = [];
+  blockText(range.commonAncestorContainer, range, parts);
+  const text = parts.join("")
+    .replace(/[^\S\n]+/g, " ")   // runs of spaces -> one space
+    .replace(/ ?\n\s*/g, "\n")   // any whitespace around a line break -> one line break
+    .trim();
   return text || null;
 }
 
