@@ -15,6 +15,7 @@ from analysis.user_scoring import active_profile, score_user
 from db.cloud_models import User, UserProfile, UserResume
 from resume.pii import KnownIdentity
 from resume.pipeline import process_resume
+from resume.resume_text import UnsupportedResume
 from resume.store import ResumeCipher, resume_storage_key
 
 
@@ -76,3 +77,49 @@ def confirm_skills(db, user_id: int, resume_id: int, skills: list[str]) -> UserR
         db.flush()
         score_user(db, user_id)
     return resume
+
+
+SUPPORTED_SUFFIXES = (".pdf", ".docx", ".txt", ".md")
+
+
+def start_resume_upload(db, user: User, filename: str, storage):
+    """Step 1 of a browser upload: reserve the next version and a key under the
+    user's own prefix, and return (row, upload ticket) for exactly that key.
+    The row stays pending (no skills) until finish_resume_upload."""
+    name = PurePath(filename or "").name
+    if PurePath(name).suffix.lower() not in SUPPORTED_SUFFIXES:
+        raise UnsupportedResume("Upload a PDF, DOCX, TXT or MD file.")
+    version = _next_version(db, user.id)
+    key = resume_storage_key(user.id, version, name)
+    row = UserResume(user_id=user.id, version=version, original_filename=name, storage_key=key)
+    db.add(row)
+    db.flush()
+    return row, storage.presign_upload(key)
+
+
+def finish_resume_upload(db, user: User, version: int, storage, cipher: ResumeCipher) -> UserResume:
+    """Step 2: read the uploaded file once, extract text and skills. Raises
+    LookupError (no such version for this user), FileNotFoundError (nothing
+    uploaded yet) or UnsupportedResume (the file and its row are removed)."""
+    row = db.query(UserResume).filter(UserResume.user_id == user.id, UserResume.version == version).one_or_none()
+    if row is None:
+        raise LookupError("resume version not found")
+    if row.skills_extracted is not None:
+        return row
+    data = storage.read(row.storage_key)
+    if data is None:
+        raise FileNotFoundError("the file has not been uploaded yet")
+    try:
+        processed = process_resume(row.original_filename, data, KnownIdentity(name=user.display_name or "", email=user.email))
+    except UnsupportedResume:
+        storage.delete(row.storage_key)
+        db.delete(row)
+        db.flush()
+        raise
+    row.text_encrypted = cipher.encrypt(processed.text.encode())
+    row.redacted_text = processed.redacted_text
+    row.skills_extracted = sorted(set(processed.skills))
+    row.taxonomy_version = taxonomy_version()
+    db.flush()
+    return row
+

@@ -439,7 +439,9 @@ Rules:
 
 ### 5.3 Resumes are PII
 
-- Resume files encrypted at rest (SSE-KMS or the provider's equivalent), uploaded with a presigned PUT straight from the browser so the file never passes through the API process.
+- Resume files live in **one private bucket** under per-user keys (`users/<id>/resumes/v<n>/<file>`), encrypted at rest with SSE-KMS; no browser ever holds storage credentials (decided 2026-09-16).
+- **Upload:** the API returns a presigned **POST** limited to that exact key, 1 byte to 5 MB, KMS encryption required, valid 5 minutes; the browser sends the file straight to S3. The API then reads it once to extract text and skills.
+- **Download:** a presigned GET for one key, sent as an attachment, valid 5 minutes, signed on demand after row-level security confirms the row is the caller's. Links are never stored; the database keeps only the key.
 - `text_encrypted` is never logged. Only `redacted_text` may reach LLM calls, traces or embeddings.
 - No LLM call receives resume text or anything else about a user. Seniority classification sees only the posting.
 
@@ -533,6 +535,8 @@ Phases 1–5 are all local. Phase 4's prompt-parity eval and phase 5's isolation
 **Status (2026-09-15): phase 1 built** on branch `feat/cloud-prep`. `JHI_DATABASE_URL` selects Postgres (unset = local SQLite, unchanged); Alembic baseline `ca4ae71d4189` matches the models (`alembic check` in `test_cloud_db.py`); `python -m db.copy_to_cloud` seeded a test Postgres from the live local file in 11 s with every table's row count matching, except 18 `job_skills` rows that point at jobs no longer in SQLite (skipped and reported). Remaining for "done when": merge, then confirm a live capture still works locally.
 
 **Status (2026-09-15): phase 2 built.** `db/cloud_models.py` + migration `ff9123bfee52`; `python -m db.seed_owner` on the live copy: 1,078 `job_tracking` rows, 393 `applied` events, 11,189 `job_seniority` levels, 2,327 score-0 jobs waiting for phase 4, all equal to local SQLite.
+
+**Status (2026-09-16): phase 5 in progress** on `feat/phase5-auth`. Slice 1: `cloud_api/` (Flask) with Cognito ID-token verification, FakeVerifier (localhost only), users keyed on `sub` (a verified email may claim the seeded owner row), admin API tokens stored hashed. Slice 2: migration `c4d8e2f6a713` adds the `jhi_app` role and row-level security on the five per-user tables; `cloud_api/user_data.py` is the access layer; guards set `app.user_id` per transaction. Slice 3A: resume upload through S3 presigned POST / GET (`resume/storage.py`; `DevSignedStorage` locally) and `/api/v1/me/resume` routes. Open in slice 3: a separate role so user requests cannot write shared tables; profile, jobs, tracking, applications and account deletion routes; the full isolation suite.
 
 **Status (2026-09-15): phase 3 built.** Decision: **one active resume per user** (the one the latest profile version points at); other uploads stay as earlier versions. `resume/store.py` (Fernet-encrypted files and text, `LocalFileStore` until S3), `resume/ingest.py` (`add_resume`, `confirm_skills`: only taxonomy skill names, first confirmation in place, edits write a new version, activation writes a new profile version and rescores), `analysis/user_scoring.py` (`score_user` upserts `user_job_scores` from stored skill sets, duplicates not scored). `python -m db.import_owner_resumes` on the live copy: pm resume v1, ml_ai resume v2 (active), 13,665 jobs scored in 14 s. On 11,045 ml_ai jobs with a local skill score, 11,006 match; of the 39 that don't, 35 are stale local scores (re-scoring the JD text with today's code gives the cloud value) and 4 come from stored `job_skills` that predate the current taxonomy (fixed by the pending re-extraction). PM-track jobs are scored against the active ml_ai resume, as decided.
 
