@@ -15,19 +15,22 @@ the local SQLite file, read-only.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 
-from analysis.seniority_fit import seniority_fit
+from analysis.seniority_fit import proposed_scores, seniority_fit
+from db.models import Job
+from db.session import get_session
 from judge.seniority_level import classify_job_seniority
 from tests_and_eval.test_seniority.build_dataset import EXAMPLES
 from tests_and_eval.test_seniority.common import get_job_posting
 
 BASELINE_MAE = 0.317
+ENTRY_TABLE = proposed_scores("entry")   # what the labels were written for
 NOISE = 0.1
 
 
 def run_one(example, rep):
     job_id, label, category = example
     result = classify_job_seniority(get_job_posting(job_id))
-    fit = seniority_fit(result.level, result.non_fit_reason, "entry")
+    fit = seniority_fit(result.level, result.non_fit_reason, ENTRY_TABLE)
     return job_id, label, category, rep, fit, result
 
 
@@ -36,7 +39,14 @@ def main() -> None:
     parser.add_argument("--reps", type=int, default=3)
     args = parser.parse_args()
 
-    runs = [(example, rep) for example in EXAMPLES for rep in range(args.reps)]
+    session = get_session()
+    try:
+        present = [e for e in EXAMPLES if session.get(Job, e[0]) is not None]
+    finally:
+        session.close()
+    for job_id, label, category in sorted(set(EXAMPLES) - set(present)):
+        print(f"job {job_id:5d} {category:34s} label {label} — no longer in the local database, skipped")
+    runs = [(example, rep) for example in present for rep in range(args.reps)]
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = list(pool.map(lambda r: run_one(*r), runs))
 

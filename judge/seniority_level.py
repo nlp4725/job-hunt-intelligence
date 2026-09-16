@@ -173,6 +173,13 @@ class JobSeniorityLevel(BaseModel):
     non_fit_reason: Literal["agency", "contract", "internship"] | None
     level: Literal["entry", "mid", "senior", "senior_plus", "staff", "principal"] | None
 
+    @field_validator("non_fit_reason", "level", mode="before")
+    @classmethod
+    def _null_text_is_null(cls, v):
+        # DeepSeek sometimes writes JSON null as the string "null" (first parity
+        # run, 2026-09-16); every retry repeated it, so the call failed outright.
+        return None if isinstance(v, str) and v.strip().lower() in ("null", "none", "") else v
+
     @field_validator("years_required", mode="before")
     @classmethod
     def _round_up_fractional_years(cls, v):

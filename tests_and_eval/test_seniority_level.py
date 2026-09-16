@@ -89,6 +89,13 @@ class TestLevelPrompt:
                                    confidence="high", note=None, non_fit_reason=None, level="entry")
         assert result.years_required == 2
 
+    def test_null_written_as_text_counts_as_null(self):
+        from judge.seniority_level import JobSeniorityLevel
+
+        result = JobSeniorityLevel(evidence="", years_required=None, inferred=True, confidence="low",
+                                   note=None, non_fit_reason="null", level="None")
+        assert (result.non_fit_reason, result.level) == (None, None)
+
     def test_unknown_level_names_fail_validation(self):
         from pydantic import ValidationError
 
