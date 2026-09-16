@@ -3,7 +3,8 @@
 require_user: a signed-in person (identity-provider token only; API tokens are
 for the extension and skill, never for /me routes). Sets g.user.
 require_admin: an admin person, or a valid admin API token. Sets g.user.
-The user id always comes from the verified token, never from the request.
+The user id always comes from the verified token, never from the request, and
+is handed to Postgres row-level security for the request's transaction.
 """
 
 from functools import wraps
@@ -13,6 +14,7 @@ from flask import current_app, g, jsonify, request
 from cloud_api.auth.tokens import authenticate_api_token, is_api_token
 from cloud_api.auth.users import AccountConflict, get_or_create_user
 from cloud_api.auth.verify import InvalidToken
+from cloud_api.user_data import set_request_user
 
 
 def _error(status: int, message: str):
@@ -46,6 +48,7 @@ def require_user(fn):
         if error:
             return error
         g.user = user
+        set_request_user(g.db, user.id)   # row-level security for the rest of this request
         return fn(*args, **kwargs)
     return wrapper
 
@@ -67,5 +70,6 @@ def require_admin(fn):
             if user.role != "admin":
                 return _error(403, "admin only")
         g.user = user
+        set_request_user(g.db, user.id)   # admins see only their own per-user rows too
         return fn(*args, **kwargs)
     return wrapper

@@ -13,11 +13,10 @@ from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from analysis.user_scoring import active_profile
 from cloud_api.auth.decorators import require_admin, require_user
 from cloud_api.auth.tokens import create_api_token, revoke_api_token
 from cloud_api.auth.verify import FakeVerifier
-from db.cloud_models import UserResume
+from cloud_api.user_data import onboarding_state
 
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
@@ -58,16 +57,9 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     @require_user
     def me():
         user = g.user
-        resumes = g.db.query(UserResume).filter(UserResume.user_id == user.id).all()
-        profile = active_profile(g.db, user.id)
         return jsonify({
             "id": user.id, "email": user.email, "display_name": user.display_name, "role": user.role,
-            "onboarding": {
-                "resume": bool(resumes),
-                "skills_confirmed": any(r.skills_confirmed is not None for r in resumes),
-                "level": profile is not None,
-                "scores_confirmed": profile is not None and profile.seniority_scores is not None,
-            },
+            "onboarding": onboarding_state(g.db, user),
         })
 
     @app.post("/api/v1/admin/tokens")
