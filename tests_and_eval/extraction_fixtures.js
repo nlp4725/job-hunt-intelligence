@@ -170,6 +170,28 @@ const COMPANY_CARD_TEXT_NODE = `
     </div>
   </div>`;
 
+// raw_text used to come from range.toString() with all whitespace collapsed, so
+// adjacent blocks glued together ("RequirementsPythonAWS") and 70% of September
+// captures had no line breaks at all. Each block (p, li, h2, br) is now its own
+// line; inline markup like <strong> stays inside its line.
+const JD_BLOCKS = `
+  <div>
+    <div>
+      <a href="/jobs/view/4434839824/">Machine Learning Engineer</a>
+      <a href="/company/conquer-ai/">Conquer AI</a>
+      <div><span>United States</span></div>
+    </div>
+    <div>
+      <h2>About the job</h2>
+      <div>
+        <p>We build <strong>LLM</strong> products for   hospitals.</p>
+        <p><strong>Requirements</strong></p>
+        <ul><li>Python</li><li>AWS</li></ul>
+        <p>Remote first.<br>Apply now.</p>
+      </div>
+    </div>
+  </div>`;
+
 const CASES = [
   {
     name: "pre-September: separate pill + leaf nodes",
@@ -213,6 +235,13 @@ const CASES = [
     name: "'Chicago' must never be accepted as a posted_date",
     html: CHICAGO_TRAP,
     expect: { posted_date: null, workplace_type: "Remote", location: "Chicago, IL" },
+  },
+  {
+    name: "raw_text keeps one line per block, inline markup stays inline",
+    html: JD_BLOCKS,
+    expect: {
+      raw_text: "About the job\nWe build LLM products for hospitals.\nRequirements\nPython\nAWS\nRemote first.\nApply now.",
+    },
   },
 ];
 

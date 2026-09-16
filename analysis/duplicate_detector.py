@@ -16,10 +16,24 @@ difflib fuzzy matching with a threshold below 1.0 but close to it.
 """
 
 import difflib
+import re
 
 from db.models import Job
 
 SIMILARITY_THRESHOLD = 0.95
+
+
+def _comparable(text: str) -> str:
+    """JD text with line breaks removed. Captures before 2026-09-15 glued words
+    at block boundaries ("RequirementsPython"); later captures put a line break
+    there instead, so dropping line breaks turns a new capture back into the
+    old glued form and a repost still matches across that change.
+
+    Only line breaks: removing ALL whitespace was measured on the stored corpus
+    and made 103 same-company pairs newly match (mostly different roles, e.g.
+    Senior vs Staff of the same template) and lost 4 real ones. Old captures
+    contain no line breaks, so their comparisons are exactly as before."""
+    return re.sub(r"[ \t]*\n[ \t]*", "", text)
 
 
 def find_duplicate_job(session, company_name: str | None, raw_text: str | None, exclude_job_id: int) -> int | None:
@@ -41,8 +55,9 @@ def find_duplicate_job(session, company_name: str | None, raw_text: str | None, 
         .all()
     )
 
+    target = _comparable(raw_text)
     for candidate in candidates:
-        ratio = difflib.SequenceMatcher(None, candidate.raw_text, raw_text).ratio()
+        ratio = difflib.SequenceMatcher(None, _comparable(candidate.raw_text), target).ratio()
         if ratio >= SIMILARITY_THRESHOLD:
             # candidates are visited oldest-first and already had this same
             # check run at their own save time, so a candidate that's itself

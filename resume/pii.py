@@ -58,11 +58,14 @@ def _drop_header_block(text: str) -> str:
 def redact_pii(text: str, identity: KnownIdentity) -> str:
     text = _drop_header_block(text)
 
-    # Layer 1: what the login token already tells us.
-    text = re.sub(re.escape(identity.email), "[EMAIL]", text, flags=re.IGNORECASE)
-    # Any whitespace between name parts: PDFs can wrap a name across lines.
-    name = r"\s+".join(re.escape(part) for part in identity.name.split())
-    text = re.sub(name, "[NAME]", text, flags=re.IGNORECASE)
+    # Layer 1: what the login token already tells us. Skipped when a value is
+    # missing: an empty pattern matches between every character.
+    if identity.email.strip():
+        text = re.sub(re.escape(identity.email.strip()), "[EMAIL]", text, flags=re.IGNORECASE)
+    if identity.name.strip():
+        # Any whitespace between name parts: PDFs can wrap a name across lines.
+        name = r"\s+".join(re.escape(part) for part in identity.name.split())
+        text = re.sub(name, "[NAME]", text, flags=re.IGNORECASE)
 
     for token, pattern in _PATTERNS:
         text = pattern.sub(token, text)

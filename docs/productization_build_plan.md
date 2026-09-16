@@ -4,6 +4,8 @@ Status: plan, revised 2026-09-15 (second revision: user side restored from `mult
 
 **Product shape.** Nasi collects jobs; the board of jobs is shared. Each user signs up, uploads a resume, enters their seniority target, and gets **their own** Skill Match and Seniority Fit on every job. Users browse the board and track their own applications. Users never run collection.
 
+**Local stays as it is.** The local Flask server, the SQLite database (`data/job_hunt.db`), the extension flow and today's scores keep working unchanged. The cloud is built **alongside** local, never as a replacement.
+
 **Where this comes from.**
 - **Collection** (Nasi is the only collector; the extension pushes to the cloud API) is this document's design.
 - **The user side** (resume ingest, a user profile with a seniority target taken from user input, per-user scores, application history) follows [`multi_tenant_plan.md`](multi_tenant_plan.md), with one change: seniority is classified **once per job** and each user's fit is computed in code, instead of a per-user prompt (§3.3). Postgres + Alembic, JWT auth and the AWS layout also still apply from there.
@@ -123,9 +125,9 @@ sequenceDiagram
 
 What changes from today:
 
-- **The extension's `API_BASE` becomes configurable**, e.g. a local option page or a build-time constant with a local/cloud switch, and every request carries the admin token.
+- **The extension sends every capture twice:** to the local server exactly as today, and to the cloud API with the admin token. The local panel and local scores never wait on or depend on the cloud.
 - **Offline queue:** if the cloud is unreachable, the extension keeps captures in `chrome.storage.local` and retries with backoff. A lost network connection must never lose a capture.
-- **The skill stops reading local SQLite.** Step 0 (refreshing the agency list) and `classify.py` call `GET /api/v1/admin/agencies` instead.
+- **The skill keeps reading local SQLite** for step 0 (the agency list) and `classify.py`. Local stays the source of truth for collection.
 - **Nasi's screening stays inline for now**, because the panel shows the score on capture and the skill's pacing depends on it. If the host's request timeout becomes a problem (API Gateway has a 29s limit; two DeepSeek calls usually take 5–15s), switch to "capture returns right away, panel polls for the score". **Other users' scores need no LLM call**; they are computed right after the job's level is stored.
 - **The skill's title filter (skip Staff/Principal) stays.** It decides what gets collected. A user whose seniority target is senior will see fewer matching jobs; see open decision 2.
 
@@ -374,10 +376,14 @@ erDiagram
     }
 ```
 
-- **Unique:** `job_seniority (job_id)`, `screening_results (user_id, job_id)`, `job_tracking (user_id, job_id)`, `user_profiles (user_id, version)`, `resumes (user_id, version)`.
+- **As built (phase 2, 2026-09-15).** Local code still reads and writes the shared tables in today's shape, so the cloud keeps that shape exactly and puts everything per user in new tables (`db/cloud_models.py`, own metadata, never loaded locally). Two changes from the diagram above:
+  - `screening_results` is **not** given a `user_id`. It stays the owner's per-job LLM output; each user's computed scores go to **`user_job_scores`** `(user_id, job_id, profile_version, taxonomy_version, skill_*, seniority_fit, total_score)`.
+  - The tracking columns stay on `jobs` for schema parity with local, but `seed_owner` clears them in the cloud after moving them to `job_tracking`, so a job's status lives only there. The API never returns them.
+  - `users.idp_subject` is nullable: the owner row exists before the identity provider, and the first login claims it.
+- **Unique:** `job_seniority (job_id)`, `user_job_scores (user_id, job_id)`, `job_tracking (user_id, job_id)`, `user_profiles (user_id, version)`, `resumes (user_id, version)`.
 - **`job_tracking` is current status; `application_events` is history.** Changing status writes the new state to `job_tracking` and appends an event, so status history is kept instead of overwritten. That history is what makes `outcome_correlation` possible.
 - **`expired` stays on `jobs`, shared.** A dead listing is dead for everyone. Only admins can set it in v1; see open decision 3.
-- **Migrating Nasi's data:** Nasi becomes user #1 (admin). Existing `screening_results` get `user_id = 1` and profile version 1 (target `entry`). Existing seniority scores 1–5 backfill `job_seniority.level` directly (5 → entry … 1 → staff). Score-0 jobs are re-classified by the LLM, because 0 mixes principal with agency / contract / internship. Every job with `applied`, `not_interested`, `note` or `applied_resume_version` set becomes a `job_tracking` row, plus an `applied` event where `applied_at` is known. Then those columns are dropped from `jobs`.
+- **Migrating Nasi's data** (`python -m db.seed_owner`, once, after `copy_to_cloud`): Nasi becomes user #1 (admin) with profile version 1 (target `entry`). Existing seniority scores 1–5 backfill `job_seniority.level` directly (5 → entry … 1 → staff; 3 at low confidence → level NULL, "nothing inferable"). Score-0 jobs get no row until they are re-classified in phase 4, because 0 mixes principal with agency / contract / internship. Every job with `applied`, `not_interested`, a note or `applied_resume_version` set becomes a `job_tracking` row, plus an `applied` event where `applied_at` is known; those fields are then cleared on the shared `jobs` row.
 - **`company_applied_count`** ("applied 3× at this company") becomes per user, counted over the caller's own `job_tracking` rows.
 - **Admin-only tables:** `collection_pages`, `extraction_events`, `scrape_runs`, `chat_messages`.
 
@@ -506,18 +512,24 @@ The old unauthenticated routes (`/api/jobs`, `/api/extension/*`, the old `PATCH 
 
 | # | Phase | Contents | Done when |
 |---|---|---|---|
-| **1** | **Postgres + Alembic** | Alembic baseline replaces `_migrate_*`; `DATABASE_URL`; docker-compose Postgres; copy existing SQLite data | Today's dashboard, extension and skill work unchanged against local Postgres |
-| **2** | **Users + per-user schema** | `users`, `resumes`, `user_profiles`, `job_tracking`, `application_events`, `api_tokens`; `job_seniority`; `screening_results` gains `user_id` / `profile_version` / `taxonomy_version`; migrate Nasi as user #1 (profile v1 with target `entry`, existing scores, statuses) | Row counts match before/after; Nasi's scores and applied/not-interested/notes all present as user #1 |
+| **1** | **Cloud database alongside local** | `DATABASE_URL` selects the database: unset means today's SQLite file with its `_migrate_*` chain, untouched. Alembic migrations target Postgres only; docker-compose Postgres to test the cloud schema locally; a one-way copy script SQLite → Postgres | Local server, extension and skill unchanged on SQLite (full test suite + a live capture); the same code passes against docker Postgres loaded with the copied data |
+| **2** | **Users + per-user schema (cloud only)** | `db/cloud_models.py` on its own metadata: `users`, `resumes`, `user_profiles`, `job_seniority`, `job_tracking`, `application_events`, `user_job_scores`, `api_tokens`; shared tables keep the local shape; `python -m db.seed_owner` makes Nasi user #1 (profile v1 target `entry`, statuses → `job_tracking`, `applied` events, seniority 1–5 → `job_seniority`) | Row counts match local SQLite; Nasi's applied/not-interested/notes all present as user #1 |
 | **3** | **Resume ingest** | Finish `resume_jd_skill_pipeline.md` §6 step 12 (`process_resume`); encrypted storage; confirm-skills flow in the API; `skill_match_from_skills` over stored sets | Test resumes → expected skills, no PII in `redacted_text`; Nasi's re-uploaded resume reproduces today's skill scores |
 | **4** | **Profile + per-job seniority level** | `user_profile/`; `SENIORITY_LEVEL_PROMPT` + `JobSeniority`; `seniority_fit(level, target)`; `user_scoring`; backfill `job_seniority` (score-0 jobs re-classified); level eval set + regression gate | Parity: fit with target `entry` matches Nasi's seniority MAE 0.317 within noise; fit unit-tested for every level × target; gate blocks a deliberately bad prompt |
 | **5** | **Auth + separate access** | `auth/` module, `FakeVerifier`, `require_user` / `require_admin`, `user_data_repo`, RLS policies + DB roles, `/api/v1` routes, CORS narrowed | §5.4 suite green |
-| **6** | **Extension + skill → cloud API** | Configurable `API_BASE`, admin token header, offline capture queue, skill step 0 + `classify.py` use `/admin/agencies`, collection pages posted, capture rescores every user | A full skill run against the local `/api/v1` stack matches a run against today's API; killing the server mid-run loses no captures |
+| **6** | **Extension → local and cloud** | Each capture goes to the local server exactly as today **and** to the cloud API (admin token; offline queue for the cloud copy); collection pages also posted to the cloud; cloud capture rescores every user | Local captures and scores unchanged; the cloud receives every capture of a full skill run, and stopping the cloud API mid-run loses none |
 | **7** | **Frontend auth, onboarding + tracking** | Login/signup, onboarding flow, settings, JWT client, per-user scores and "Applied" view with stages, admin page | Two browser profiles with different resumes and seniority targets see different scores on the same jobs and only their own tracking |
 | **8** | **Landing page** | Figma hero + demo + ticker on `/api/public/stats` | Works logged out; every number comes from the API |
 | **9** | **Hosting** | Identity provider (real `verify_jwt`), managed Postgres, object storage for resumes, API host, static hosting for `frontend/dist`, secrets manager for DeepSeek + DB credentials, backups, spend alarms | Nasi's daily skill runs push to the hosted API; a second real user onboards, gets scores and tracks jobs |
 | **10** | **Taxonomy refresh on a schedule** | The `taxonomy-refresh` skill (§9) scheduled as a biweekly cloud routine against hosted Postgres; read-only DB role, secrets, PR permission, failure alert | A scheduled run opens a PR with candidates, corpus checks, tests and a churn report; merging it and re-extracting updates `job_skills` |
 
 Phases 1–5 are all local. Phase 4's prompt-parity eval and phase 5's isolation suite are both gates: no second user before they pass.
+
+**Status (2026-09-15): phase 1 built** on branch `feat/cloud-prep`. `JHI_DATABASE_URL` selects Postgres (unset = local SQLite, unchanged); Alembic baseline `ca4ae71d4189` matches the models (`alembic check` in `test_cloud_db.py`); `python -m db.copy_to_cloud` seeded a test Postgres from the live local file in 11 s with every table's row count matching, except 18 `job_skills` rows that point at jobs no longer in SQLite (skipped and reported). Remaining for "done when": merge, then confirm a live capture still works locally.
+
+**Status (2026-09-15): phase 2 built.** `db/cloud_models.py` + migration `ff9123bfee52`; `python -m db.seed_owner` on the live copy: 1,078 `job_tracking` rows, 393 `applied` events, 11,189 `job_seniority` levels, 2,327 score-0 jobs waiting for phase 4, all equal to local SQLite.
+
+**Status (2026-09-15): phase 3 built.** Decision: **one active resume per user** (the one the latest profile version points at); other uploads stay as earlier versions. `resume/store.py` (Fernet-encrypted files and text, `LocalFileStore` until S3), `resume/ingest.py` (`add_resume`, `confirm_skills`: only taxonomy skill names, first confirmation in place, edits write a new version, activation writes a new profile version and rescores), `analysis/user_scoring.py` (`score_user` upserts `user_job_scores` from stored skill sets, duplicates not scored). `python -m db.import_owner_resumes` on the live copy: pm resume v1, ml_ai resume v2 (active), 13,665 jobs scored in 14 s. On 11,045 ml_ai jobs with a local skill score, 11,006 match; of the 39 that don't, 35 are stale local scores (re-scoring the JD text with today's code gives the cloud value) and 4 come from stored `job_skills` that predate the current taxonomy (fixed by the pending re-extraction). PM-track jobs are scored against the active ml_ai resume, as decided.
 
 **Cost at this shape** (Nasi pays for all of it for now)
 
@@ -545,7 +557,7 @@ Production skill extraction stays **deterministic**: regex over `SKILL_TAXONOMY`
 
 ### Prerequisites (local, can be done any time before this phase)
 
-1. **Preserve line breaks at capture.** `extension/content/extract.js` reads text with `.textContent`, so stored `raw_text` has **no newlines** (0% of a 3,000-JD sample) and words glue together at block boundaries ("development**Experience**", "PYTHONAWSGCP"). This affects 70% of captures since Sep 1. It breaks word-boundary patterns, JD sectioning, LLM prompts and embeddings alike, so fix it before tuning any patterns.
+1. **Preserve line breaks at capture.** *Done 2026-09-15 (branch `feat/cloud-prep`; takes effect once merged and the extension is reloaded).* `extension/content/extract.js` read text with `range.toString()`, so stored `raw_text` had **no newlines** (0% of a 3,000-JD sample) and words glued together at block boundaries ("development**Experience**", "PYTHONAWSGCP"), on 70% of captures since Sep 1. Each block is now its own line. `analysis/duplicate_detector.py` drops line breaks before comparing, so a new capture still matches an old glued repost: on the stored corpus that changes 0 of 25,152 same-company duplicate decisions. Existing rows are not rewritten.
 2. **Fix the known false matches**, with tests in `tests_and_eval/test_skill_extraction.py`.
 
 Taxonomy entries stay simple: **skill name → patterns**, plus the existing category and group lists. No extra per-entry fields.
@@ -620,16 +632,17 @@ Only Skill Match is affected. Seniority and Expertise come from LLM calls and ne
 **Decided 2026-09-15**
 - **Seniority is per job.** The LLM classifies the level once; each user's fit is computed in code (§3.3).
 - **Nasi pays for LLM calls for now.** Users trigger none, so no per-user quotas are needed. Revisit if the Expertise redesign adds per-user cost.
+- **Host: AWS** (Cognito, RDS Postgres, S3, Lambda or App Runner, Secrets Manager).
+- **LinkedIn terms of service: OK to go.** A terms-of-use page and a privacy policy covering resumes still ship before launch.
+- **Open sign-up** at launch.
+- **Local stays unchanged; the extension sends each capture to both local and cloud** (§2, phases 1 and 6).
 
 **Open**
 
 1. **Fit shape above and below target.** The default is symmetric: one level off either way costs 1 point. A user may mind an over-senior role more than a junior one, or the reverse. Keep symmetric until users say otherwise.
 2. **Collection vs senior users.** Nasi's skill skips Staff/Principal titles, so users with a senior target see a thin board. Accept it (the board is curated), or widen collection.
 3. **Can users mark a listing expired?** Shared expiry helps everyone but lets one user hide a job from all. Admin-only in v1 is the safe default.
-4. **Identity provider and host.** AWS (Cognito + RDS + Lambda/App Runner + S3), or a simpler stack (Clerk/Supabase + a managed Postgres + Fly/Render + object storage). Only phase 9 depends on this.
-5. **Open sign-up or invite-only** at launch.
-6. **LinkedIn terms of service.** Republishing collected job data to other people is a bigger step than personal use. Decide before phase 9, plus a terms-of-use page and a privacy policy covering resumes.
-7. **Expertise for users.** Semantic resume-to-JD match, designed separately. Until then `total_score` for users is Skill + Seniority; decide how it's scaled so it isn't compared with Nasi's three-part total.
+4. **Expertise for users.** Semantic resume-to-JD match, designed separately. Until then `total_score` for users is Skill + Seniority; decide how it's scaled so it isn't compared with Nasi's three-part total.
 
 ## 11. Known issues to fix along the way
 
