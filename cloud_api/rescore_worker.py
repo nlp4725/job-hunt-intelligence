@@ -12,7 +12,6 @@ so two workers never score the same batch.
 """
 
 import argparse
-import os
 import time
 from dataclasses import dataclass
 
@@ -20,6 +19,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from analysis.user_scoring import score_user
+from cloud_api.settings import owner_database_url
 from db.cloud_models import RescoreQueue, User
 
 
@@ -52,9 +52,10 @@ def main() -> None:
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--every", type=int, default=30, help="seconds between drains when not --once")
     args = parser.parse_args()
-    url = os.environ.get("JHI_DATABASE_URL")
-    if not url:
-        parser.error("set JHI_DATABASE_URL to the owner connection")
+    try:
+        url = owner_database_url()
+    except RuntimeError:
+        parser.error("set JHI_DATABASE_URL, or DB_HOST/DB_NAME/DB_OWNER_USER/DB_OWNER_PASSWORD, to the owner connection")
     while True:
         report = drain_rescore_queue(url)
         print(report, flush=True)

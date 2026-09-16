@@ -7,13 +7,13 @@ write them. See analysis/user_expertise_scoring.py for which jobs are scored.
 """
 
 import argparse
-import os
 import time
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from analysis.user_expertise_scoring import ExpertiseReport, score_user_expertise
+from cloud_api.settings import owner_database_url
 from db.cloud_models import User
 
 
@@ -46,9 +46,10 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=50, help="most jobs scored per user per run")
     parser.add_argument("--every", type=int, default=300, help="seconds between runs when not --once")
     args = parser.parse_args()
-    url = os.environ.get("JHI_DATABASE_URL")
-    if not url:
-        parser.error("set JHI_DATABASE_URL to the owner connection")
+    try:
+        url = owner_database_url()
+    except RuntimeError:
+        parser.error("set JHI_DATABASE_URL, or DB_HOST/DB_NAME/DB_OWNER_USER/DB_OWNER_PASSWORD, to the owner connection")
     while True:
         print(run_expertise(url, limit=args.limit), flush=True)
         if args.once:

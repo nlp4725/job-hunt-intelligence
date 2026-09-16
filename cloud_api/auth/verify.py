@@ -27,17 +27,17 @@ class Claims:
 class CognitoVerifier:
     """Cognito ID tokens for one app client of one user pool.
 
-    `jwks` is the pool's key set, or a function returning it; in production,
-    fetch https://cognito-idp.<region>.amazonaws.com/<pool-id>/.well-known/jwks.json
-    and cache it."""
+    `jwks` is the pool's key set, or a function of the token's key id returning
+    it (production: cloud_api.settings.CachedJwks, which refreshes when a new
+    key id appears)."""
 
-    def __init__(self, issuer: str, client_id: str, jwks: dict | Callable[[], dict]):
+    def __init__(self, issuer: str, client_id: str, jwks: dict | Callable[[str | None], dict]):
         self.issuer = issuer
         self.client_id = client_id
         self._jwks = jwks
 
     def _key(self, kid: str | None):
-        keys = self._jwks() if callable(self._jwks) else self._jwks
+        keys = self._jwks(kid) if callable(self._jwks) else self._jwks
         for key in keys.get("keys", []):
             if kid and key.get("kid") == kid:
                 return jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(key))

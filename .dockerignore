@@ -1,0 +1,14 @@
+# Allowlist: the image gets only the code the cloud runs. Resumes, data/,
+# .env, CONTEXT.md, test fixtures and everything else stay out.
+*
+!requirements-cloud.txt
+!alembic.ini
+!cloud_api/
+!db/
+!analysis/
+!judge/
+!resume/
+**/__pycache__
+**/*.pyc
+**/*.bak
+**/*.bak-*
