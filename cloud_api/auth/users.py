@@ -9,6 +9,7 @@ only when the provider says that email is verified.
 from sqlalchemy import func
 
 from cloud_api.auth.verify import Claims
+from cloud_api.user_data import set_request_user
 from db.cloud_models import User
 from db.models import utcnow
 
@@ -24,11 +25,14 @@ def get_or_create_user(db, claims: Claims) -> User:
         if existing is None:
             user = User(idp_subject=claims.sub, email=claims.email.lower(), role="user")
             db.add(user)
+            db.flush()
         elif existing.idp_subject is None and claims.email_verified:
+            set_request_user(db, existing.id)   # row-level security: only this row may change
             existing.idp_subject = claims.sub
             user = existing
         else:
             raise AccountConflict("this email belongs to another account")
+    set_request_user(db, user.id)
     user.last_active_at = utcnow()
     db.flush()
     return user

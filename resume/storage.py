@@ -136,3 +136,5 @@ class DevSignedStorage:
         root = self.files._path(prefix)
         for path in sorted(root.rglob("*"), reverse=True) if root.exists() else []:
             path.unlink() if path.is_file() else path.rmdir()
+        if root.is_dir():
+            root.rmdir()

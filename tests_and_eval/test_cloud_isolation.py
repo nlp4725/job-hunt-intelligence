@@ -45,6 +45,19 @@ def app_url(pg_engine):  # noqa: F811
     return make_url(PG_URL).set(username=APP_LOGIN, password=None).render_as_string(hide_password=False)
 
 
+ADMIN_LOGIN = "jhi_admin_test"
+
+
+@pytest.fixture
+def admin_url(app_url, pg_engine):  # noqa: F811
+    """A login that is a member of jhi_admin_api and nothing else."""
+    with pg_engine.begin() as conn:
+        conn.execute(text(f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{ADMIN_LOGIN}') "
+                          f"THEN CREATE ROLE {ADMIN_LOGIN} LOGIN; END IF; END $$"))
+        conn.execute(text(f"GRANT jhi_admin_api TO {ADMIN_LOGIN}"))
+    return make_url(PG_URL).set(username=ADMIN_LOGIN, password=None).render_as_string(hide_password=False)
+
+
 @pytest.fixture
 def app_engine(app_url):
     engine = create_engine(app_url, connect_args={"options": "-c timezone=UTC"})
@@ -147,11 +160,11 @@ class TestRowLevelSecurity:
 @needs_pg
 class TestApiUnderRowLevelSecurity:
     @pytest.fixture
-    def client(self, app_url, seeded):
+    def client(self, app_url, admin_url, seeded):
         from cloud_api.app import create_app
         from cloud_api.auth.verify import FakeVerifier
 
-        app = create_app(app_url, verifier=FakeVerifier(), auth_mode="dev", host="127.0.0.1")
+        app = create_app(app_url, admin_database_url=admin_url, verifier=FakeVerifier(), auth_mode="dev", host="127.0.0.1")
         app.config["TESTING"] = True
         return app.test_client()
 

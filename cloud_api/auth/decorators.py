@@ -44,6 +44,7 @@ def require_user(fn):
         token = _bearer()
         if token is None or is_api_token(token):
             return _error(401, "sign in required")
+        g.db = current_app.config["USER_SESSION"]()    # database role for user requests
         user, error = _person(token)
         if error:
             return error
@@ -59,6 +60,7 @@ def require_admin(fn):
         token = _bearer()
         if token is None:
             return _error(401, "sign in required")
+        g.db = current_app.config["ADMIN_SESSION"]()   # database role for admin routes
         if is_api_token(token):
             user = authenticate_api_token(g.db, token)
             if user is None:

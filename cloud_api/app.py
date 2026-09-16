@@ -26,27 +26,32 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host: str = "127.0.0.1",
-               cors_origins: tuple[str, ...] = (), storage=None, cipher=None) -> Flask:
+               cors_origins: tuple[str, ...] = (), storage=None, cipher=None,
+               admin_database_url: str | None = None) -> Flask:
+    """database_url: a login in the jhi_app role (user requests).
+    admin_database_url: a login in the jhi_admin_api role (admin routes);
+    defaults to database_url for single-login local setups."""
     if auth_mode == "dev" and host not in LOCAL_HOSTS:
         raise RuntimeError("dev login (FakeVerifier) is only allowed when the server is bound to localhost")
     if auth_mode != "dev" and isinstance(verifier, FakeVerifier):
         raise RuntimeError("FakeVerifier requires auth_mode='dev'")
 
-    engine = create_engine(database_url, pool_pre_ping=True, connect_args={"options": "-c timezone=UTC"})
-    Session = sessionmaker(bind=engine)
+    def engine_for(url):
+        return create_engine(url, pool_pre_ping=True, connect_args={"options": "-c timezone=UTC"})
+
+    user_engine = engine_for(database_url)
+    admin_engine = engine_for(admin_database_url) if admin_database_url else user_engine
 
     app = Flask(__name__)
     app.config["VERIFIER"] = verifier
+    app.config["USER_SESSION"] = sessionmaker(bind=user_engine)     # opened by require_user
+    app.config["ADMIN_SESSION"] = sessionmaker(bind=admin_engine)   # opened by require_admin
     app.config["STORAGE"] = storage     # resume.storage.S3ResumeStorage, or DevSignedStorage in dev
     app.config["CIPHER"] = cipher       # resume.store.ResumeCipher for extracted resume text
     if auth_mode == "dev":
         app.register_blueprint(dev_storage)
     if cors_origins:
         CORS(app, origins=list(cors_origins))
-
-    @app.before_request
-    def open_session():
-        g.db = Session()
 
     @app.teardown_request
     def close_session(exc):
@@ -122,6 +127,71 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
         except LookupError:
             return error(404, "resume not found")
         return jsonify({"url": url, "expires_in": URL_EXPIRES_SECONDS})
+
+    @app.get("/api/v1/me/profile")
+    @require_user
+    def get_profile():
+        return jsonify(user_data.get_profile(g.db, g.user))
+
+    @app.put("/api/v1/me/profile/level")
+    @require_user
+    def pick_level():
+        try:
+            return jsonify(user_data.pick_level(g.db, g.user, (request.get_json(silent=True) or {}).get("level")))
+        except ValueError as exc:
+            return error(400, str(exc))
+
+    @app.put("/api/v1/me/profile/scores")
+    @require_user
+    def confirm_scores():
+        try:
+            return jsonify(user_data.confirm_scores(g.db, g.user, (request.get_json(silent=True) or {}).get("scores")))
+        except ValueError as exc:
+            return error(400, str(exc))
+
+    @app.get("/api/v1/jobs")
+    @require_user
+    def job_board():
+        limit = min(max(request.args.get("limit", 100, type=int), 1), 200)
+        offset = max(request.args.get("offset", 0, type=int), 0)
+        return jsonify({"jobs": user_data.job_board(g.db, g.user, limit, offset), "limit": limit, "offset": offset})
+
+    @app.put("/api/v1/me/tracking/<int:job_id>")
+    @require_user
+    def save_tracking(job_id: int):
+        changes = request.get_json(silent=True)
+        if not isinstance(changes, dict):
+            return error(400, "a JSON object is required")
+        try:
+            return jsonify(user_data.save_tracking(g.db, g.user, job_id, changes))
+        except LookupError:
+            return error(404, "job not found")
+        except ValueError as exc:
+            return error(400, str(exc))
+
+    @app.post("/api/v1/me/applications/<int:job_id>/events")
+    @require_user
+    def add_application_event(job_id: int):
+        body = request.get_json(silent=True) or {}
+        try:
+            event = user_data.add_application_event(g.db, g.user, job_id, body.get("stage"),
+                                                    body.get("occurred_at"), body.get("note"))
+        except LookupError:
+            return error(404, "job not found")
+        except ValueError as exc:
+            return error(400, str(exc))
+        return jsonify(event), 201
+
+    @app.get("/api/v1/me/applications")
+    @require_user
+    def list_applications():
+        return jsonify({"applications": user_data.list_applications(g.db, g.user)})
+
+    @app.delete("/api/v1/me")
+    @require_user
+    def delete_account():
+        user_data.delete_account(g.db, g.user, app.config["STORAGE"])
+        return "", 204
 
     @app.post("/api/v1/admin/tokens")
     @require_admin
