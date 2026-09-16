@@ -2,7 +2,7 @@
 
     PYTHONPATH=. ./venv/bin/python -m tests_and_eval.seniority_gold_review      → http://127.0.0.1:5058
 
-Each posting shows the drafted label (level, is_agency, is_contract) with its
+Each posting shows the drafted label (level, is_contract) with its
 evidence highlighted in the text. Accept it or change it, then Save: that
 writes `gold` and marks the label confirmed. The latest seniority_level.py run
 on the job is shown for comparison; decide from the posting text, not from
@@ -42,7 +42,7 @@ def _latest_model_answers(job_id: int) -> tuple[str, list[dict]] | None:
     """(run name, rows for this job) from the newest saved eval run that has it."""
     runs = sorted((GOLD / "runs").glob("*.json"), reverse=True) if (GOLD / "runs").exists() else []
     for path in runs:
-        rows = [r for r in json.loads(path.read_text())["rows"] if r["job_id"] == job_id and "agency" in r]
+        rows = [r for r in json.loads(path.read_text())["rows"] if r["job_id"] == job_id and "contract" in r and "agency" not in r]
         if rows:
             return path.stem, sorted(rows, key=lambda r: r["rep"])
     return None
@@ -58,7 +58,7 @@ def index():
     done = sum(label["status"] == "confirmed" for label in labels.values())
     rows = "".join(
         f"<tr><td><a href='{url_for('job', job_id=j)}'>jd-{j}</a></td><td>{label['split']}</td><td>{label['status']}</td>"
-        f"<td>{html.escape(_describe(*(lambda d: (d['level'], d['is_agency'], d['is_contract']))(label['gold'] or label['draft'])))}</td></tr>"
+        f"<td>{html.escape(_describe(*(lambda d: (d['level'], d['is_contract']))(label['gold'] or label['draft'])))}</td></tr>"
         for j, label in sorted(labels.items(), key=lambda kv: (kv[1]["status"] == "confirmed", kv[0]))
     )
     body = (f"<header><b>Seniority gold set</b> {done} / {len(labels)} confirmed</header>"
@@ -85,7 +85,7 @@ def job(job_id):
     if latest:
         run_name, rows = latest
         answers = "<br>".join(html.escape(r["error"]) if r["error"] else
-                              f"{html.escape(_describe(r['level'], r['agency'], r['contract']))} ({'ok' if r['all_ok'] else 'MISS'})"
+                              f"{html.escape(_describe(r['level'], r['contract']))} ({'ok' if r['all_ok'] else 'MISS'})"
                               for r in rows)
         model = f"<h3>Model</h3><div class=draft>{answers}<br><small>{html.escape(run_name)}</small></div>"
     else:
@@ -93,10 +93,10 @@ def job(job_id):
     draft = label["draft"]
     form = f"""<form method=post action='{url_for('save', job_id=job_id)}'>
       {model}
-      <h3>Draft</h3><div class=draft>{html.escape(_describe(draft['level'], draft['is_agency'], draft['is_contract']))}
+      <h3>Draft</h3><div class=draft>{html.escape(_describe(draft['level'], draft['is_contract']))}
         · years: {draft['years_required']}<br>{html.escape(draft.get('note') or '')}</div>
       <h3>Level</h3><select name=level>{options([*SENIORITY_LEVELS, ''], current['level'] or '')}</select>
-      <h3>Flags</h3>{checkbox('is_agency', current['is_agency'])}{checkbox('is_contract', current['is_contract'])}
+      <h3>Flags</h3>{checkbox('is_contract', current['is_contract'])}
       <h3>Years required</h3><input type=number name=years_required min=0 max=40 value='{current['years_required'] if current['years_required'] is not None else ''}'>
       <h3>Note</h3><textarea name=note>{html.escape(current.get('note') or '')}</textarea>
       <button>Save and confirm</button></form>"""
@@ -113,7 +113,6 @@ def save(job_id):
     years = request.form.get("years_required", "").strip()
     label["gold"] = {
         "level": request.form.get("level") or None,
-        "is_agency": bool(request.form.get("is_agency")),
         "is_contract": bool(request.form.get("is_contract")),
         "years_required": int(years) if years else None,
         "inferred": not years,

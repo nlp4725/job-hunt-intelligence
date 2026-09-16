@@ -2,7 +2,7 @@
 
 The job's level is classified once by judge/seniority_level.py and shared by
 every user. Each user confirms their own score table: a 0-5 score for every
-level, one for postings that are not a fit (agency / contract) and
+level, one for contract postings ("not_a_fit"; agencies are filtered out earlier) and
 one for postings whose level is unclear. Onboarding proposes the table from the
 level the user picks (five minus the distance from it); the user adjusts it and
 confirms. Fit is a lookup in that table.
@@ -37,8 +37,8 @@ def validate_scores(scores: dict) -> dict[str, int]:
     return dict(scores)
 
 
-def seniority_fit(level: str | None, is_agency: bool, is_contract: bool, scores: dict[str, int]) -> int:
-    if is_agency or is_contract:
+def seniority_fit(level: str | None, is_contract: bool, scores: dict[str, int]) -> int:
+    if is_contract:
         return scores[NOT_A_FIT]
     if level is None:
         return scores[UNKNOWN]

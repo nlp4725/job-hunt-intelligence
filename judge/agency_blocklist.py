@@ -32,6 +32,12 @@ import re
 # usage) — each of these was confirmed to post generic contractor/freelance
 # "AI Trainer"-style gigs, not roles at a real, specific employer.
 AGENCY_COMPANY_NAME_SUBSTRINGS = [
+    # Added 2026-09-16 from the seniority gold set: recruiters posting "on behalf of the
+    # hiring company" or for an employer named only "Company"; none self-reports
+    # "Staffing and Recruiting", so the industry check never catches them.
+    "meeboss",
+    "calance",
+    "stefanini",
     "dataannotation",
     "turing",
     "alignerr",

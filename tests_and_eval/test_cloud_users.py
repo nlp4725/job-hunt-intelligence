@@ -207,7 +207,7 @@ class TestSeedOwner:
 
         _, db = seeded
         rows = {job_id: s for s, job_id in db.query(JobSeniority, Job.job_id).join(Job, Job.id == JobSeniority.job_id)}
-        assert {k: (s.level, s.is_agency or s.is_contract) for k, s in rows.items()} == {
+        assert {k: (s.level, s.is_contract) for k, s in rows.items()} == {
             "1": ("entry", False),
             "2": (None, False),         # score 3 at low confidence = nothing inferable
             "4": ("senior", False),

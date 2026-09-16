@@ -106,7 +106,6 @@ class JobSeniority(CloudBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     job_id: Mapped[int] = mapped_column(ForeignKey(JOB_ID), unique=True)
     level: Mapped[str | None]                                          # NULL = nothing inferable
-    is_agency: Mapped[bool] = mapped_column(default=False)             # posted by a staffing/recruiting firm for a hidden employer
     is_contract: Mapped[bool] = mapped_column(default=False)           # contract / temporary / fixed-term / part-time freelance
     years_required: Mapped[int | None]
     inferred: Mapped[bool | None]

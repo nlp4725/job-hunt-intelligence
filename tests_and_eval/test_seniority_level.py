@@ -46,12 +46,11 @@ def test_an_unknown_level_to_propose_from_is_rejected():
 
 def test_fit_is_a_lookup_in_the_users_own_table():
     table = {**proposed_scores("mid_senior"), "entry": 5, "not_a_fit": 2, "unknown": 1}
-    assert seniority_fit("entry", False, False, table) == 5
-    assert seniority_fit("staff_principal", False, False, table) == 3
-    assert seniority_fit(None, False, False, table) == 1
-    for agency, contract in ((True, False), (False, True), (True, True)):
-        for level in (*SENIORITY_LEVELS, None):
-            assert seniority_fit(level, agency, contract, table) == 2   # either flag uses the not-a-fit row
+    assert seniority_fit("entry", False, table) == 5
+    assert seniority_fit("staff_principal", False, table) == 3
+    assert seniority_fit(None, False, table) == 1
+    for level in (*SENIORITY_LEVELS, None):
+        assert seniority_fit(level, True, table) == 2   # a contract posting uses the not-a-fit row
 
 
 def test_a_complete_table_of_whole_scores_is_valid():
@@ -85,8 +84,8 @@ class TestLevelPrompt:
     def test_every_level_and_both_flags_are_described(self):
         from judge.seniority_level import SENIORITY_LEVEL_PROMPT
 
-        for name in ("is_agency", "is_contract"):
-            assert f'"{name}"' in SENIORITY_LEVEL_PROMPT, name
+        assert '"is_contract"' in SENIORITY_LEVEL_PROMPT
+        assert '"is_agency"' not in SENIORITY_LEVEL_PROMPT   # agencies are filtered out before this step
         for name in SENIORITY_LEVELS:
             assert f"`{name}`" in SENIORITY_LEVEL_PROMPT, name
 
@@ -94,14 +93,14 @@ class TestLevelPrompt:
         from judge.seniority_level import JobSeniorityLevel
 
         result = JobSeniorityLevel(evidence="1.5+ years", years_required=1.5, inferred=False,
-                                   confidence="high", note=None, is_agency=False, is_contract=False, level="entry")
+                                   confidence="high", note=None, is_contract=False, level="entry")
         assert result.years_required == 2
 
     def test_null_written_as_text_counts_as_null(self):
         from judge.seniority_level import JobSeniorityLevel
 
         result = JobSeniorityLevel(evidence="", years_required=None, inferred=True, confidence="low",
-                                   note=None, is_agency=False, is_contract=False, level="None")
+                                   note=None, is_contract=False, level="None")
         assert result.level is None
 
     def test_unknown_level_names_fail_validation(self):
@@ -111,13 +110,13 @@ class TestLevelPrompt:
 
         with pytest.raises(ValidationError):
             JobSeniorityLevel(evidence="", years_required=None, inferred=True, confidence="low",
-                              note=None, is_agency=False, is_contract=False, level="junior")
+                              note=None, is_contract=False, level="junior")
 
     def test_an_empty_answer_is_retried(self):
         from judge.seniority_level import JobSeniorityLevel, classify_job_seniority
 
         answer = JobSeniorityLevel(evidence="", years_required=None, inferred=True, confidence="low",
-                                   note=None, is_agency=False, is_contract=False, level=None)
+                                   note=None, is_contract=False, level=None)
 
         class FlakyModel:
             calls = 0
@@ -133,7 +132,7 @@ class TestLevelPrompt:
         from judge.seniority_level import SENIORITY_LEVEL_PROMPT, JobSeniorityLevel, classify_job_seniority
 
         answer = JobSeniorityLevel(evidence="3+ years", years_required=3, inferred=False,
-                                   confidence="high", note=None, is_agency=False, is_contract=False, level="mid_senior")
+                                   confidence="high", note=None, is_contract=False, level="mid_senior")
 
         class FakeModel:
             def invoke(self, messages):

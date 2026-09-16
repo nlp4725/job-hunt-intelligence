@@ -16,9 +16,9 @@ from tests_and_eval.test_cloud_resumes import (  # noqa: F401  (fixtures)
 from tests_and_eval.test_cloud_users import _user
 
 
-def _level(level=None, is_agency=False, is_contract=False) -> JobSeniorityLevel:
+def _level(level=None, is_contract=False) -> JobSeniorityLevel:
     return JobSeniorityLevel(evidence="e", years_required=None, inferred=True, confidence="medium",
-                             note=None, is_agency=is_agency, is_contract=is_contract, level=level)
+                             note=None, is_contract=is_contract, level=level)
 
 
 def _scored_user(db, store, cipher, target="entry", **profile):
@@ -181,6 +181,20 @@ class TestClassifyMissing:
         assert (rows["1"].level, rows["1"].prompt_version) == ("mid_senior", PROMPT_VERSION)
         assert (rows["4"].level, rows["4"].prompt_version) == ("staff_principal", "earlier")
         assert _scores(db, user.id)["1"].seniority_fit == 4
+
+    def test_jobs_from_agency_listed_companies_are_never_sent(self, db, store, cipher):
+        """Agencies are filtered out before screening; the backfill uses the same check."""
+        from db.classify_job_seniority import classify_missing
+        from db.job_writer import save_new_job
+        from tests_and_eval.test_jd_normalize import _detail
+
+        detail = _detail("Recruiter posting on behalf of the hiring company. Python LLM " * 10)
+        detail["company"] = "MeeBoss"
+        save_new_job(db, "llm remote", "ml_ai", "9", detail)
+        db.commit()
+        sent = []
+        report = classify_missing(PG_URL, classify=lambda p: sent.append(p) or _level("entry"))
+        assert (report.classified, sent) == (0, [])
 
     def test_limit_caps_how_many_jobs_are_sent(self, db, store, cipher):
         from db.classify_job_seniority import classify_missing

@@ -39,8 +39,8 @@ def score_user(db, user_id: int) -> int:
     skills_by_job: dict[int, set[str]] = defaultdict(set)
     for job_id, name in db.query(JobSkill.job_id, JobSkill.skill_name).join(Job, Job.id == JobSkill.job_id).filter(*scorable):
         skills_by_job[job_id].add(name)
-    levels = {job_id: (level, agency, contract) for job_id, level, agency, contract
-              in db.query(JobSeniority.job_id, JobSeniority.level, JobSeniority.is_agency, JobSeniority.is_contract)}
+    levels = {job_id: (level, contract) for job_id, level, contract
+              in db.query(JobSeniority.job_id, JobSeniority.level, JobSeniority.is_contract)}
 
     table = profile.seniority_scores or proposed_scores(profile.seniority_target)
     now, version = utcnow(), taxonomy_version()

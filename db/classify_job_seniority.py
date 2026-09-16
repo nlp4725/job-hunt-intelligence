@@ -23,10 +23,11 @@ from sqlalchemy.orm import Session
 from analysis.user_scoring import active_profile, score_user
 from db.cloud_models import JobSeniority, User
 from db.models import Job
+from judge.agency_blocklist import is_agency_job
 from judge.seniority_fit import format_posting
 from judge.seniority_level import JobSeniorityLevel, classify_job_seniority
 
-PROMPT_VERSION = "seniority_level_v3"
+PROMPT_VERSION = "seniority_level_v4"
 COMMIT_EVERY = 25
 
 # DeepSeek V4 Pro, USD per 1M tokens (tests_and_eval/test_seniority/test_seniority_deepseek.py).
@@ -48,7 +49,9 @@ def _unclassified(db, limit: int | None):
              .filter(Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None),
                      ~exists().where(JobSeniority.job_id == Job.id))
              .order_by(Job.first_seen_at.desc()))
-    return query.limit(limit).all() if limit else query.all()
+    # Agency postings are filtered out before screening, the same check the local app uses.
+    jobs = [job for job in query.all() if not is_agency_job(job)]
+    return jobs[:limit] if limit else jobs
 
 
 def estimate_cost_usd(postings: list[str]) -> float:
@@ -81,7 +84,7 @@ def classify_missing(target_url: str, classify: Callable[[str], JobSeniorityLeve
                     report.failed += 1
                     continue
                 pending.append(JobSeniority(
-                    job_id=futures[future], level=result.level, is_agency=result.is_agency, is_contract=result.is_contract,
+                    job_id=futures[future], level=result.level, is_contract=result.is_contract,
                     years_required=result.years_required, inferred=result.inferred, confidence=result.confidence,
                     evidence=result.evidence, note=result.note, prompt_version=PROMPT_VERSION,
                 ))
