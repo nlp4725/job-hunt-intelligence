@@ -4,6 +4,8 @@ Manager (infra/). Nothing here has a default that could silently point
 production at the wrong place: a missing variable stops the process.
 """
 
+import base64
+import hashlib
 import json
 import os
 import threading
@@ -65,3 +67,17 @@ def owner_database_url() -> str:
     """Batch workers and the deploy task: JHI_DATABASE_URL when set (local),
     otherwise the RDS master login from DB_OWNER_USER / DB_OWNER_PASSWORD."""
     return os.environ.get("JHI_DATABASE_URL") or database_url("DB_OWNER_USER", "DB_OWNER_PASSWORD")
+
+
+def fernet_key_from_secret(secret: str) -> bytes:
+    """JHI_RESUME_KEY as a Fernet key. Secrets Manager generates a random string,
+    not Fernet's base64 format, so a non-Fernet value is hashed into a 32-byte
+    key (SHA-256 of a 64-character random string keeps the full 256 bits). A
+    valid Fernet key (local use) is used as is."""
+    raw = secret.strip().encode()
+    try:
+        if len(base64.urlsafe_b64decode(raw)) == 32 and len(raw) == 44:
+            return raw
+    except ValueError:
+        pass
+    return base64.urlsafe_b64encode(hashlib.sha256(raw).digest())

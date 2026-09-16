@@ -1,0 +1,15 @@
+{
+  "app": ".venv/bin/python app.py",
+  "context": {
+    "region": "us-east-1",
+    "domain": "",
+    "hosted_zone_id": "",
+    "alert_email": "",
+    "owner_email": "",
+    "monthly_budget_usd": 75,
+    "api_desired_count": 1,
+    "github_repo": "nlp4725/job-hunt-intelligence",
+    "cognito_domain_prefix": "",
+    "@aws-cdk/aws-ec2:restrictDefaultSecurityGroup": false
+  }
+}

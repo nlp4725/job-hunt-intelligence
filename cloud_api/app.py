@@ -80,6 +80,12 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
         finally:
             db.close()
 
+    @app.get("/healthz")
+    def healthz():
+        """Load balancer health check. Public and deliberately free of the
+        database, so a database blip doesn't make ECS replace healthy tasks."""
+        return jsonify({"ok": True})
+
     @app.get("/api/v1/me")
     @require_user
     def me():

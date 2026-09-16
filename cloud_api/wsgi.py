@@ -12,7 +12,7 @@ Environment (set by infra/):
 
 from cloud_api.app import create_app
 from cloud_api.auth.verify import CognitoVerifier
-from cloud_api.settings import CachedJwks, cognito_issuer, database_url, required
+from cloud_api.settings import CachedJwks, cognito_issuer, database_url, fernet_key_from_secret, required
 from resume.storage import S3ResumeStorage, make_s3_client
 from resume.store import ResumeCipher
 
@@ -28,7 +28,7 @@ def build_app():
         database_url("JHI_APP_DB_USER", "JHI_APP_DB_PASSWORD"), verifier,
         admin_database_url=database_url("JHI_ADMIN_DB_USER", "JHI_ADMIN_DB_PASSWORD"),
         auth_mode="cognito", host="0.0.0.0", cors_origins=origins,
-        storage=storage, cipher=ResumeCipher(required("JHI_RESUME_KEY")),
+        storage=storage, cipher=ResumeCipher(fernet_key_from_secret(required("JHI_RESUME_KEY"))),
     )
 
 

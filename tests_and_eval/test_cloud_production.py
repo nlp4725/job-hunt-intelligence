@@ -68,6 +68,22 @@ class TestSettings:
         assert len(fetches) == 3
 
 
+    def test_resume_key_from_a_generated_secret_or_a_fernet_key(self):
+        from cryptography.fernet import Fernet
+
+        from cloud_api.settings import fernet_key_from_secret
+
+        fernet = Fernet.generate_key()
+        assert fernet_key_from_secret(fernet.decode()) == fernet
+        derived = fernet_key_from_secret("a" * 64)
+        assert derived == fernet_key_from_secret("a" * 64) != fernet_key_from_secret("b" * 64)
+        Fernet(derived).encrypt(b"resume")
+
+    def test_health_check_is_public_and_needs_no_database(self, prod_env):
+        app = importlib.import_module("cloud_api.wsgi").build_app()
+        assert app.test_client().get("/healthz").get_json() == {"ok": True}
+
+
 class TestWsgi:
     def test_builds_the_production_app_with_cognito_and_s3(self, prod_env):
         from cloud_api.auth.verify import CognitoVerifier
@@ -95,6 +111,7 @@ class TestDeployTask:
                             "JHI_ADMIN_DB_USER": "jhi_admin_deploytest"}.items():
             monkeypatch.setenv(name, value)
 
+        monkeypatch.setenv("JHI_OWNER_EMAIL", "Owner@Example.com")
         deploy_tasks.main(["migrate"])
         deploy_tasks.main(["migrate"])          # safe to run on every deploy
 
@@ -103,7 +120,9 @@ class TestDeployTask:
             memberships = dict(conn.execute(text(
                 "SELECT m.rolname, r.rolname FROM pg_auth_members a JOIN pg_roles r ON r.oid = a.roleid "
                 "JOIN pg_roles m ON m.oid = a.member WHERE m.rolname LIKE '%deploytest'")).all())
+            owner = conn.execute(text("SELECT role, idp_subject FROM users WHERE email = 'owner@example.com'")).all()
         assert memberships == {"jhi_api_deploytest": "jhi_app", "jhi_admin_deploytest": "jhi_admin_api"}
+        assert owner == [("admin", None)]      # claimed by the first verified sign-in with that email
         engine = create_engine(url.set(username="jhi_api_deploytest", password="p@ss/word%"))
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM jobs")).scalar() == 0

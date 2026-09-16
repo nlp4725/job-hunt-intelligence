@@ -1,0 +1,89 @@
+# Cloud CI/CD (infra/README.md). Tests on every push and pull request; deploys
+# to AWS on pushes to main once the repository variable AWS_ACCOUNT_ID is set.
+# AWS access is keyless: GitHub's OIDC token assumes jhi-github-deploy, which
+# only trusts the "production" environment of this repository.
+name: cloud
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: jhi
+          POSTGRES_DB: jhi_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jhi" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      JHI_TEST_POSTGRES_URL: postgresql+psycopg://jhi@localhost:5432/jhi_test
+      JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        run: |
+          pip install -r requirements-cloud.txt pytest "moto[s3]==5.2.3" fpdf2==2.8.7   # fpdf2 writes test PDFs
+          python -m venv infra/.venv && infra/.venv/bin/pip install -r infra/requirements.txt
+      - name: Cloud API tests
+        run: python -m pytest -q tests_and_eval/test_cloud_*.py tests_and_eval/test_extension_cloud_sync.py
+      - name: Infrastructure tests
+        working-directory: infra
+        run: .venv/bin/python -m pytest -q tests
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AWS_ACCOUNT_ID != ''
+    runs-on: ubuntu-24.04-arm          # the image is linux/arm64; build it natively
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/jhi-github-deploy
+          aws-region: us-east-1
+      - name: Deploy JhiCloud
+        working-directory: infra
+        run: |
+          python -m venv .venv && .venv/bin/pip install -q -r requirements.txt
+          npx -y aws-cdk@2 deploy JhiCloud --require-approval never --outputs-file outputs.json \
+            -c domain="${{ vars.DOMAIN }}" -c hosted_zone_id="${{ vars.HOSTED_ZONE_ID }}" \
+            -c alert_email="${{ vars.ALERT_EMAIL }}" -c owner_email="${{ vars.OWNER_EMAIL }}"
+      - name: Upload the web app (once it exists)
+        if: hashFiles('webapp/package.json') != ''
+        run: |
+          cd webapp && npm ci && npm run build && cd ..
+          bucket=$(jq -r '.JhiCloud.FrontendBucket' infra/outputs.json)
+          distribution=$(jq -r '.JhiCloud.DistributionId' infra/outputs.json)
+          aws s3 sync webapp/dist "s3://$bucket" --delete
+          aws cloudfront create-invalidation --distribution-id "$distribution" --paths "/*"
