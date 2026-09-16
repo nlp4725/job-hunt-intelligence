@@ -13,6 +13,12 @@
 
 const API_BASE = "http://127.0.0.1:5050";
 
+// Optional cloud copy of each capture; a no-op until configured on the
+// options page. See cloud_sync.js.
+importScripts("cloud_sync.js");
+const CLOUD_FLUSH_ALARM = "jhi-cloud-flush";
+const cloudFetch = (url, init) => fetch(url, init);
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "LOOKUP_JOB") {
     fetch(`${API_BASE}/api/extension/jobs/${encodeURIComponent(msg.payload.jobId)}`)
@@ -29,6 +35,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     })
       .then((r) => r.json().then((data) => sendResponse({ ok: r.ok, status: r.status, data })))
       .catch((err) => sendResponse({ ok: false, error: String(err) }));
+    // Not awaited: the local response above never waits on the cloud.
+    JhiCloudSync.copyCaptureToCloud(chrome.storage, cloudFetch, msg.payload);
     return true; // keep the message channel open for the async response
   }
 
@@ -48,6 +56,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   return false;
+});
+
+chrome.alarms.create(CLOUD_FLUSH_ALARM, { periodInMinutes: 5 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === CLOUD_FLUSH_ALARM) JhiCloudSync.flushQueue(chrome.storage, cloudFetch).catch(() => {});
 });
 
 chrome.webNavigation.onHistoryStateUpdated.addListener(

@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Job Hunt Intelligence — Cloud copy</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; max-width: 520px; margin: 32px auto; padding: 0 16px; }
+    label { display: block; margin: 16px 0 4px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 6px; }
+    button { margin: 16px 8px 0 0; padding: 6px 14px; }
+    p.note { color: #555; }
+    #status { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Cloud copy</h1>
+  <p class="note">Captures always go to the local backend. When both fields are set, each capture is also
+    sent to the cloud in the background; if the cloud is unreachable it waits in a queue and is retried.</p>
+  <label for="base">Cloud API URL</label>
+  <input id="base" placeholder="https://api.example.com">
+  <label for="token">Admin token</label>
+  <input id="token" type="password" placeholder="jhi_…">
+  <button id="save">Save</button><button id="clear">Turn off</button><button id="flush">Retry queue now</button>
+  <div id="status"></div>
+  <script src="cloud_sync.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

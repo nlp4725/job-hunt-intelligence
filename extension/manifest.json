@@ -6,11 +6,13 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["scripting", "webNavigation"],
+  "options_page": "options.html",
+  "permissions": ["scripting", "webNavigation", "storage", "alarms"],
   "host_permissions": [
     "https://www.linkedin.com/*",
     "http://127.0.0.1:5050/*"
   ],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*"],
   "content_scripts": [
     {
       "matches": ["https://www.linkedin.com/jobs/*"],
