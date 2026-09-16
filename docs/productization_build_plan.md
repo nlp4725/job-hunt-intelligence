@@ -663,7 +663,7 @@ Only Skill Match is affected. Seniority and Expertise come from LLM calls and ne
 - **Seniority is per job.** The LLM classifies the level once; each user's fit is computed in code (§3.3).
 - **Nasi pays for LLM calls for now.** Free members trigger none. Paid members' expertise calls are capped (3 drafts a day, `--limit` jobs per worker run).
 - **Expertise Match is a paid-member feature** (2026-09-16), an optional onboarding step anyone can skip; shown beside the total, not added to it (§3.5).
-- **Host: AWS** (Cognito, RDS Postgres, S3, Lambda or App Runner, Secrets Manager).
+- **Host: AWS** (Cognito, RDS Postgres, S3, App Runner for the API, scheduled Fargate tasks for workers, Secrets Manager). **No Lambda** (decided 2026-09-16), including CDK constructs that add Lambda-backed custom resources behind the scenes. This replaces the Lambda + SQS layout in `multi_tenant_plan.md`.
 - **LinkedIn terms of service: OK to go.** A terms-of-use page and a privacy policy covering resumes still ship before launch.
 - **Open sign-up** at launch.
 - **Local stays unchanged; the extension sends each capture to both local and cloud** (§2, phases 1 and 6).
