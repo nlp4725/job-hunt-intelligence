@@ -82,7 +82,12 @@ class UserProfile(CloudBase):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     version: Mapped[int]
     resume_id: Mapped[int | None] = mapped_column(ForeignKey("resumes.id", ondelete="SET NULL"))
-    seniority_target: Mapped[str]                                      # user input; never overridden by inference
+    seniority_target: Mapped[str]                                      # the level the user picked; proposes seniority_scores
+    # The user's confirmed 0-5 score per job level, plus "not_a_fit" (internship /
+    # contract / agency) and "unknown" (level unclear). Seniority Fit is a lookup
+    # here (analysis/seniority_fit.py). NULL = not confirmed yet: the proposal for
+    # seniority_target is used. Locked per version: an edit writes a new version.
+    seniority_scores: Mapped[dict | None] = mapped_column(JSON)
     target_roles: Mapped[list | None] = mapped_column(JSON)
     note: Mapped[str | None] = mapped_column(Text)
     years_experience: Mapped[int | None]                               # inferred from the resume, a hint only

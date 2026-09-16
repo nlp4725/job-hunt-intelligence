@@ -175,6 +175,9 @@ class TestSeedOwner:
         assert (user.id, user.role, user.email, user.idp_subject) == (1, "admin", "owner@example.com", None)
         profile = db.query(UserProfile).one()
         assert (profile.user_id, profile.version, profile.seniority_target) == (1, 1, "entry")
+        from analysis.seniority_fit import proposed_scores
+
+        assert profile.seniority_scores == proposed_scores("entry")   # reproduces today's rubric
 
     def test_statuses_move_to_job_tracking(self, seeded):
         from db.cloud_models import JobTracking

@@ -1,10 +1,12 @@
-"""Phase 4 in the cloud: job levels feed every user's Seniority Fit and total.
+"""Phase 4 in the cloud: job levels and each user's confirmed score table feed
+their Seniority Fit and total.
 
 Postgres tests need JHI_TEST_POSTGRES_URL (see test_cloud_db.py).
 """
 
 import pytest
 
+from analysis.seniority_fit import proposed_scores
 from db.models import Job
 from judge.seniority_level import JobSeniorityLevel
 from tests_and_eval.test_cloud_db import PG_URL, needs_pg
@@ -19,12 +21,12 @@ def _level(level=None, non_fit_reason=None) -> JobSeniorityLevel:
                              note=None, non_fit_reason=non_fit_reason, level=level)
 
 
-def _scored_user(db, store, cipher, target="entry"):
+def _scored_user(db, store, cipher, target="entry", **profile):
     """A user with a confirmed resume (Python, SQL) and a profile at `target`."""
     from resume.ingest import add_resume, confirm_skills
 
     user = _user(db)
-    _profile(db, user.id, seniority_target=target)
+    _profile(db, user.id, seniority_target=target, **profile)
     resume = add_resume(db, user, "cv.txt", RESUME_TEXT.encode(), store, cipher)
     confirm_skills(db, user.id, resume.id, ["Python", "SQL"])
     return user
@@ -32,48 +34,75 @@ def _scored_user(db, store, cipher, target="entry"):
 
 @needs_pg
 class TestScoresUseJobLevels:
-    def test_fit_and_total_come_from_the_job_level_and_the_target(self, db, store, cipher):
-        from analysis.user_scoring import score_user
+    def test_fit_and_total_come_from_the_job_level_and_the_users_table(self, db, store, cipher):
         from db.cloud_models import JobSeniority
 
         jobs = _jobs(db)
         db.add_all([JobSeniority(job_id=jobs["1"].id, level="mid"),
                     JobSeniority(job_id=jobs["2"].id, level="senior", non_fit_reason="contract")])
-        user = _scored_user(db, store, cipher)
-        score_user(db, user.id)
+        table = {**proposed_scores("entry"), "mid": 5, "not_a_fit": 2}
+        user = _scored_user(db, store, cipher, seniority_scores=table)
 
         scores = _scores(db, user.id)
-        assert (scores["1"].seniority_fit, scores["1"].total_score) == (4, scores["1"].skill_score + 4)
-        assert (scores["2"].seniority_fit, scores["2"].total_score) == (0, scores["2"].skill_score)
+        assert (scores["1"].seniority_fit, scores["1"].total_score) == (5, scores["1"].skill_score + 5)
+        assert (scores["2"].seniority_fit, scores["2"].total_score) == (2, scores["2"].skill_score + 2)
+
+    def test_a_profile_without_a_confirmed_table_uses_the_proposal_for_its_level(self, db, store, cipher):
+        from db.cloud_models import JobSeniority
+
+        jobs = _jobs(db)
+        db.add(JobSeniority(job_id=jobs["1"].id, level="mid"))
+        user = _scored_user(db, store, cipher, target="entry")
+        assert _scores(db, user.id)["1"].seniority_fit == 4
 
     def test_a_job_without_a_level_has_no_fit_or_total_yet(self, db, store, cipher):
-        jobs = _jobs(db)
+        _jobs(db)
         user = _scored_user(db, store, cipher)
         score = _scores(db, user.id)["1"]
-        assert jobs["1"].id and (score.seniority_fit, score.total_score) == (None, None)
+        assert (score.seniority_fit, score.total_score) == (None, None)
         assert score.skill_score is not None
 
-    def test_changing_the_target_writes_a_profile_version_and_rescores(self, db, store, cipher):
-        from analysis.user_scoring import set_seniority_target
+
+@needs_pg
+class TestConfirmSeniorityScores:
+    def test_confirming_saves_the_table_on_a_new_profile_version_and_rescores(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_scores
         from db.cloud_models import JobSeniority
 
         jobs = _jobs(db)
         db.add(JobSeniority(job_id=jobs["1"].id, level="mid"))
         user = _scored_user(db, store, cipher)
         before = _latest_profile(db, user.id)
+        table = {**proposed_scores("entry"), "mid": 5}
 
-        set_seniority_target(db, user.id, "mid")
+        set_seniority_scores(db, user.id, table)
 
         after = _latest_profile(db, user.id)
-        assert (after.version, after.seniority_target, after.resume_id) == (before.version + 1, "mid", before.resume_id)
+        assert (after.version, after.seniority_scores, after.seniority_target, after.resume_id) == (
+            before.version + 1, table, "entry", before.resume_id)
         assert _scores(db, user.id)["1"].seniority_fit == 5
 
-    def test_an_unknown_target_is_rejected(self, db, store, cipher):
-        from analysis.user_scoring import set_seniority_target
+    def test_a_confirmed_table_is_never_edited_in_place(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_scores
 
         user = _scored_user(db, store, cipher)
+        first = set_seniority_scores(db, user.id, proposed_scores("entry"))
+        set_seniority_scores(db, user.id, proposed_scores("mid"), target="mid")
+
+        db.refresh(first)
+        assert first.seniority_scores == proposed_scores("entry") and first.seniority_target == "entry"
+        assert _latest_profile(db, user.id).seniority_target == "mid"
+
+    def test_an_invalid_table_writes_nothing(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_scores
+
+        user = _scored_user(db, store, cipher)
+        version = _latest_profile(db, user.id).version
         with pytest.raises(ValueError):
-            set_seniority_target(db, user.id, "junior")
+            set_seniority_scores(db, user.id, {**proposed_scores("entry"), "mid": 9})
+        with pytest.raises(ValueError):
+            set_seniority_scores(db, user.id, proposed_scores("entry"), target="junior")
+        assert _latest_profile(db, user.id).version == version
 
 
 @needs_pg

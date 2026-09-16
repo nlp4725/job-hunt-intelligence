@@ -4,9 +4,9 @@ call (productization plan §3.3).
 Skill Match compares each job's stored job_skills with the skills confirmed on
 the user's active resume: the one their latest profile version points at.
 Duplicate postings are not scored, the same as local screening. Seniority Fit
-comes from the job's classified level (job_seniority) and the profile's
-target; total_score is Skill Match + Seniority Fit, left empty until the job
-has a level.
+looks up the job's classified level (job_seniority) in the profile's confirmed
+score table; total_score is Skill Match + Seniority Fit, left empty until the
+job has a level.
 """
 
 from collections import defaultdict
@@ -14,7 +14,7 @@ from collections import defaultdict
 from sqlalchemy import or_
 from sqlalchemy.dialects.postgresql import insert
 
-from analysis.seniority_fit import seniority_fit
+from analysis.seniority_fit import proposed_scores, seniority_fit, validate_scores
 from analysis.skill_match import skill_match_from_skills
 from analysis.taxonomy_version import taxonomy_version
 from db.cloud_models import JobSeniority, UserJobScore, UserProfile, UserResume
@@ -42,11 +42,12 @@ def score_user(db, user_id: int) -> int:
     levels = {job_id: (level, reason) for job_id, level, reason
               in db.query(JobSeniority.job_id, JobSeniority.level, JobSeniority.non_fit_reason)}
 
+    table = profile.seniority_scores or proposed_scores(profile.seniority_target)
     now, version = utcnow(), taxonomy_version()
     rows = []
     for (job_id,) in db.query(Job.id).filter(*scorable):
         match = skill_match_from_skills(skills_by_job.get(job_id, set()), resume_skills)
-        fit = seniority_fit(*levels[job_id], profile.seniority_target) if job_id in levels else None
+        fit = seniority_fit(*levels[job_id], table) if job_id in levels else None
         rows.append({
             "user_id": user_id, "job_id": job_id, "profile_version": profile.version, "taxonomy_version": version,
             "skill_score": match["score"], "skill_ratio": match["ratio"], "skill_matched": match["matched_skills"],
@@ -67,13 +68,18 @@ def score_user(db, user_id: int) -> int:
     return len(rows)
 
 
-def set_seniority_target(db, user_id: int, target: str) -> UserProfile:
-    """Write a new profile version with this target (everything else carried
-    over) and rescore the user. No LLM call: job levels are already stored."""
-    seniority_fit(None, None, target)   # validates the target before anything is written
+def set_seniority_scores(db, user_id: int, scores: dict, target: str | None = None) -> UserProfile:
+    """Confirm a user's seniority score table: write it on a new profile version
+    (the level they picked, if given, and everything else carried over) and
+    rescore. Earlier versions keep their tables. No LLM call: job levels are
+    already stored. Validates everything before writing anything."""
+    scores = validate_scores(scores)
     current = active_profile(db, user_id)
+    target = target or (current.seniority_target if current else None)
+    proposed_scores(target)   # raises for an unknown level
     profile = UserProfile(
         user_id=user_id, version=(current.version + 1) if current else 1, seniority_target=target,
+        seniority_scores=scores,
         resume_id=current.resume_id if current else None, target_roles=current.target_roles if current else None,
         note=current.note if current else None, years_experience=current.years_experience if current else None,
     )

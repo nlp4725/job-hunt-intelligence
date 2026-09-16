@@ -6,7 +6,7 @@ Run once, after `alembic upgrade head` and `python -m db.copy_to_cloud`. Cloud
 only; the local SQLite file is not involved.
 
 - users: the owner as id 1, role admin; idp_subject stays NULL until their first login claims the row
-- user_profiles: version 1, seniority target "entry", which is what today's scores assume
+- user_profiles: version 1, seniority target "entry" and its proposed score table, which reproduces today's scores
 - job_tracking: every job the owner applied to, passed on or wrote a note on. Those fields are then
   cleared on the shared jobs rows, so in the cloud a job's status lives only in job_tracking
 - application_events: an "applied" event wherever applied_at is known
@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from sqlalchemy import and_, create_engine, or_, text
 from sqlalchemy.orm import Session
 
+from analysis.seniority_fit import proposed_scores
 from db.cloud_models import ApplicationEvent, JobSeniority, JobTracking, User, UserProfile
 from db.models import Job, ScreeningResult
 
@@ -53,7 +54,7 @@ def seed_owner(target_url: str, email: str, display_name: str | None = None) -> 
             db.add(User(id=1, email=email, display_name=display_name, role="admin"))
             db.flush()
             db.execute(text("SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT MAX(id) FROM users))"))
-            db.add(UserProfile(user_id=1, version=1, seniority_target="entry"))
+            db.add(UserProfile(user_id=1, version=1, seniority_target="entry", seniority_scores=proposed_scores("entry")))
 
             touched = or_(Job.applied.is_(True), Job.not_interested.is_(True), _has_text(Job.note),
                           _has_text(Job.not_interested_note), _has_text(Job.applied_resume_version))
