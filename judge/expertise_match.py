@@ -18,6 +18,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_deepseek import ChatDeepSeek
 from pydantic import BaseModel, Field
 
+from judge.structured_retry import invoke_with_retry
+
 from db.models import Job
 
 load_dotenv()
@@ -34,22 +36,39 @@ spends most days doing — not the company's industry.
 D1. Retail / e-commerce / marketplaces
 D2. Marketing & consumer (to-C) products
 D3. Pharmaceutical / healthcare / life sciences
+D4. Other highly-regulated / audit-grade industries (financial
+    services regulatory/compliance, government/public sector,
+    legal, insurance) — proven via TWO independent data points, not
+    one: FDA-regulated pharma (Vertex) and HK government procurement
+    compliance (AI Tender Review System). This is a claim about the
+    regulated-process PATTERN transferring (audit trails, deterministic
+    rules, sign-off gates), NOT insider domain knowledge of banking
+    regulations, insurance actuarial rules, or specific legal codes —
+    don't let a D4 match imply literal subject-matter expertise I
+    don't have.
 
 ### My capabilities (C)
-C1. End-to-end ML modeling: data cleaning, target definition,
-    feature engineering, model training (classical/traditional ML —
-    e.g. XGBoost, random forest, regression, classical time-series
-    methods), benchmarking/evaluation against business baselines.
-    Problem types incl. prediction, recommenders, forecasting.
+(C1 and C5 deliberately retired — classical end-to-end ML modeling
+and generic experiment-design work no longer get capability credit
+here, sharpening the rubric toward the agentic/governed/eval story.
+Numbering below is intentionally non-contiguous rather than
+renumbered, to avoid touching every downstream reference for no
+functional benefit.)
 C2. Building & deploying ML/AI systems end-to-end (LLM/RAG/agent
     systems, cloud deployment, CI/CD, LLM evals, benchmarking, and
     tracing)
 C3. Pain-point & market analysis: identifying customer problems,
     sizing opportunities
 C4. 0→1 product development: idea → build → launch
-C5. Experiment setup: A/B testing, metric definition, success criteria
 C6. Product sense: understanding business metrics, unit economics,
     and ROI; connecting model performance to business outcomes
+C7. Governed/compliance AI system design: building AI pipelines
+    whose outputs must survive an audit — citation-level
+    traceability, deterministic rule verification, mandatory
+    human-in-the-loop sign-off. Distinct from C2: C2 is building the
+    LLM/RAG/agent system itself; C7 is when the CORE REQUIREMENT is
+    that its outputs be auditable/governed, not just that it works.
+    A posting can match both (e.g. "governed agentic platform").
 
 ### My weaknesses (W) — score DOWN when these are core requirements
 W1. Hardware / physical systems
@@ -61,7 +80,9 @@ W3. Deep learning research / training novel neural network
     pipelines, generative modeling, imitation learning/RL policy
     training). This is about deep-learning-specific research
     expertise — training classical/traditional ML models (XGBoost,
-    regression, forecasting) is C1, a strength, not W3.
+    regression, forecasting) is NOT W3 either, it just gets no
+    capability credit (neutral, not a strength or a weakness — C1
+    was dropped).
     NOTE: APPLYING pretrained models, LLM APIs, embeddings,
     fine-tuning via APIs = C2, NOT W3.
 
@@ -97,8 +118,9 @@ W3. Deep learning research / training novel neural network
    responsibility; mention the other in "note".
 4. If a posting mentions "training" or "building" models but doesn't
    give enough detail to tell whether it's classical/traditional ML
-   (C1) or deep-learning research from scratch (W3) — don't guess.
-   Score 3, "confidence": "low", and say what's ambiguous in "note".
+   (no capability credit) or deep-learning research from scratch
+   (W3) — don't guess W3. Score 3, "confidence": "low", and say
+   what's ambiguous in "note".
 5. Multiple matches don't raise the score above the level test —
    list them in matched_* instead.
 6. Too vague to identify the core problem → score 3,
@@ -140,23 +162,29 @@ customers."
 Posting: "ML Engineer, Seller Analytics at [marketplace co]. Build
 models that predict which new product listings will succeed, and
 surface trend insights to sellers."
-→ D1 + C1 → 5.
+→ D1 matches, and the pain-point/trend-analysis framing gives C3 —
+   but the actual modeling work (classical prediction) has no
+   capability credit since C1 was dropped. D + C3 → 5 (C3 counts as
+   a real capability match here, distinct from the modeling itself).
 → {"criterion": "expertise_match",
    "evidence": "predict which new product listings will succeed | trend insights to sellers",
-   "matched_domains": ["D1"], "matched_capabilities": ["C1", "C3"],
-   "matched_weaknesses": [], "confidence": "high",
-   "note": null, "score": 5}
+   "matched_domains": ["D1"], "matched_capabilities": ["C3"],
+   "matched_weaknesses": [], "confidence": "medium",
+   "note": "domain and pain-point-analysis framing match; the prediction-modeling work itself has no capability credit under the current rubric", "score": 5}
 
 Posting: "ML Engineer, Ads Ranking at [e-commerce co]. Improve CTR
 prediction and ranking models; experience with recommendation
 systems preferred."
-→ Modeling role: recommendation/prediction (C1) at a retail
-   company (D1) → 5. (Serving infra would be different — see next.)
+→ Pure classical prediction/ranking modeling, no pain-point analysis,
+   0→1, or governance framing — no capability left that covers this.
+   D1 alone, no C → 3, not 5. (This is the direct consequence of
+   dropping C1: a posting that would have scored 5 before now caps
+   at 3 unless another capability genuinely applies.)
 → {"criterion": "expertise_match",
    "evidence": "CTR prediction and ranking models | recommendation systems preferred",
-   "matched_domains": ["D1"], "matched_capabilities": ["C1"],
-   "matched_weaknesses": [], "confidence": "high",
-   "note": "CTR specifics are new but problem type matches", "score": 5}
+   "matched_domains": ["D1"], "matched_capabilities": [],
+   "matched_weaknesses": [], "confidence": "medium",
+   "note": "domain matches but pure classical modeling has no capability credit since C1 was dropped", "score": 3}
 
 Posting: "ML Engineer, Ads Serving at [e-commerce co]. Build our
 real-time bidding and auction infrastructure serving 1M QPS."
@@ -187,15 +215,20 @@ deep learning models on microscopy images to identify candidates."
    "matched_weaknesses": ["W3"], "confidence": "high",
    "note": "pharma domain helps but DL training is the job", "score": 1}
 
-Posting: "Senior ML Engineer, Credit Risk. Build underwriting
-models; deep knowledge of credit bureau data and lending
-regulations strongly preferred."
-→ C1 transfers, but domain knowledge explicitly expected → 2.
+Posting: "Senior AI Engineer, Credit Risk. Build an LLM-powered
+underwriting decision-support agent; deep knowledge of credit
+bureau data and lending regulations strongly preferred."
+→ NOT D4: this wants literal lending-regulation/credit-bureau
+   subject-matter knowledge, the specific thing D4 explicitly
+   excludes — D4 is the audit-grade-PROCESS pattern (traceability,
+   rules, sign-off gates), not insider financial-regulatory
+   knowledge. So domain knowledge is explicitly expected and I don't
+   have it. C2 (LLM/agent building) transfers → 2.
 → {"criterion": "expertise_match",
-   "evidence": "underwriting models | credit bureau data | lending regulations strongly preferred",
-   "matched_domains": [], "matched_capabilities": ["C1"],
+   "evidence": "LLM-powered underwriting decision-support agent | credit bureau data | lending regulations strongly preferred",
+   "matched_domains": [], "matched_capabilities": ["C2"],
    "matched_weaknesses": [], "confidence": "high",
-   "note": "modeling transfers; credit ramp-up expected", "score": 2}
+   "note": "agent-building transfers; this wants literal credit/lending subject-matter knowledge, not the general regulated-process pattern D4 covers — credit ramp-up expected", "score": 2}
 
 Posting: "Machine Learning Engineer. Develop and deploy ML models,
 collaborate with stakeholders, improve model performance."
@@ -209,8 +242,8 @@ collaborate with stakeholders, improve model performance."
 Posting: "Data Scientist — train and deploy models to predict
 customer churn, and continuously improve model performance."
 → "Train models" with no detail on technique/architecture — could be
-   classical (XGBoost/regression, C1) or deep learning (W3). Rule 4:
-   don't guess → 3.
+   classical (XGBoost/regression, no capability credit) or deep
+   learning research (W3). Rule 4: don't guess W3 → 3.
 → {"criterion": "expertise_match",
    "evidence": "train and deploy models to predict customer churn",
    "matched_domains": [], "matched_capabilities": [],
@@ -220,18 +253,47 @@ customer churn, and continuously improve model performance."
 Posting: "ML Engineer, Growth. Own our experimentation platform
 roadmap: design A/B tests, define success metrics, and tie model
 improvements to revenue impact for our consumer app."
-→ D2 + C5 + C6 → 5.
+→ D2 + C6 → 5. (Would previously have also cited C5 for the A/B
+   testing itself — C5 was dropped, but C6 alone is enough for D+C.)
 → {"criterion": "expertise_match",
    "evidence": "design A/B tests | define success metrics | tie model improvements to revenue",
-   "matched_domains": ["D2"], "matched_capabilities": ["C5", "C6"],
+   "matched_domains": ["D2"], "matched_capabilities": ["C6"],
    "matched_weaknesses": [], "confidence": "high",
    "note": null, "score": 5}
+
+Posting: "Agentic AI Engineer — build governed, auditable agent
+workflows for enterprise/government customers. Own the platform's
+audit trail, human-in-the-loop approval gates, and traceability from
+every automated decision back to its source."
+→ Core requirement is that outputs are auditable/governed, not just
+   that the agents work = C7, not just C2. Government/public-sector
+   customer base = D4 (proven via HK government procurement work,
+   not just pharma). D4 + C7 → 5.
+→ {"criterion": "expertise_match",
+   "evidence": "governed, auditable agent workflows | audit trail, human-in-the-loop approval gates | traceability... back to its source",
+   "matched_domains": ["D4"], "matched_capabilities": ["C7"],
+   "matched_weaknesses": [], "confidence": "high",
+   "note": "government/public-sector customer base matches D4 (regulated-industry pattern, proven via HK govt procurement work); governance/compliance capability matches C7", "score": 5}
+
+Posting: "GRC Automation Engineer — build AI-assisted evidence
+collection for SOC 2 / ISO 27001 audits, with mandatory human
+sign-off before any control passes and a full audit trail of every
+automated determination."
+→ C7: little/no LLM-building language, but the core job (auditable,
+   human-signed-off automated determinations) is exactly this
+   capability. SOC 2/ISO 27001 compliance-automation domain = D4.
+   D4 + C7 → 5.
+→ {"criterion": "expertise_match",
+   "evidence": "AI-assisted evidence collection for SOC 2 / ISO 27001 audits | mandatory human sign-off | full audit trail",
+   "matched_domains": ["D4"], "matched_capabilities": ["C7"],
+   "matched_weaknesses": [], "confidence": "high",
+   "note": "SOC 2/ISO 27001 compliance-automation domain matches D4; GRC-automation core job matches C7 even without explicit LLM/RAG language — note D4 is the regulated-PATTERN match, not literal SOC2/ISO27001 subject-matter expertise", "score": 5}
 
 ### Output format (JSON, fields in this exact order)
 {"criterion": "expertise_match",
  "evidence": "<up to 3 fragments, each <10 words, ' | ' separated>",
- "matched_domains": ["D1"-"D3" or empty],
- "matched_capabilities": ["C1"-"C6" or empty],
+ "matched_domains": [any of "D1","D2","D3","D4" or empty],
+ "matched_capabilities": [any of "C2","C3","C4","C6","C7" or empty],
  "matched_weaknesses": ["W1"-"W3" or empty],
  "confidence": "high" | "medium" | "low",
  "note": "<nuances, or null>",
@@ -248,9 +310,9 @@ class ExpertiseMatch(BaseModel):
     evidence: str = Field(
         description="Up to 3 fragments quoted from the posting, each under 10 words, ' | ' separated."
     )
-    matched_domains: list[Literal["D1", "D2", "D3"]] = Field(description="Domains this role's core problem matches, or empty.")
-    matched_capabilities: list[Literal["C1", "C2", "C3", "C4", "C5", "C6"]] = Field(
-        description="Capabilities this role's core problem matches, or empty."
+    matched_domains: list[Literal["D1", "D2", "D3", "D4"]] = Field(description="Domains this role's core problem matches, or empty.")
+    matched_capabilities: list[Literal["C2", "C3", "C4", "C6", "C7"]] = Field(
+        description="Capabilities this role's core problem matches, or empty. C1/C5 retired — no longer scored."
     )
     matched_weaknesses: list[Literal["W1", "W2", "W3"]] = Field(
         description="Weaknesses that are a core requirement of this role, or empty."
@@ -278,7 +340,8 @@ def format_posting(job: Job) -> str:
 def score_expertise_match(posting_text: str) -> ExpertiseMatch:
     llm = ChatDeepSeek(model=MODEL, extra_body={"thinking": {"type": "disabled"}})
     structured_llm = llm.with_structured_output(ExpertiseMatch)
-    return structured_llm.invoke([
-        SystemMessage(EXPERTISE_MATCH_PROMPT),
-        HumanMessage(posting_text),
-    ])
+    return invoke_with_retry(
+        structured_llm,
+        [SystemMessage(EXPERTISE_MATCH_PROMPT), HumanMessage(posting_text)],
+        label="ExpertiseMatch",
+    )

@@ -16,7 +16,11 @@ from typing import Literal
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_deepseek import ChatDeepSeek
-from pydantic import BaseModel, Field
+import math
+
+from pydantic import BaseModel, Field, field_validator
+
+from judge.structured_retry import invoke_with_retry
 
 from db.models import Job
 
@@ -175,6 +179,17 @@ class SeniorityFit(BaseModel):
     )
     years_required: int | None = Field(description="Minimum years of experience stated in the posting, or null.")
     inferred: bool = Field(description="True if years_required is null and the score was inferred from responsibilities.")
+
+    @field_validator("years_required", mode="before")
+    @classmethod
+    def _round_up_fractional_years(cls, v):
+        # A posting can genuinely state a fractional requirement ("1.5+
+        # years") — found live 2026-08-17 when this failed a strict-int
+        # Pydantic validation (job 12516: years_required=1.5 rejected
+        # outright, leaving the job unscreened). Round up rather than
+        # truncate: "1.5+ years" means the floor is past 1 whole year, so
+        # rounding down to 1 would understate the actual requirement.
+        return math.ceil(v) if isinstance(v, float) else v
     confidence: Literal["high", "medium", "low"]
     note: str | None = Field(description="Conflicts or ambiguities (e.g. title vs. years disagreement), or null.")
     score: int = Field(ge=0, le=5)
@@ -187,7 +202,8 @@ def format_posting(job: Job) -> str:
 def score_seniority_fit(posting_text: str) -> SeniorityFit:
     llm = ChatDeepSeek(model=MODEL, extra_body={"thinking": {"type": "disabled"}})
     structured_llm = llm.with_structured_output(SeniorityFit)
-    return structured_llm.invoke([
-        SystemMessage(SENIORITY_PROMPT),
-        HumanMessage(posting_text),
-    ])
+    return invoke_with_retry(
+        structured_llm,
+        [SystemMessage(SENIORITY_PROMPT), HumanMessage(posting_text)],
+        label="SeniorityFit",
+    )
