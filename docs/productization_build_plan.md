@@ -209,13 +209,17 @@ score_job_for_all_users(job_id: int) -> None    # after a capture
 
 **Levels** keep today's bands: `entry` [0, 2) · `mid` [2, 5) · `senior` [5, 7) · `senior_plus` [7, 9) · `staff` [9, 12) · `principal` 12+.
 
-**Fit rule**
+**Fit: each user's own score table** (decided 2026-09-16)
 
-| Case | Fit |
+The user picks their level; the next screen proposes a 0-5 score for every job level from it and asks them to agree or adjust. Seniority Fit is then a lookup in the confirmed table (`user_profiles.seniority_scores`, locked per profile version).
+
+| Row | Proposed score |
 |---|---|
-| `non_fit_reason` set | 0 |
-| `level` is None | 3 (today's rule 7) |
-| Otherwise | `max(0, 5 − |index(level) − index(target)|)` |
+| each level | `max(0, 5 − |index(level) − index(picked level)|)` |
+| `not_a_fit` (internship / contract / agency, one shared row) | 0 |
+| `unknown` (level unclear) | 3 (today's rule 7) |
+
+Until the user confirms, the proposal for their picked level is used. Changing the level later clears the table until it is confirmed again.
 
 With target `entry` this gives exactly today's scores: entry 5, mid 4, senior 3, senior_plus 2, staff 1, principal 0. Today's score 0 also covers agency, contract and internship postings. Splitting those into `non_fit_reason` means a user targeting principal sees principal roles as a fit, while agency and contract postings stay 0 for everyone.
 
@@ -227,7 +231,8 @@ The agency rule, contract rule, evidence format and `judge/structured_retry.py` 
 |---|---|---|---|
 | User finishes onboarding | All jobs | All jobs | None |
 | Resume re-upload / skills edited | All of that user's jobs | — | None |
-| Seniority target changed | — | All jobs (new profile version) | None |
+| Level picked or changed (`set_seniority_target`) | — | All jobs, from the proposal (new profile version) | None |
+| Score table confirmed (`set_seniority_scores`) | — | All jobs, from the table (new profile version) | None |
 | Nasi captures a new job | Every user | Every user | 1 level classification, shared |
 | Level prompt version bumped | — | Every user, after the gate passes and jobs are re-classified | 1 per re-classified job |
 
@@ -497,7 +502,7 @@ The old unauthenticated routes (`/api/jobs`, `/api/extension/*`, the old `PATCH 
 |---|---|---|
 | `/` | public | Landing page from the Figma design: hero, the animated scoring demo using real top jobs, a ticker fed by `/api/public/stats`. No hardcoded numbers |
 | `/login`, `/signup` | public | Provider's hosted or embedded UI |
-| `/app/onboarding` | user | Required after first login: **1.** upload resume → **2.** confirm skills → **3.** pick seniority target (Entry / new grad · Mid 2–5 yrs · Senior 5–7 · Senior, leads others 7–9 · Staff 9–12 · Principal / Director 12+), target roles, optional note → **4.** the board opens with the user's Skill Match and Seniority Fit on every job, no waiting |
+| `/app/onboarding` | user | Required after first login: **1.** upload resume → **2.** confirm skills → **3.** pick seniority level (Entry / new grad · Mid 2–5 yrs · Senior 5–7 · Senior, leads others 7–9 · Staff 9–12 · Principal / Director 12+), target roles, optional note → **4.** "We score seniority 0–5": the proposed score for each job level, not a fit and level unclear, each adjustable; agree or adjust, then confirm (locked; editable later in Settings) → **5.** the board opens with the user's Skill Match and Seniority Fit on every job, no waiting |
 | `/app` | user | Today's board with the caller's own scores. Status actions write to `/me/tracking`; "Applied" view shows the caller's applications and stages |
 | `/app/settings` | user | Display name; resume (re-upload, edit skills); seniority target and roles; "Update my old scores" (§9); delete account |
 | `/app/admin` | admin | Full health, extension tokens, collection stats, LLM spend |

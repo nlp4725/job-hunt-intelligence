@@ -87,3 +87,23 @@ def set_seniority_scores(db, user_id: int, scores: dict, target: str | None = No
     db.flush()
     score_user(db, user_id)
     return profile
+
+
+def set_seniority_target(db, user_id: int, target: str) -> UserProfile:
+    """Save the level the user picked (onboarding, or later in Settings) on a
+    new profile version, then rescore. Its score table starts unconfirmed
+    (NULL), so scoring uses the proposal for this level until the next screen
+    confirms one with set_seniority_scores. A table confirmed for an earlier
+    level is not carried over. Validates before writing anything."""
+    proposed_scores(target)   # raises for an unknown level
+    current = active_profile(db, user_id)
+    profile = UserProfile(
+        user_id=user_id, version=(current.version + 1) if current else 1, seniority_target=target,
+        seniority_scores=None,
+        resume_id=current.resume_id if current else None, target_roles=current.target_roles if current else None,
+        note=current.note if current else None, years_experience=current.years_experience if current else None,
+    )
+    db.add(profile)
+    db.flush()
+    score_user(db, user_id)
+    return profile

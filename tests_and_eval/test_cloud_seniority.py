@@ -106,6 +106,50 @@ class TestConfirmSeniorityScores:
 
 
 @needs_pg
+class TestPickLevelThenConfirmScores:
+    """Onboarding step 3 saves the level; step 4 shows the proposed table for
+    that level and the user agrees or adjusts it."""
+
+    def test_saving_the_level_alone_scores_with_its_proposal_until_confirmed(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_scores, set_seniority_target
+        from db.cloud_models import JobSeniority
+
+        jobs = _jobs(db)
+        db.add(JobSeniority(job_id=jobs["1"].id, level="senior"))
+        user = _scored_user(db, store, cipher)
+        before = _latest_profile(db, user.id)
+
+        set_seniority_target(db, user.id, "mid")
+
+        picked = _latest_profile(db, user.id)
+        assert (picked.version, picked.seniority_target, picked.seniority_scores, picked.resume_id) == (
+            before.version + 1, "mid", None, before.resume_id)
+        assert _scores(db, user.id)["1"].seniority_fit == 4          # the mid proposal
+
+        set_seniority_scores(db, user.id, {**proposed_scores("mid"), "senior": 5})
+        assert _scores(db, user.id)["1"].seniority_fit == 5          # the confirmed table
+
+    def test_changing_the_level_later_clears_the_table_until_it_is_confirmed_again(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_scores, set_seniority_target
+
+        user = _scored_user(db, store, cipher)
+        set_seniority_scores(db, user.id, {**proposed_scores("entry"), "mid": 5})
+
+        set_seniority_target(db, user.id, "staff")
+
+        assert _latest_profile(db, user.id).seniority_scores is None
+
+    def test_an_unknown_level_writes_nothing(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_target
+
+        user = _scored_user(db, store, cipher)
+        version = _latest_profile(db, user.id).version
+        with pytest.raises(ValueError):
+            set_seniority_target(db, user.id, "junior")
+        assert _latest_profile(db, user.id).version == version
+
+
+@needs_pg
 class TestClassifyMissing:
     def test_only_unclassified_non_duplicate_jobs_are_sent_and_failures_are_counted(self, db, store, cipher):
         from db.classify_job_seniority import PROMPT_VERSION, classify_missing
