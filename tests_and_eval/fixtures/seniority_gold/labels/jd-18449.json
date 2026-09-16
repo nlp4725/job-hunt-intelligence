@@ -1,0 +1,16 @@
+{
+ "job_id": 18449,
+ "split": "tune",
+ "draft": {
+  "level": "staff_principal",
+  "non_fit_reason": null,
+  "years_required": 10,
+  "inferred": false,
+  "evidence": [
+   "10+ years building ML for physical/engineering systems"
+  ],
+  "note": "Stated 10+ years wins over the plain 'ML Engineer' title and the hands-on IC duties, which on their own would read closer to senior. Direct employer (Molex/Koch). [2026-09-16: converted from staff/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

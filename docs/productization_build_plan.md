@@ -157,7 +157,7 @@ process_resume(filename, data, identity) -> ProcessedResume  # text (encrypted a
 ```python
 # user_profile/model.py
 class ProfileInput(BaseModel):        # what the user typed; always wins
-    seniority_target: SeniorityLevel  # entry | mid | senior | senior_plus | staff | principal (§3.3)
+    seniority_target: SeniorityLevel  # intern | entry | mid_senior | senior | staff_principal (§3.3)
     target_roles: list[str]
     note: str | None                  # free text; not used in scoring yet
 
@@ -182,7 +182,7 @@ Decided 2026-09-15. The LLM classifies each posting's **level** once, shared by 
 
 ```python
 # judge/seniority_level.py      — replaces the scoring in judge/seniority_fit.py
-SeniorityLevel = Literal["entry", "mid", "senior", "senior_plus", "staff", "principal"]
+SeniorityLevel = Literal["intern", "entry", "mid_senior", "senior", "staff_principal"]
 
 class JobSeniority(BaseModel):
     evidence: str
@@ -191,7 +191,7 @@ class JobSeniority(BaseModel):
     confidence: Literal["high", "medium", "low"]
     note: str | None
     level: SeniorityLevel | None                                     # None = nothing inferable (today's rule 7)
-    non_fit_reason: Literal["agency", "contract", "internship"] | None  # hard non-fit for every user
+    non_fit_reason: Literal["agency", "contract"] | None  # scored with the user's "not a fit" row
 
 SENIORITY_LEVEL_PROMPT     # today's prompt without the "my profile" paragraph; outputs level + non_fit_reason, not a 0–5 score
 classify_job_seniority(posting_text: str) -> JobSeniority
@@ -207,7 +207,7 @@ score_user(user_id: int) -> RunSummary          # whole board for one user: onbo
 score_job_for_all_users(job_id: int) -> None    # after a capture
 ```
 
-**Levels** keep today's bands: `entry` [0, 2) · `mid` [2, 5) · `senior` [5, 7) · `senior_plus` [7, 9) · `staff` [9, 12) · `principal` 12+.
+**Levels** (decided 2026-09-16): `intern` (internship / co-op) · `entry` [0, 2) · `mid_senior` [2, 5) · `senior` [5, 9) · `staff_principal` 9+.
 
 **Fit: each user's own score table** (decided 2026-09-16)
 
@@ -216,7 +216,7 @@ The user picks their level; the next screen proposes a 0-5 score for every job l
 | Row | Proposed score |
 |---|---|
 | each level | `max(0, 5 − |index(level) − index(picked level)|)` |
-| `not_a_fit` (internship / contract / agency, one shared row) | 0 |
+| `not_a_fit` (agency / contract, one shared row) | 0 |
 | `unknown` (level unclear) | 3 (today's rule 7) |
 
 Until the user confirms, the proposal for their picked level is used. Changing the level later clears the table until it is confirmed again.
@@ -502,7 +502,7 @@ The old unauthenticated routes (`/api/jobs`, `/api/extension/*`, the old `PATCH 
 |---|---|---|
 | `/` | public | Landing page from the Figma design: hero, the animated scoring demo using real top jobs, a ticker fed by `/api/public/stats`. No hardcoded numbers |
 | `/login`, `/signup` | public | Provider's hosted or embedded UI |
-| `/app/onboarding` | user | Required after first login: **1.** upload resume → **2.** confirm skills → **3.** pick seniority level (Entry / new grad · Mid 2–5 yrs · Senior 5–7 · Senior, leads others 7–9 · Staff 9–12 · Principal / Director 12+), target roles, optional note → **4.** "We score seniority 0–5": the proposed score for each job level, not a fit and level unclear, each adjustable; agree or adjust, then confirm (locked; editable later in Settings) → **5.** the board opens with the user's Skill Match and Seniority Fit on every job, no waiting |
+| `/app/onboarding` | user | Required after first login: **1.** upload resume → **2.** confirm skills → **3.** pick seniority level (Intern · Entry 0–2 yrs · Mid–senior 2–5 · Senior 5–9 · Staff / principal 9+), target roles, optional note → **4.** "We score seniority 0–5": the proposed score for each job level, not a fit and level unclear, each adjustable; agree or adjust, then confirm (locked; editable later in Settings) → **5.** the board opens with the user's Skill Match and Seniority Fit on every job, no waiting |
 | `/app` | user | Today's board with the caller's own scores. Status actions write to `/me/tracking`; "Applied" view shows the caller's applications and stages |
 | `/app/settings` | user | Display name; resume (re-upload, edit skills); seniority target and roles; "Update my old scores" (§9); delete account |
 | `/app/admin` | admin | Full health, extension tokens, collection stats, LLM spend |

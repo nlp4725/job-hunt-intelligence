@@ -1,0 +1,18 @@
+{
+ "job_id": 621,
+ "split": "tune",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of experience in Data, Analytics, Data Engineering, or AI.",
+   "3+ years leading technical teams.",
+   "Build and scale a high-performing Data & AI organization."
+  ],
+  "note": "Uses the 7+ years overall figure (the 3+ years is leadership tenure within it), giving senior_plus; it is a people-manager role, which rule 5 also puts at senior_plus. Direct employer, permanent role. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

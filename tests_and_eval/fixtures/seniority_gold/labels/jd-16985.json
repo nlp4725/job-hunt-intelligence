@@ -1,0 +1,17 @@
+{
+ "job_id": 16985,
+ "split": "tune",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 8,
+  "inferred": false,
+  "evidence": [
+   "8+ years of professional software development experience",
+   "leads the design and implementation of enterprise AI copilots"
+  ],
+  "note": "Stated 8+ years puts it in senior_plus despite the plain 'AI Engineer' title; responsibilities (leading design, overseeing a Center of Excellence) are consistent with that. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

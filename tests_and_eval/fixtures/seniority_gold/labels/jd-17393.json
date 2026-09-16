@@ -1,0 +1,16 @@
+{
+ "job_id": 17393,
+ "split": "test",
+ "draft": {
+  "level": "entry",
+  "non_fit_reason": null,
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "We're looking for an early-career engineer to partner directly with our Head of People"
+  ],
+  "note": "No years stated; posting explicitly asks for an early-career engineer doing hands-on building, inferred entry. The role works fairly independently with the Head of People, so mid is a defensible alternative."
+ },
+ "gold": null,
+ "status": "draft"
+}

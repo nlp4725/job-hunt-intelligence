@@ -1,13 +1,12 @@
 """Seniority level of a job posting — one LLM call per job, shared by every user
-(productization plan §3.3). Each user's Seniority Fit is computed from it in
+(productization plan §3.3). Each user's Seniority Fit is looked up from it in
 analysis/seniority_fit.py.
 
 Derived from judge/seniority_fit.py's calibrated rubric, which scores fit for
-one entry-level candidate. This prompt drops the candidate entirely and
-returns the level itself, and splits that rubric's score 0 — which mixed
-principal roles with agency, contract and internship postings — into a level
-plus a separate non-fit reason. judge/seniority_fit.py stays as it is for the
-local app.
+one entry-level candidate. This prompt drops the candidate entirely and returns
+the job's level on five levels (decided 2026-09-16), plus a separate non-fit
+reason for agency and contract postings. judge/seniority_fit.py stays as it is
+for the local app.
 """
 
 import math
@@ -31,33 +30,34 @@ RESPONSIBILITY the posting describes, not by job title strings.
 
 | Level | Years (half-open) | What the role actually expects |
 |-------|-------------------|--------------------------------|
-| `entry` | [0, 2) | New Grad / Entry. Executes well-defined tasks under supervision. Posting caps experience or targets recent graduates. |
-| `mid` | [2, 5) | Works independently, owns features end-to-end, collaborates across teams. Expected to ship, not to lead. |
-| `senior` | [5, 7) | Owns whole projects, makes technical decisions. Mentorship is a plus, not a duty. |
-| `senior_plus` | [7, 9) | Mentoring and cross-team technical leadership are core responsibilities. Sets technical direction for a team. |
-| `staff` | [9, 12) | Staff / Lead. Drives architecture across multiple teams. Influences roadmap. Deep specialization assumed. |
-| `principal` | [12, ∞) | Principal / Director. Org-wide technical strategy, manages managers. |
+| `intern` | — | An internship or co-op, whatever the duties. |
+| `entry` | [0, 2) | New grad / entry. Executes well-defined tasks under supervision. Posting caps experience or targets recent graduates. |
+| `mid_senior` | [2, 5) | Works independently, owns features end-to-end, collaborates across teams. Expected to ship, not to lead. |
+| `senior` | [5, 9) | Owns whole projects and makes technical decisions; may mentor, lead a team's technical direction, or manage engineers. |
+| `staff_principal` | [9, ∞) | Staff / principal / director. Drives architecture across multiple teams or the org, sets strategy, or manages managers. |
 
 ### Non-fit postings
 Set "non_fit_reason" when one applies; otherwise null. Still give the level
 if the posting shows one.
 - `agency`: posted by a staffing/recruiting agency or contract-placement firm
-  rather than the actual hiring company (signals: fixed contract duration like
-  "12 Months", "W2 only"/"C2C", generic placement-firm branding, no real
-  product or team description).
+  rather than the actual hiring company (signals: "our client", fixed contract
+  duration like "12 Months", "W2 only"/"C2C", generic placement-firm branding,
+  no real product or team description).
 - `contract`: the role itself is explicitly contract/temporary/fixed-term
   (not full-time), even at a direct employer with a real product/team
-  description.
-- `internship`: an internship.
+  description. Contract-to-hire counts.
+An internship is not a non-fit posting: it is the level `intern`.
 
 ### Rules (apply in order)
-1. Stated years win over title. Use the half-open bands.
-2. "X+ years" → use X. A range ("3–7 years") → use the minimum.
-3. No years stated → infer the level from the RESPONSIBILITIES described,
+1. An internship or co-op → `intern`.
+2. Stated years win over title. Use the half-open bands.
+3. "X+ years" → use X. A range ("3–7 years") → use the minimum.
+4. No years stated → infer the level from the RESPONSIBILITIES described,
    using the examples below as reference points. Set "inferred": true.
-4. If title and responsibilities disagree, trust responsibilities and note
+5. If title and responsibilities disagree, trust responsibilities and note
    the conflict in "note".
-5. Nothing inferable → "level": null, "confidence": "low".
+6. Managing engineers → at least `senior`. Managing managers → `staff_principal`.
+7. Nothing inferable → "level": null, "confidence": "low".
 
 ### Evidence format
 "evidence" = up to 3 short fragments quoted from the posting, each UNDER 10
@@ -72,42 +72,42 @@ with product and data teams."
 → {"criterion": "seniority_level",
    "evidence": "ML Engineer | 3+ years experience | own our ranking model pipeline",
    "years_required": 3, "inferred": false, "confidence": "high",
-   "note": null, "non_fit_reason": null, "level": "mid"}
+   "note": null, "non_fit_reason": null, "level": "mid_senior"}
 
 Posting: "Senior Machine Learning Engineer. You have 3+ years of
 experience building production ML systems."
-→ Title says Senior, stated years = 3. Rule 1: years win.
+→ Title says Senior, stated years = 3. Rule 2: years win.
 → {"criterion": "seniority_level",
    "evidence": "Senior Machine Learning Engineer | 3+ years of experience",
    "years_required": 3, "inferred": false, "confidence": "high",
-   "note": "title inflated relative to stated years", "non_fit_reason": null, "level": "mid"}
+   "note": "title inflated relative to stated years", "non_fit_reason": null, "level": "mid_senior"}
 
 Posting: "Founding AI Engineer at a seed-stage startup. You'll build
 our LLM product from scratch, wear many hats, and ship fast. No
 specific experience requirement, but you've built real systems."
-→ No years. Independent end-to-end ownership, no leadership → mid.
+→ No years. Independent end-to-end ownership, no leadership → mid_senior.
 → {"criterion": "seniority_level",
    "evidence": "Founding AI Engineer | build our LLM product from scratch | built real systems",
    "years_required": null, "inferred": true, "confidence": "medium",
-   "note": null, "non_fit_reason": null, "level": "mid"}
-
-Posting: "ML Engineer II at [large tech co]. Collaborate with
-scientists to productionize models; participate in design reviews."
-→ No years. "Engineer II" + independent execution, no leadership → mid.
-→ {"criterion": "seniority_level",
-   "evidence": "ML Engineer II | productionize models | participate in design reviews",
-   "years_required": null, "inferred": true, "confidence": "high",
-   "note": null, "non_fit_reason": null, "level": "mid"}
+   "note": null, "non_fit_reason": null, "level": "mid_senior"}
 
 Posting: "Machine Learning Engineer. You will define the technical
 vision for ML across the organization, mentor senior engineers, and
 partner with VPs on strategy."
 → Title sounds mid; duties are org-wide vision + mentoring seniors.
-   Rule 4: responsibilities win → principal.
+   Rule 5: responsibilities win → staff_principal.
 → {"criterion": "seniority_level",
    "evidence": "define the technical vision | mentor senior engineers | partner with VPs",
    "years_required": null, "inferred": true, "confidence": "high",
-   "note": "title understates actual level", "non_fit_reason": null, "level": "principal"}
+   "note": "title understates actual level", "non_fit_reason": null, "level": "staff_principal"}
+
+Posting: "Lead Data Scientist. 7+ years of experience. Mentor a team of
+four data scientists and set the modeling roadmap."
+→ Years = 7 → band [5, 9) → senior. Mentoring and roadmap fit senior.
+→ {"criterion": "seniority_level",
+   "evidence": "Lead Data Scientist | 7+ years of experience | set the modeling roadmap",
+   "years_required": 7, "inferred": false, "confidence": "high",
+   "note": null, "non_fit_reason": null, "level": "senior"}
 
 Posting: "2027 New Graduate Program — Machine Learning. Open to
 candidates graduating between Dec 2026 and Jun 2027."
@@ -117,15 +117,13 @@ candidates graduating between Dec 2026 and Jun 2027."
    "years_required": null, "inferred": false, "confidence": "high",
    "note": null, "non_fit_reason": null, "level": "entry"}
 
-Posting: "Applied Scientist — recommendation systems. PhD required
-or MS with 4+ years. You'll lead projects and mentor junior scientists;
-mentoring is encouraged but not required for promotion."
-→ years=4 → band [2,5), top edge; senior-flavored optional duties.
-   Years govern → mid, flag the ambiguity.
+Posting: "Machine Learning Intern (Summer 2027). Build evaluation tooling
+for our LLM features alongside senior engineers."
+→ Rule 1: an internship → intern.
 → {"criterion": "seniority_level",
-   "evidence": "MS with 4+ years | lead projects | mentoring is encouraged",
-   "years_required": 4, "inferred": false, "confidence": "medium",
-   "note": "4 yrs = top of mid band; senior-flavored duties", "non_fit_reason": null, "level": "mid"}
+   "evidence": "Machine Learning Intern (Summer 2027)",
+   "years_required": null, "inferred": false, "confidence": "high",
+   "note": null, "non_fit_reason": null, "level": "intern"}
 
 Posting: "Title: Data Scientist. Duration: 12 Months. *** W2 - USC or GC
 only ***. Top skills required: Python or R, time series forecasting,
@@ -154,8 +152,8 @@ Join our team to own model deployment for our recommendation platform.
  "inferred": <true/false>,
  "confidence": "high" | "medium" | "low",
  "note": "<conflicts or ambiguities, or null>",
- "non_fit_reason": "agency" | "contract" | "internship" | null,
- "level": "entry" | "mid" | "senior" | "senior_plus" | "staff" | "principal" | null}
+ "non_fit_reason": "agency" | "contract" | null,
+ "level": "intern" | "entry" | "mid_senior" | "senior" | "staff_principal" | null}
 
 Respond with ONLY that JSON object — no surrounding prose, no markdown code fence.
 """
@@ -170,8 +168,8 @@ class JobSeniorityLevel(BaseModel):
     inferred: bool = Field(description="True if years_required is null and the level was inferred from responsibilities.")
     confidence: Literal["high", "medium", "low"]
     note: str | None = Field(description="Conflicts or ambiguities, or null.")
-    non_fit_reason: Literal["agency", "contract", "internship"] | None
-    level: Literal["entry", "mid", "senior", "senior_plus", "staff", "principal"] | None
+    non_fit_reason: Literal["agency", "contract"] | None
+    level: Literal["intern", "entry", "mid_senior", "senior", "staff_principal"] | None
 
     @field_validator("non_fit_reason", "level", mode="before")
     @classmethod

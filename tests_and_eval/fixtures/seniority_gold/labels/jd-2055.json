@@ -1,0 +1,17 @@
+{
+ "job_id": 2055,
+ "split": "test",
+ "draft": {
+  "level": "staff_principal",
+  "non_fit_reason": null,
+  "years_required": 12,
+  "inferred": false,
+  "evidence": [
+   "12 to 15 or more years of experience in AI, machine learning",
+   "Lead the strategic planning, development, and execution of the company’s AI roadmap"
+  ],
+  "note": "Range of 12 to 15+ years takes the minimum of 12, which is principal. It matches the Sr. Director/VP duties: company-wide AI strategy and building an AI organization. Syner-G is a consulting firm hiring for its own role, so not agency. [2026-09-16: converted from principal/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

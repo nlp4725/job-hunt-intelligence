@@ -1,0 +1,18 @@
+{
+ "job_id": 11202,
+ "split": "tune",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 6,
+  "inferred": false,
+  "evidence": [
+   "6 years of software engineering experience on large scale/high complexity system",
+   "2 years of software management experience",
+   "Define roadmap/portfolio of projects optimizing for end results"
+  ],
+  "note": "Several year figures (6 SWE, 2 management, 4 tech lead); the overall minimum of 6 falls in senior, but this is a Tech Lead Manager role with people management, so rule 5 lifts it to at least senior_plus. Reports to a Senior Staff TLM and defines a project roadmap, consistent with senior_plus rather than staff. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

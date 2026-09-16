@@ -1,0 +1,18 @@
+{
+ "job_id": 15724,
+ "split": "tune",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of professional software development experience",
+   "seeking a Principal Software Engineer",
+   "Mentor P1 and P2 engineers"
+  ],
+  "note": "Posting title says 'Software Engineer' but the body hires a Principal Software Engineer; stated 7+ years wins over both titles -> senior_plus, and mentoring plus leading small teams fits. Posted under 'Torentify' while describing a DEPT® role, which may be a reposting/aggregator, but the text has no client/contract/W2/C2C signals, so not marked agency. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

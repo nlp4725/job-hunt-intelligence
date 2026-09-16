@@ -16,8 +16,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from db.models import Job, utcnow
 
 ROLES = ("user", "admin")
-SENIORITY_LEVELS = ("entry", "mid", "senior", "senior_plus", "staff", "principal")
-NON_FIT_REASONS = ("agency", "contract", "internship")
+# Decided 2026-09-16. Years: entry [0, 2), mid_senior [2, 5), senior [5, 9), staff_principal [9, ∞).
+SENIORITY_LEVELS = ("intern", "entry", "mid_senior", "senior", "staff_principal")
+NON_FIT_REASONS = ("agency", "contract")
 APPLICATION_STAGES = ("applied", "recruiter_screen", "interview", "offer", "rejected", "withdrawn")
 
 JOB_ID = Job.__table__.c.id
@@ -83,8 +84,8 @@ class UserProfile(CloudBase):
     version: Mapped[int]
     resume_id: Mapped[int | None] = mapped_column(ForeignKey("resumes.id", ondelete="SET NULL"))
     seniority_target: Mapped[str]                                      # the level the user picked; proposes seniority_scores
-    # The user's confirmed 0-5 score per job level, plus "not_a_fit" (internship /
-    # contract / agency) and "unknown" (level unclear). Seniority Fit is a lookup
+    # The user's confirmed 0-5 score per job level, plus "not_a_fit" (agency /
+    # contract) and "unknown" (level unclear). Seniority Fit is a lookup
     # here (analysis/seniority_fit.py). NULL = not confirmed yet: the proposal for
     # seniority_target is used. Locked per version: an edit writes a new version.
     seniority_scores: Mapped[dict | None] = mapped_column(JSON)

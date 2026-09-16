@@ -1,0 +1,17 @@
+{
+ "job_id": 15210,
+ "split": "tune",
+ "draft": {
+  "level": "staff_principal",
+  "non_fit_reason": "agency",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "Own the enterprise database platform strategy, architecture, governance",
+   "Mentor and develop database engineers"
+  ],
+  "note": "No years; inferred staff from owning enterprise-wide database platform strategy and leading a transformation (title 'AI Engineer' contradicts the 'Data Platforms Lead' duties). Stefanini is an IT services/staffing firm and the posting has no company or team description, suggesting a client placement. [2026-09-16: converted from staff/agency to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

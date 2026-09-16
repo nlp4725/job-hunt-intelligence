@@ -1,0 +1,18 @@
+{
+ "job_id": 1799,
+ "split": "test",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of experience in a customer-facing technical role within B2B SaaS",
+   "Own multiple complex technical projects end-to-end",
+   "Mentor consultants on data flows, API usage, debugging approaches"
+  ],
+  "note": "7+ years maps to senior_plus; mentoring consultants and technical leadership on escalated engagements support it. Direct Pendo role. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

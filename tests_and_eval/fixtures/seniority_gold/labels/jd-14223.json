@@ -1,0 +1,17 @@
+{
+ "job_id": 14223,
+ "split": "test",
+ "draft": {
+  "level": "mid_senior",
+  "non_fit_reason": null,
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "3-4 years in data engineering or a closely adjacent seat",
+   "Strong Python, 3+ years hands-on"
+  ],
+  "note": "Range 3-4 years → minimum 3 (rule 2) → mid. Direct employer (Alt) describing its own product and team. [2026-09-16: converted from mid/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

@@ -1,0 +1,16 @@
+{
+ "job_id": 467,
+ "split": "test",
+ "draft": {
+  "level": "mid_senior",
+  "non_fit_reason": null,
+  "years_required": 4,
+  "inferred": false,
+  "evidence": [
+   "Demonstrate 4+ years in customer-facing technical roles shipping complex SaaS"
+  ],
+  "note": "4+ years stated, so mid. Duties are hands-on deployment of AI agents for pilots with no people or cross-team technical leadership. [2026-09-16: converted from mid/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

@@ -38,9 +38,9 @@ class TestScoresUseJobLevels:
         from db.cloud_models import JobSeniority
 
         jobs = _jobs(db)
-        db.add_all([JobSeniority(job_id=jobs["1"].id, level="mid"),
+        db.add_all([JobSeniority(job_id=jobs["1"].id, level="mid_senior"),
                     JobSeniority(job_id=jobs["2"].id, level="senior", non_fit_reason="contract")])
-        table = {**proposed_scores("entry"), "mid": 5, "not_a_fit": 2}
+        table = {**proposed_scores("entry"), "mid_senior": 5, "not_a_fit": 2}
         user = _scored_user(db, store, cipher, seniority_scores=table)
 
         scores = _scores(db, user.id)
@@ -51,7 +51,7 @@ class TestScoresUseJobLevels:
         from db.cloud_models import JobSeniority
 
         jobs = _jobs(db)
-        db.add(JobSeniority(job_id=jobs["1"].id, level="mid"))
+        db.add(JobSeniority(job_id=jobs["1"].id, level="mid_senior"))
         user = _scored_user(db, store, cipher, target="entry")
         assert _scores(db, user.id)["1"].seniority_fit == 4
 
@@ -70,10 +70,10 @@ class TestConfirmSeniorityScores:
         from db.cloud_models import JobSeniority
 
         jobs = _jobs(db)
-        db.add(JobSeniority(job_id=jobs["1"].id, level="mid"))
+        db.add(JobSeniority(job_id=jobs["1"].id, level="mid_senior"))
         user = _scored_user(db, store, cipher)
         before = _latest_profile(db, user.id)
-        table = {**proposed_scores("entry"), "mid": 5}
+        table = {**proposed_scores("entry"), "mid_senior": 5}
 
         set_seniority_scores(db, user.id, table)
 
@@ -87,11 +87,11 @@ class TestConfirmSeniorityScores:
 
         user = _scored_user(db, store, cipher)
         first = set_seniority_scores(db, user.id, proposed_scores("entry"))
-        set_seniority_scores(db, user.id, proposed_scores("mid"), target="mid")
+        set_seniority_scores(db, user.id, proposed_scores("mid_senior"), target="mid_senior")
 
         db.refresh(first)
         assert first.seniority_scores == proposed_scores("entry") and first.seniority_target == "entry"
-        assert _latest_profile(db, user.id).seniority_target == "mid"
+        assert _latest_profile(db, user.id).seniority_target == "mid_senior"
 
     def test_an_invalid_table_writes_nothing(self, db, store, cipher):
         from analysis.user_scoring import set_seniority_scores
@@ -99,7 +99,7 @@ class TestConfirmSeniorityScores:
         user = _scored_user(db, store, cipher)
         version = _latest_profile(db, user.id).version
         with pytest.raises(ValueError):
-            set_seniority_scores(db, user.id, {**proposed_scores("entry"), "mid": 9})
+            set_seniority_scores(db, user.id, {**proposed_scores("entry"), "mid_senior": 9})
         with pytest.raises(ValueError):
             set_seniority_scores(db, user.id, proposed_scores("entry"), target="junior")
         assert _latest_profile(db, user.id).version == version
@@ -119,23 +119,23 @@ class TestPickLevelThenConfirmScores:
         user = _scored_user(db, store, cipher)
         before = _latest_profile(db, user.id)
 
-        set_seniority_target(db, user.id, "mid")
+        set_seniority_target(db, user.id, "mid_senior")
 
         picked = _latest_profile(db, user.id)
         assert (picked.version, picked.seniority_target, picked.seniority_scores, picked.resume_id) == (
-            before.version + 1, "mid", None, before.resume_id)
+            before.version + 1, "mid_senior", None, before.resume_id)
         assert _scores(db, user.id)["1"].seniority_fit == 4          # the mid proposal
 
-        set_seniority_scores(db, user.id, {**proposed_scores("mid"), "senior": 5})
+        set_seniority_scores(db, user.id, {**proposed_scores("mid_senior"), "senior": 5})
         assert _scores(db, user.id)["1"].seniority_fit == 5          # the confirmed table
 
     def test_changing_the_level_later_clears_the_table_until_it_is_confirmed_again(self, db, store, cipher):
         from analysis.user_scoring import set_seniority_scores, set_seniority_target
 
         user = _scored_user(db, store, cipher)
-        set_seniority_scores(db, user.id, {**proposed_scores("entry"), "mid": 5})
+        set_seniority_scores(db, user.id, {**proposed_scores("entry"), "mid_senior": 5})
 
-        set_seniority_target(db, user.id, "staff")
+        set_seniority_target(db, user.id, "staff_principal")
 
         assert _latest_profile(db, user.id).seniority_scores is None
 
@@ -159,7 +159,7 @@ class TestClassifyMissing:
 
         jobs = _jobs(db)                                      # 1: JD_A, 2: JD_B, 3: repost of 1
         already = save_new_job(db, "llm remote", "ml_ai", "4", _detail("Rust Go distributed systems " * 10))
-        db.add(JobSeniority(job_id=already.id, level="staff", prompt_version="earlier"))
+        db.add(JobSeniority(job_id=already.id, level="staff_principal", prompt_version="earlier"))
         user = _scored_user(db, store, cipher)
         db.commit()
 
@@ -169,7 +169,7 @@ class TestClassifyMissing:
             sent.append(posting)
             if JD_B.strip() in posting:
                 raise RuntimeError("model unavailable")
-            return _level("mid")
+            return _level("mid_senior")
 
         report = classify_missing(PG_URL, classify=fake_classify, workers=2)
 
@@ -178,8 +178,8 @@ class TestClassifyMissing:
         db.expire_all()
         rows = {job_id: s for s, job_id in db.query(JobSeniority, Job.job_id).join(Job, Job.id == JobSeniority.job_id)}
         assert set(rows) == {"1", "4"}
-        assert (rows["1"].level, rows["1"].prompt_version) == ("mid", PROMPT_VERSION)
-        assert (rows["4"].level, rows["4"].prompt_version) == ("staff", "earlier")
+        assert (rows["1"].level, rows["1"].prompt_version) == ("mid_senior", PROMPT_VERSION)
+        assert (rows["4"].level, rows["4"].prompt_version) == ("staff_principal", "earlier")
         assert _scores(db, user.id)["1"].seniority_fit == 4
 
     def test_limit_caps_how_many_jobs_are_sent(self, db, store, cipher):

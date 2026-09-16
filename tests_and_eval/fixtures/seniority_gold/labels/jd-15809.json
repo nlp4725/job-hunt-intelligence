@@ -1,0 +1,16 @@
+{
+ "job_id": 15809,
+ "split": "tune",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 8,
+  "inferred": false,
+  "evidence": [
+   "At least 8+ years of experience in a technical role related to VoIP"
+  ],
+  "note": "Stated 8+ years puts it in senior_plus by rule 1, although the duties (customer deployments, no mentoring or cross-team technical direction) and the $88k-$135k pay read more like mid/senior. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

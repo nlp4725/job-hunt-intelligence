@@ -1,0 +1,17 @@
+{
+ "job_id": 17455,
+ "split": "tune",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 5,
+  "inferred": false,
+  "evidence": [
+   "5+ years of experience in customer focused roles",
+   "Serving as the customers trusted advisor throughout the pre-sales lifecycle"
+  ],
+  "note": "5+ years maps to senior; pre-sales solutions engineering role with no people management. Direct Zoom employee."
+ },
+ "gold": null,
+ "status": "draft"
+}

@@ -1,0 +1,17 @@
+{
+ "job_id": 18101,
+ "split": "tune",
+ "draft": {
+  "level": "entry",
+  "non_fit_reason": null,
+  "years_required": 0,
+  "inferred": false,
+  "evidence": [
+   "Software Engineer (New Grad) at Miter",
+   "0-1 years of professional software development experience."
+  ],
+  "note": "New-grad title and 0-1 years stated; entry."
+ },
+ "gold": null,
+ "status": "draft"
+}

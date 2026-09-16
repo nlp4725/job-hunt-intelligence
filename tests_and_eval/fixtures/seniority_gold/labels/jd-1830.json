@@ -1,0 +1,18 @@
+{
+ "job_id": 1830,
+ "split": "tune",
+ "draft": {
+  "level": "mid_senior",
+  "non_fit_reason": null,
+  "years_required": 2,
+  "inferred": false,
+  "evidence": [
+   "Have 2+ years of experience as a software engineer",
+   "Scope and lead large projects, addressing ambiguity, creating plans",
+   "Teach and mentor members of the engineering team"
+  ],
+  "note": "Stated 2+ years gives mid under rule 1 (years win over title). However the duties (lead large projects, help set team roadmap, mentor) read closer to senior/senior_plus, so the reviewer may want to weigh that conflict. [2026-09-16: converted from mid/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

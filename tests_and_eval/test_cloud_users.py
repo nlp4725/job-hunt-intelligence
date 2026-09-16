@@ -80,7 +80,7 @@ class TestConstraints:
 
         user = _user(db)
         db.add_all([UserProfile(user_id=user.id, version=1, seniority_target="entry"),
-                    UserProfile(user_id=user.id, version=1, seniority_target="mid")])
+                    UserProfile(user_id=user.id, version=1, seniority_target="mid_senior")])
         with pytest.raises(IntegrityError):
             db.flush()
 
@@ -88,7 +88,7 @@ class TestConstraints:
         from db.cloud_models import JobSeniority
 
         job = _job(db)
-        db.add_all([JobSeniority(job_id=job.id, level="mid"), JobSeniority(job_id=job.id, level="senior")])
+        db.add_all([JobSeniority(job_id=job.id, level="mid_senior"), JobSeniority(job_id=job.id, level="senior")])
         with pytest.raises(IntegrityError):
             db.flush()
 
@@ -210,8 +210,8 @@ class TestSeedOwner:
         assert {k: (s.level, s.non_fit_reason) for k, s in rows.items()} == {
             "1": ("entry", None),
             "2": (None, None),         # score 3 at low confidence = nothing inferable
-            "4": ("senior_plus", None),
-        }                              # score 0 mixes principal with agency/contract/internship: re-classified in phase 4
+            "4": ("senior", None),
+        }                              # score 0 mixes top-level roles with non-fit postings: re-classified in phase 4
         assert (rows["1"].years_required, rows["1"].inferred, rows["1"].evidence) == (1, False, "new grad program")
 
     def test_refuses_to_seed_twice(self, seeded):

@@ -1,0 +1,17 @@
+{
+ "job_id": 6912,
+ "split": "test",
+ "draft": {
+  "level": "staff_principal",
+  "non_fit_reason": null,
+  "years_required": 10,
+  "inferred": false,
+  "evidence": [
+   "Minimum 10 years of Data/ ML engineer and solution experience",
+   "Extensive experience (10+ Yrs.)"
+  ],
+  "note": "10 years minimum (plus 3 years pre-sales) gives staff despite the Senior title. Fujitsu hires consultants as full-time employees, so not agency or contract. [2026-09-16: converted from staff/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

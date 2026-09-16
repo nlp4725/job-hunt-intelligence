@@ -26,7 +26,8 @@ from analysis.seniority_fit import proposed_scores
 from db.cloud_models import ApplicationEvent, JobSeniority, JobTracking, User, UserProfile
 from db.models import Job, ScreeningResult
 
-SCORE_TO_LEVEL = {5: "entry", 4: "mid", 3: "senior", 2: "senior_plus", 1: "staff"}
+# Old six bands -> the five levels: senior [5,7) and senior_plus [7,9) merge into senior; staff and principal merge.
+SCORE_TO_LEVEL = {5: "entry", 4: "mid_senior", 3: "senior", 2: "senior", 1: "staff_principal"}
 BACKFILL_PROMPT_VERSION = "backfill:seniority_fit_score"
 
 

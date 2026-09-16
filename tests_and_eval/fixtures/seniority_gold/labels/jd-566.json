@@ -1,0 +1,18 @@
+{
+ "job_id": 566,
+ "split": "tune",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "This is a senior individual contributor role with broad scope.",
+   "shape technical direction within integrations",
+   "Lead technical design and implementation for complex external integrations"
+  ],
+  "note": "No years stated; inferred from duties. Senior IC who leads technical design for integrations and operates independently, but mentoring and cross-team leadership are not core duties, so senior rather than senior_plus."
+ },
+ "gold": null,
+ "status": "draft"
+}

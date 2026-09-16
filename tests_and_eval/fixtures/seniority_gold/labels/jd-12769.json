@@ -1,0 +1,18 @@
+{
+ "job_id": 12769,
+ "split": "tune",
+ "draft": {
+  "level": "staff_principal",
+  "non_fit_reason": "agency",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "Duration- 1 year contract",
+   "Must be able to work W2",
+   "Mentor internal teams on AI agent design"
+  ],
+  "note": "TEKsystems (Allegis staffing firm) placing a W2 1-year contract, so agency (also contract). No years stated; despite the Principal title the duties are hands-on agent building plus reusable architecture patterns and mentoring, with no org strategy or managing managers, so inferred staff rather than principal. [2026-09-16: converted from staff/agency to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

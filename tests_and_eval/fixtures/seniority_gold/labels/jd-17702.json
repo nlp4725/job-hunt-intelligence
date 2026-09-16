@@ -1,0 +1,17 @@
+{
+ "job_id": 17702,
+ "split": "test",
+ "draft": {
+  "level": "entry",
+  "non_fit_reason": null,
+  "years_required": 0,
+  "inferred": false,
+  "evidence": [
+   "Junior Full Stack Developer (Entry-Level) at SharpAtoms",
+   "0–1 year of full-time professional software development experience."
+  ],
+  "note": "Entry-level title and 0–1 years stated; entry. The posting has no product or company description, which is weakly agency-like, but no client/contract signals, so non_fit_reason left null."
+ },
+ "gold": null,
+ "status": "draft"
+}

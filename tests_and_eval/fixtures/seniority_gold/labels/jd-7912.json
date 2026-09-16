@@ -1,0 +1,17 @@
+{
+ "job_id": 7912,
+ "split": "test",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of relevant hands-on experience in software engineering",
+   "Principal MLOps Engineer"
+  ],
+  "note": "Title says Principal, but the stated 7+ years wins (rule 1) -> senior_plus; the 5+ year figures are for specific tools. Duties are hands-on platform building without org-wide strategy, consistent with below-principal. Raft is a direct defense-tech employer, not a staffing firm. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

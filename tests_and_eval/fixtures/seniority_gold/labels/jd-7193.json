@@ -1,0 +1,17 @@
+{
+ "job_id": 7193,
+ "split": "test",
+ "draft": {
+  "level": "staff_principal",
+  "non_fit_reason": null,
+  "years_required": 10,
+  "inferred": false,
+  "evidence": [
+   "10+ years related experience with at least 3 years",
+   "Under supervision, lead AI development teams"
+  ],
+  "note": "10+ years overall is the minimum (3 years AI design is a subset), giving staff; the 'Associate Principal' title and 'under supervision' duties suggest it is not principal-level. [2026-09-16: converted from staff/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

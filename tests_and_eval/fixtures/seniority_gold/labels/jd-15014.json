@@ -1,0 +1,18 @@
+{
+ "job_id": 15014,
+ "split": "tune",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "lead full AI lifecycle from experimentation to production",
+   "own end-to-end implementation, deployment, and operations",
+   "Autonomous ownership; mentoring; architecture influence"
+  ],
+  "note": "No years stated; inferred senior from end-to-end ownership, mentoring and architecture influence, with title matching. TCS is an IT services firm hiring directly (benefits listed), not a staffing agency and no contract term."
+ },
+ "gold": null,
+ "status": "draft"
+}

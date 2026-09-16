@@ -1,0 +1,422 @@
+[
+ {
+  "job_id": 12769,
+  "old_score": 0,
+  "split": "tune",
+  "title": "PRINCIPAL AGENTIC AI ARCHITECT",
+  "company": "TEKsystems"
+ },
+ {
+  "job_id": 621,
+  "old_score": 0,
+  "split": "tune",
+  "title": "Sr. Manager, Data, Analytics & AI",
+  "company": "EverPass Media"
+ },
+ {
+  "job_id": 13161,
+  "old_score": 0,
+  "split": "tune",
+  "title": "Agentic AI Engineer/Remote",
+  "company": "Apetan Consulting LLC"
+ },
+ {
+  "job_id": 7896,
+  "old_score": 0,
+  "split": "tune",
+  "title": "Manager, Machine Learning Engineering (Fraud)",
+  "company": "Affirm"
+ },
+ {
+  "job_id": 18187,
+  "old_score": 0,
+  "split": "tune",
+  "title": "Generative AI Engineer",
+  "company": "MeeBoss"
+ },
+ {
+  "job_id": 3646,
+  "old_score": 0,
+  "split": "test",
+  "title": "AI/ML Program Manager",
+  "company": "KCI"
+ },
+ {
+  "job_id": 16272,
+  "old_score": 0,
+  "split": "test",
+  "title": "AI Software Engineer III (W2 Contract Only/ No 3rd Parties)",
+  "company": "CBTS"
+ },
+ {
+  "job_id": 12055,
+  "old_score": 0,
+  "split": "test",
+  "title": "Data Scientist, Technical Lead",
+  "company": "The Voleon Group"
+ },
+ {
+  "job_id": 2055,
+  "old_score": 0,
+  "split": "test",
+  "title": "Sr. Director, AI",
+  "company": "Syner-G"
+ },
+ {
+  "job_id": 7785,
+  "old_score": 0,
+  "split": "test",
+  "title": "Manufacturing Engineering Director",
+  "company": "Iron Mountain"
+ },
+ {
+  "job_id": 15543,
+  "old_score": 1,
+  "split": "tune",
+  "title": "Senior System Engineer",
+  "company": "Apex Technology Corporation"
+ },
+ {
+  "job_id": 6899,
+  "old_score": 1,
+  "split": "tune",
+  "title": "Technical Product Lead (Healthcare AI)",
+  "company": "Accelint"
+ },
+ {
+  "job_id": 13471,
+  "old_score": 1,
+  "split": "tune",
+  "title": "Architect, Enterprise AI",
+  "company": "Navitus Health Solutions"
+ },
+ {
+  "job_id": 18449,
+  "old_score": 1,
+  "split": "tune",
+  "title": "Machine Learning Engineer",
+  "company": "Molex"
+ },
+ {
+  "job_id": 15210,
+  "old_score": 1,
+  "split": "tune",
+  "title": "AI Engineer",
+  "company": "Stefanini North America and APAC"
+ },
+ {
+  "job_id": 18034,
+  "old_score": 1,
+  "split": "test",
+  "title": "Artificial Intelligence Engineer",
+  "company": "Calance"
+ },
+ {
+  "job_id": 16624,
+  "old_score": 1,
+  "split": "test",
+  "title": "AI Engineer, GTM Claudification",
+  "company": "Drift AI"
+ },
+ {
+  "job_id": 6912,
+  "old_score": 1,
+  "split": "test",
+  "title": "Senior Solution Architect - Data, Analytics and AI",
+  "company": "Fujitsu"
+ },
+ {
+  "job_id": 7193,
+  "old_score": 1,
+  "split": "test",
+  "title": "Associate Principal, AI Engineer",
+  "company": "Transamerica"
+ },
+ {
+  "job_id": 4887,
+  "old_score": 1,
+  "split": "test",
+  "title": "Senior Staff Data Scientist",
+  "company": "Mozilla"
+ },
+ {
+  "job_id": 16436,
+  "old_score": 2,
+  "split": "tune",
+  "title": "Senior Forward Deployed Engineer",
+  "company": "SecurityScorecard"
+ },
+ {
+  "job_id": 11490,
+  "old_score": 2,
+  "split": "tune",
+  "title": "Lead Software Engineer - Remote",
+  "company": "Optum"
+ },
+ {
+  "job_id": 16985,
+  "old_score": 2,
+  "split": "tune",
+  "title": "AI Engineer",
+  "company": "ETS"
+ },
+ {
+  "job_id": 15724,
+  "old_score": 2,
+  "split": "tune",
+  "title": "Software Engineer - Remote",
+  "company": "Torentify"
+ },
+ {
+  "job_id": 15809,
+  "old_score": 2,
+  "split": "tune",
+  "title": "Professional Services Engineer, 911 Systems (Remote)",
+  "company": "Axon"
+ },
+ {
+  "job_id": 15463,
+  "old_score": 2,
+  "split": "test",
+  "title": "Senior Machine Learning Engineer",
+  "company": "Carbon Mapper"
+ },
+ {
+  "job_id": 7912,
+  "old_score": 2,
+  "split": "test",
+  "title": "Principal MLOps Engineer",
+  "company": "Raft"
+ },
+ {
+  "job_id": 17937,
+  "old_score": 2,
+  "split": "test",
+  "title": "Senior OT Systems Engineer",
+  "company": "CRH"
+ },
+ {
+  "job_id": 5769,
+  "old_score": 2,
+  "split": "test",
+  "title": "AI Factory Electrical Engineer",
+  "company": "Siemens"
+ },
+ {
+  "job_id": 9068,
+  "old_score": 2,
+  "split": "test",
+  "title": "Advisory Engineer, AI Security",
+  "company": "Lenovo"
+ },
+ {
+  "job_id": 14947,
+  "old_score": 3,
+  "split": "tune",
+  "title": "Senior GenAI Engineer",
+  "company": "Fractal"
+ },
+ {
+  "job_id": 17455,
+  "old_score": 3,
+  "split": "tune",
+  "title": "Contact Center - Consulting Solutions Engineer",
+  "company": "Zoom"
+ },
+ {
+  "job_id": 11202,
+  "old_score": 3,
+  "split": "tune",
+  "title": "Tech Lead Manager- Onboard Software Performance",
+  "company": "Waymo"
+ },
+ {
+  "job_id": 16114,
+  "old_score": 3,
+  "split": "tune",
+  "title": "Senior AI Engineer",
+  "company": "GE Appliances, a Haier company"
+ },
+ {
+  "job_id": 15014,
+  "old_score": 3,
+  "split": "tune",
+  "title": "Senior AI ML Engineer",
+  "company": "Tata Consultancy Services"
+ },
+ {
+  "job_id": 8734,
+  "old_score": 3,
+  "split": "test",
+  "title": "Senior Cloud Engineer - Database",
+  "company": "Maximus"
+ },
+ {
+  "job_id": 1799,
+  "old_score": 3,
+  "split": "test",
+  "title": "Sr. Professional Services Engineer Consultant",
+  "company": "Pendo.io"
+ },
+ {
+  "job_id": 5652,
+  "old_score": 3,
+  "split": "test",
+  "title": "Lead Data Scientist",
+  "company": "Octave"
+ },
+ {
+  "job_id": 3374,
+  "old_score": 3,
+  "split": "test",
+  "title": "Staff Machine Learning Engineer",
+  "company": "PrizePicks"
+ },
+ {
+  "job_id": 12878,
+  "old_score": 3,
+  "split": "test",
+  "title": "Senior Software Engineer",
+  "company": "Hummingbird"
+ },
+ {
+  "job_id": 566,
+  "old_score": 4,
+  "split": "tune",
+  "title": "Senior Developer, Partnerships Engineering",
+  "company": "1Password"
+ },
+ {
+  "job_id": 17595,
+  "old_score": 4,
+  "split": "tune",
+  "title": "AI Native Software Engineer",
+  "company": "Accenture"
+ },
+ {
+  "job_id": 9701,
+  "old_score": 4,
+  "split": "tune",
+  "title": "MLOps Engineer",
+  "company": "Evlo AI"
+ },
+ {
+  "job_id": 12383,
+  "old_score": 4,
+  "split": "tune",
+  "title": "AI Automation Engineer - Remote",
+  "company": "City of Hope"
+ },
+ {
+  "job_id": 8060,
+  "old_score": 4,
+  "split": "tune",
+  "title": "AI Process Forward Deployed Engineer",
+  "company": "Camunda"
+ },
+ {
+  "job_id": 11148,
+  "old_score": 4,
+  "split": "test",
+  "title": "Test Engineer, System Test",
+  "company": "Google"
+ },
+ {
+  "job_id": 18373,
+  "old_score": 4,
+  "split": "test",
+  "title": "Applied AI Engineer",
+  "company": "MeeBoss"
+ },
+ {
+  "job_id": 14223,
+  "old_score": 4,
+  "split": "test",
+  "title": "Data Engineer",
+  "company": "Alt"
+ },
+ {
+  "job_id": 1605,
+  "old_score": 4,
+  "split": "test",
+  "title": "Forward Deployed Engineer",
+  "company": "Ladders"
+ },
+ {
+  "job_id": 11723,
+  "old_score": 4,
+  "split": "test",
+  "title": "Software Engineer ($180k-$300k + Equity) at high-growth AI startup",
+  "company": "Jack & Jill"
+ },
+ {
+  "job_id": 15699,
+  "old_score": 5,
+  "split": "tune",
+  "title": "Field Software Engineer",
+  "company": "HavocAI"
+ },
+ {
+  "job_id": 18101,
+  "old_score": 5,
+  "split": "tune",
+  "title": "Software Engineer (New Grad)",
+  "company": "Miter"
+ },
+ {
+  "job_id": 5524,
+  "old_score": 5,
+  "split": "tune",
+  "title": "Senior Data Scientist",
+  "company": "Lumen Technologies"
+ },
+ {
+  "job_id": 1830,
+  "old_score": 5,
+  "split": "tune",
+  "title": "Software Engineer",
+  "company": "Medallion"
+ },
+ {
+  "job_id": 1767,
+  "old_score": 5,
+  "split": "tune",
+  "title": "Machine Learning Research Engineer (Remote | $80 –$110/hr)",
+  "company": "Call For Referral"
+ },
+ {
+  "job_id": 467,
+  "old_score": 5,
+  "split": "test",
+  "title": "AI Deployment Strategist",
+  "company": "Zoom"
+ },
+ {
+  "job_id": 17393,
+  "old_score": 5,
+  "split": "test",
+  "title": "People AI & Automation Engineer",
+  "company": "Deepgram"
+ },
+ {
+  "job_id": 3622,
+  "old_score": 5,
+  "split": "test",
+  "title": "Software Integrations Lead",
+  "company": "4G Clinical"
+ },
+ {
+  "job_id": 4581,
+  "old_score": 5,
+  "split": "test",
+  "title": "Machine Learning Engineer",
+  "company": "Agilyti"
+ },
+ {
+  "job_id": 17702,
+  "old_score": 5,
+  "split": "test",
+  "title": "Junior Full Stack Developer (Entry-Level)",
+  "company": "SharpAtoms"
+ }
+]

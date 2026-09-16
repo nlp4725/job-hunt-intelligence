@@ -1,0 +1,18 @@
+{
+ "job_id": 18034,
+ "split": "test",
+ "draft": {
+  "level": "staff_principal",
+  "non_fit_reason": "agency",
+  "years_required": 10,
+  "inferred": false,
+  "evidence": [
+   "10+ years in a hands on infrastructure, HPC, or datacenter",
+   "Direct Hire (no 3rd parties)",
+   "As Company's AI and autonomy ambitions grow"
+  ],
+  "note": "10+ years gives staff despite the Senior title. Posted by Calance, a staffing firm, for an anonymized client ('Company'); it is a direct-hire placement, not contract, but still agency-posted. [2026-09-16: converted from staff/agency to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

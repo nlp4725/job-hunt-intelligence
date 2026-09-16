@@ -1,0 +1,17 @@
+{
+ "job_id": 4581,
+ "split": "test",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": "agency",
+  "years_required": 5,
+  "inferred": false,
+  "evidence": [
+   "5+ years in machine learning or data science, with deployed forecasting",
+   "Deliver the daily forecast file to the agreed location and format for NetStock consumption."
+  ],
+  "note": "5+ years stated, so senior. Agilyti is a consulting/staffing firm and the posting reads like a client statement of work (agreed cutover criteria, deliverables for the client's NetStock) with no own-company or team description, so agency; there is no explicit contract term."
+ },
+ "gold": null,
+ "status": "draft"
+}

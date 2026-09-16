@@ -1,0 +1,17 @@
+{
+ "job_id": 18187,
+ "split": "tune",
+ "draft": {
+  "level": "intern",
+  "non_fit_reason": null,
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "remote, part-time internship role for an AI Engineer",
+   "Compensation$300-500/month"
+  ],
+  "note": "Explicitly a part-time internship at $300-500/month, so internship and inferred entry. MeeBoss is also sharing it on behalf of the hiring company (agency-like), but internship is the more specific reason. [2026-09-16: converted from entry/internship to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

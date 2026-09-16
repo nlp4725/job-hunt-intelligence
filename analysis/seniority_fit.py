@@ -2,12 +2,13 @@
 
 The job's level is classified once by judge/seniority_level.py and shared by
 every user. Each user confirms their own score table: a 0-5 score for every
-level, one for postings that are not a fit (internship / contract / agency) and
+level, one for postings that are not a fit (agency / contract) and
 one for postings whose level is unclear. Onboarding proposes the table from the
 level the user picks (five minus the distance from it); the user adjusts it and
 confirms. Fit is a lookup in that table.
 
-The proposal for "entry" reproduces the owner's original 0-5 rubric exactly.
+Levels (decided 2026-09-16): intern, entry [0, 2), mid_senior [2, 5), senior [5, 9),
+staff_principal [9+).
 """
 
 from db.cloud_models import SENIORITY_LEVELS

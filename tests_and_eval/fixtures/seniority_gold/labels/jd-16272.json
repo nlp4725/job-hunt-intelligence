@@ -1,0 +1,18 @@
+{
+ "job_id": 16272,
+ "split": "test",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": "contract",
+  "years_required": 5,
+  "inferred": false,
+  "evidence": [
+   "5–8 years of software engineering experience.",
+   "(W2 Contract Only/ No 3rd Parties)",
+   "Duration: 6 Months"
+  ],
+  "note": "5–8 years takes the minimum of 5, which is senior. It is a fixed 6-month W2 contract; CBTS is an IT services firm and the posting has almost no company description, so agency is possible, but it says it is hiring into its own AI Agentic Engineering team, so I chose contract."
+ },
+ "gold": null,
+ "status": "draft"
+}

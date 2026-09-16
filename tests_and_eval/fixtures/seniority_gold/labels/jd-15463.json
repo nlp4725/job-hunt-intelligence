@@ -1,0 +1,17 @@
+{
+ "job_id": 15463,
+ "split": "test",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "Mentor and provide technical guidance to less experienced team members",
+   "Lead significant data-quality initiatives end-to-end"
+  ],
+  "note": "No years stated; inferred from duties: owns ML initiatives end to end and makes architecture decisions (senior). Mentoring is listed as a duty, which edges toward senior_plus, but there is no team-level technical direction setting."
+ },
+ "gold": null,
+ "status": "draft"
+}

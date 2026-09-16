@@ -1,0 +1,18 @@
+{
+ "job_id": 8734,
+ "split": "test",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 5,
+  "inferred": false,
+  "evidence": [
+   "5+ years of relevant professional experience required",
+   "Lead the database deployments, tech upgrades, and approved changes.",
+   "May provide guidance, coaching, and training to other employees"
+  ],
+  "note": "Multiple figures (5+ general, 5+ Oracle, 3+ AWS, 2+ RDS); the primary experience requirement is 5+, mapping to senior. Maximus is a government-services employer hiring directly; 'contract value' refers to its client contracts, not a contract role."
+ },
+ "gold": null,
+ "status": "draft"
+}

@@ -1,0 +1,17 @@
+{
+ "job_id": 12383,
+ "split": "tune",
+ "draft": {
+  "level": "mid_senior",
+  "non_fit_reason": null,
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "Minimum Experience: 3+ years of experience in process automation",
+   "3 additional years of experience plus the minimum experience requirement may substitute"
+  ],
+  "note": "3+ years → 3 (rule 2); the extra 3 years only substitutes for a bachelor's degree. Duties are independent build-and-support work without leadership, consistent with mid. Direct employer, full-time. [2026-09-16: converted from mid/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

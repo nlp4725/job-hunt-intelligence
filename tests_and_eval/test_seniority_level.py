@@ -15,22 +15,29 @@ from db.cloud_models import NON_FIT_REASONS, SENIORITY_LEVELS
 
 
 @pytest.mark.parametrize("target, expected", [
-    ("entry", {"entry": 5, "mid": 4, "senior": 3, "senior_plus": 2, "staff": 1, "principal": 0, "not_a_fit": 0, "unknown": 3}),
-    ("mid", {"entry": 4, "mid": 5, "senior": 4, "senior_plus": 3, "staff": 2, "principal": 1, "not_a_fit": 0, "unknown": 3}),
-    ("principal", {"entry": 0, "mid": 1, "senior": 2, "senior_plus": 3, "staff": 4, "principal": 5, "not_a_fit": 0, "unknown": 3}),
+    ("entry", {"intern": 4, "entry": 5, "mid_senior": 4, "senior": 3, "staff_principal": 2, "not_a_fit": 0, "unknown": 3}),
+    ("mid_senior", {"intern": 3, "entry": 4, "mid_senior": 5, "senior": 4, "staff_principal": 3, "not_a_fit": 0, "unknown": 3}),
+    ("staff_principal", {"intern": 1, "entry": 2, "mid_senior": 3, "senior": 4, "staff_principal": 5, "not_a_fit": 0, "unknown": 3}),
 ])
 def test_the_proposal_is_five_minus_the_distance_from_the_chosen_level(target, expected):
     assert proposed_scores(target) == expected
 
 
-def test_the_entry_proposal_reproduces_todays_rubric_scores():
-    """Today's 0-5 seniority score was written for an entry-level candidate;
-    the owner's scores must not move."""
+def test_the_five_levels_and_two_non_fit_reasons():
+    """Decided 2026-09-16: intern, entry (0-2 years), mid_senior (2-5),
+    senior (5-9), staff_principal (9+). An internship is a level, so an
+    internship seeker can score it; only agency and contract are not a fit."""
+    assert SENIORITY_LEVELS == ("intern", "entry", "mid_senior", "senior", "staff_principal")
+    assert NON_FIT_REASONS == ("agency", "contract")
+
+
+def test_old_local_scores_map_onto_the_new_levels():
+    """The owner's old 0-5 scores (written for an entry-level candidate) seed
+    job levels: 5 entry, 4 mid, 3 senior, 2 senior_plus, 1 staff under the old
+    six bands, which now merge into these."""
     from db.seed_owner import SCORE_TO_LEVEL
 
-    table = proposed_scores("entry")
-    for score, level in SCORE_TO_LEVEL.items():
-        assert seniority_fit(level, None, table) == score
+    assert SCORE_TO_LEVEL == {5: "entry", 4: "mid_senior", 3: "senior", 2: "senior", 1: "staff_principal"}
 
 
 def test_an_unknown_level_to_propose_from_is_rejected():
@@ -39,9 +46,9 @@ def test_an_unknown_level_to_propose_from_is_rejected():
 
 
 def test_fit_is_a_lookup_in_the_users_own_table():
-    table = {**proposed_scores("mid"), "entry": 5, "not_a_fit": 2, "unknown": 1}
+    table = {**proposed_scores("mid_senior"), "entry": 5, "not_a_fit": 2, "unknown": 1}
     assert seniority_fit("entry", None, table) == 5
-    assert seniority_fit("staff", None, table) == 2
+    assert seniority_fit("staff_principal", None, table) == 3
     assert seniority_fit(None, None, table) == 1
     for reason in NON_FIT_REASONS:
         for level in (*SENIORITY_LEVELS, None):
@@ -49,21 +56,21 @@ def test_fit_is_a_lookup_in_the_users_own_table():
 
 
 def test_a_complete_table_of_whole_scores_is_valid():
-    table = {**proposed_scores("senior"), "principal": 0}
+    table = {**proposed_scores("senior"), "staff_principal": 0}
     assert validate_scores(table) == table
 
 
 @pytest.mark.parametrize("change", [
-    lambda t: t.pop("staff"),                       # a row missing
-    lambda t: t.update({"intern": 0}),              # an unknown row
-    lambda t: t.update({"mid": 6}),
-    lambda t: t.update({"mid": -1}),
-    lambda t: t.update({"mid": 2.5}),
-    lambda t: t.update({"mid": "4"}),
-    lambda t: t.update({"mid": True}),
+    lambda t: t.pop("staff_principal"),                       # a row missing
+    lambda t: t.update({"apprentice": 0}),          # an unknown row
+    lambda t: t.update({"mid_senior": 6}),
+    lambda t: t.update({"mid_senior": -1}),
+    lambda t: t.update({"mid_senior": 2.5}),
+    lambda t: t.update({"mid_senior": "4"}),
+    lambda t: t.update({"mid_senior": True}),
 ])
 def test_an_incomplete_or_out_of_range_table_is_rejected(change):
-    table = proposed_scores("mid")
+    table = proposed_scores("mid_senior")
     change(table)
     with pytest.raises(ValueError):
         validate_scores(table)
@@ -109,7 +116,7 @@ class TestLevelPrompt:
         from judge.seniority_level import SENIORITY_LEVEL_PROMPT, JobSeniorityLevel, classify_job_seniority
 
         answer = JobSeniorityLevel(evidence="3+ years", years_required=3, inferred=False,
-                                   confidence="high", note=None, non_fit_reason=None, level="mid")
+                                   confidence="high", note=None, non_fit_reason=None, level="mid_senior")
 
         class FakeModel:
             def invoke(self, messages):

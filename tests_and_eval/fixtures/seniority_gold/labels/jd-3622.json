@@ -1,0 +1,17 @@
+{
+ "job_id": 3622,
+ "split": "test",
+ "draft": {
+  "level": "mid_senior",
+  "non_fit_reason": null,
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "requires a minimum of 3 years of experience in the clinical research field",
+   "or over 7 years of relevant system implementation experience in related industry"
+  ],
+  "note": "Two paths: 3 years in clinical research or 7+ years of related implementation; rule 2 takes the lowest path, 3 years, so mid. 'Lead' refers to project leadership of client integrations, not people management. [2026-09-16: converted from mid/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

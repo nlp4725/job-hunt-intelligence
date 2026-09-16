@@ -1,0 +1,17 @@
+{
+ "job_id": 17937,
+ "split": "test",
+ "draft": {
+  "level": "senior",
+  "non_fit_reason": null,
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of experience supporting OT or manufacturing IT environments",
+   "Mentor junior IT/OT engineers"
+  ],
+  "note": "Stated 7+ years puts it in senior_plus; duties include defining cross-site standards and mentoring, consistent with that. Direct employer (CRH). [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}

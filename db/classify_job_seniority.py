@@ -26,7 +26,7 @@ from db.models import Job
 from judge.seniority_fit import format_posting
 from judge.seniority_level import JobSeniorityLevel, classify_job_seniority
 
-PROMPT_VERSION = "seniority_level_v1"
+PROMPT_VERSION = "seniority_level_v2"
 COMMIT_EVERY = 25
 
 # DeepSeek V4 Pro, USD per 1M tokens (tests_and_eval/test_seniority/test_seniority_deepseek.py).

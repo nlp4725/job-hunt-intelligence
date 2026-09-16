@@ -1,0 +1,18 @@
+{
+ "job_id": 17595,
+ "split": "tune",
+ "draft": {
+  "level": "mid_senior",
+  "non_fit_reason": null,
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "Minimum of 3 years of engineering experience with cloud-native systems",
+   "or by owning critical technical areas end-to-end as a senior IC",
+   "OR equivalent (minimum 12 years) work experience."
+  ],
+  "note": "Stated minimum of 3 years wins over the 'senior IC' framing (rule 1). The 12 years is only a substitute for a degree, not the requirement; Accenture is a consulting firm hiring directly, not a staffing agency. [2026-09-16: converted from mid/None to the five-level scheme]"
+ },
+ "gold": null,
+ "status": "draft"
+}
