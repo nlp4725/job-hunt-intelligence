@@ -1,16 +1,17 @@
 {
  "job_id": 5652,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 7,
   "inferred": false,
   "evidence": [
    "7+ years in data science, ML engineering, or related roles",
    "seeking a hands-on Data Scientist to build predictive models"
   ],
-  "note": "Overall 7+ years maps to senior_plus (Python 5+ and NLP/GenAI 3+ are narrower skill requirements). Title says Lead but the body describes a hands-on individual contributor with no explicit mentoring or team leadership; the years still set the level. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+  "note": "7+ years stated, so senior (the 5+ Python and 3+ NLP figures are narrower skill requirements). Lead title, but the body describes a hands-on IC.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

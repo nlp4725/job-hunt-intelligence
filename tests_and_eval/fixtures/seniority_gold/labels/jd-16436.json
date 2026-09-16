@@ -3,14 +3,15 @@
  "split": "tune",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 8,
   "inferred": false,
   "evidence": [
    "8+ years of software engineering experience",
    "Own technical relationships with key accounts through renewal and expansion"
   ],
-  "note": "Stated 8+ years puts it in senior_plus; title says Senior but the years band wins. Direct employer posting (SecurityScorecard), no contract terms. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+  "note": "8+ years stated, so senior. Embeds with strategic customers and owns technical relationships with key accounts. Direct employer.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

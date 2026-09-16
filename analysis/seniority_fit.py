@@ -37,8 +37,8 @@ def validate_scores(scores: dict) -> dict[str, int]:
     return dict(scores)
 
 
-def seniority_fit(level: str | None, non_fit_reason: str | None, scores: dict[str, int]) -> int:
-    if non_fit_reason:
+def seniority_fit(level: str | None, is_agency: bool, is_contract: bool, scores: dict[str, int]) -> int:
+    if is_agency or is_contract:
         return scores[NOT_A_FIT]
     if level is None:
         return scores[UNKNOWN]

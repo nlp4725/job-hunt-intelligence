@@ -207,10 +207,10 @@ class TestSeedOwner:
 
         _, db = seeded
         rows = {job_id: s for s, job_id in db.query(JobSeniority, Job.job_id).join(Job, Job.id == JobSeniority.job_id)}
-        assert {k: (s.level, s.non_fit_reason) for k, s in rows.items()} == {
-            "1": ("entry", None),
-            "2": (None, None),         # score 3 at low confidence = nothing inferable
-            "4": ("senior", None),
+        assert {k: (s.level, s.is_agency or s.is_contract) for k, s in rows.items()} == {
+            "1": ("entry", False),
+            "2": (None, False),         # score 3 at low confidence = nothing inferable
+            "4": ("senior", False),
         }                              # score 0 mixes top-level roles with non-fit postings: re-classified in phase 4
         assert (rows["1"].years_required, rows["1"].inferred, rows["1"].evidence) == (1, False, "new grad program")
 

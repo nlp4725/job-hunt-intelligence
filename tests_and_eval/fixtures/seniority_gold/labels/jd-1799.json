@@ -3,7 +3,6 @@
  "split": "test",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 7,
   "inferred": false,
   "evidence": [
@@ -11,7 +10,9 @@
    "Own multiple complex technical projects end-to-end",
    "Mentor consultants on data flows, API usage, debugging approaches"
   ],
-  "note": "7+ years maps to senior_plus; mentoring consultants and technical leadership on escalated engagements support it. Direct Pendo role. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+  "note": "7+ years stated, so senior. Owns complex customer engagements end to end and mentors consultants. Direct Pendo role.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

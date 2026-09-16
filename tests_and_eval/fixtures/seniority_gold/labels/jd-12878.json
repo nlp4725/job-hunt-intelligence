@@ -3,7 +3,6 @@
  "split": "test",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": null,
   "inferred": true,
   "evidence": [
@@ -11,7 +10,9 @@
    "Build AI features end-to-end.",
    "You’ve shipped 0-1 products to real users"
   ],
-  "note": "No years stated; inferred senior from ownership of ambitious projects from concept to completion and architecting systems, with no mentoring or cross-team leadership duties. Title matches."
+  "note": "No years stated; inferred senior from owning ambitious projects from concept to completion and architecting systems; no mentoring or cross-team leadership. Title matches.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

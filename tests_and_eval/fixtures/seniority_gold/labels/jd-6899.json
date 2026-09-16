@@ -1,16 +1,17 @@
 {
  "job_id": 6899,
- "split": "tune",
+ "split": "test",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": null,
   "years_required": 10,
   "inferred": false,
   "evidence": [
    "Ten (10) or more years of experience managing complex",
    "lead multidisciplinary teams of scientists, engineers, data scientists"
   ],
-  "note": "Ten or more years required puts this in staff. Program-lead role coordinating multidisciplinary teams; a direct defense employer, not agency or contract. [2026-09-16: converted from staff/None to the five-level scheme]"
+  "note": "10+ years stated, so staff_principal. Program lead coordinating multidisciplinary teams across a healthcare AI portfolio. Direct defense employer.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

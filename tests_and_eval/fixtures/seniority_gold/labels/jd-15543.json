@@ -3,14 +3,15 @@
  "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": null,
   "years_required": 10,
   "inferred": false,
   "evidence": [
    "10+ years of IT experience",
    "Actively mentor and develop Network/Systems Engineers"
   ],
-  "note": "Title says Senior, but the stated 10+ years places it in staff by rule 1; duties (senior technical authority, mentoring the team) fit at least senior_plus. Apex is a managed services provider hiring its own engineer, so not agency. [2026-09-16: converted from staff/None to the five-level scheme]"
+  "note": "10+ years stated, so staff_principal despite the Senior title. Borderline: duties are the top technical resource and mentor at a small managed-services firm, with no cross-team or org-wide architecture, which reads senior.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

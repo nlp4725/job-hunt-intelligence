@@ -3,14 +3,15 @@
  "split": "tune",
  "draft": {
   "level": "mid_senior",
-  "non_fit_reason": null,
   "years_required": 3,
   "inferred": false,
   "evidence": [
    "3–5 years of experience in data science, data engineering, analytics",
    "Senior Data Scientist at Lumen Technologies"
   ],
-  "note": "Title says Senior but the stated range is 3–5 years, minimum 3, so rule 1 gives mid. Duties are building pipelines and models with no leadership or mentoring duties, which also fits mid. [2026-09-16: converted from mid/None to the five-level scheme]"
+  "note": "3–5 years stated (minimum 3), so mid_senior despite the Senior title. Building pipelines and models with no leadership or mentoring duties.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

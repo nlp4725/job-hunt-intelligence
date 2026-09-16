@@ -1,9 +1,8 @@
 {
  "job_id": 11723,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "senior",
-  "non_fit_reason": "agency",
   "years_required": null,
   "inferred": true,
   "evidence": [
@@ -11,7 +10,9 @@
    "You will own core software components end-to-end, from architecture",
    "Extensive experience designing and delivering major product features"
   ],
-  "note": "No years stated; inferred senior from owning core components from architecture to production and requiring extensive experience delivering major features. Jack & Jill's AI recruiter posts on behalf of an anonymized customer, so agency."
+  "note": "No years stated; inferred senior from owning core components from architecture to production and 'extensive experience' delivering major features. Jack & Jill's AI recruiter posts for an anonymized customer, so agency.",
+  "is_agency": true,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

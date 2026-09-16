@@ -3,14 +3,15 @@
  "split": "tune",
  "draft": {
   "level": "entry",
-  "non_fit_reason": null,
   "years_required": 1,
   "inferred": false,
   "evidence": [
    "1+ years of experience in software engineering, systems engineering, robotics",
    "You'll be expected to understand the software deeply enough to modify it"
   ],
-  "note": "Only stated figure is 1+ years, which falls in the entry band. Duties (field deployment, customer-facing debugging, heavy travel) are hands-on individual work with no leadership duties, consistent with entry/early-mid."
+  "note": "1+ years stated, so entry. Hands-on field deployment and debugging with no leadership duties.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

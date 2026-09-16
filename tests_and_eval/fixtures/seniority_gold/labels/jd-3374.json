@@ -1,16 +1,17 @@
 {
  "job_id": 3374,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 7,
   "inferred": false,
   "evidence": [
    "7+ years of experience in Machine Learning Engineering or Backend Engineering",
-   "3+ years of technical leadership, acting as a lead and driving architecture decisions"
+   "3+ years of technical leadership, acting as a lead"
   ],
-  "note": "Stated 7+ years maps to senior_plus under rule 1 despite the Staff title. Duties (architecting end-to-end ML infrastructure, leading MLOps practices) look staff-like, so this is a title/years conflict resolved by the years rule. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+  "note": "Titled Staff, but 7+ years puts it in the senior band and stated years win. The architecture-leadership duties could argue for staff_principal.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

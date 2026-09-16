@@ -3,14 +3,15 @@
  "split": "tune",
  "draft": {
   "level": "mid_senior",
-  "non_fit_reason": "agency",
   "years_required": null,
   "inferred": true,
   "evidence": [
    "Agentic AI Engineer/Remote at Apetan Consulting LLC",
    "Job Description- Agentic AI EngineerLocation: Remote"
   ],
-  "note": "No years; duties are hands-on building and collaborating with no leadership or mentoring, so inferred mid. Marked agency because the poster is a consulting LLC and the posting has no client, product or team description, though no explicit W2/C2C or 'our client' wording appears. [2026-09-16: converted from mid/agency to the five-level scheme]"
+  "note": "No years stated; inferred mid_senior from hands-on building with no leadership or mentoring. Poster is a consulting LLC with no client, product or team description, so agency.",
+  "is_agency": true,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

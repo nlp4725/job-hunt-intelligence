@@ -1,9 +1,8 @@
 {
  "job_id": 3646,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": null,
   "years_required": 15,
   "inferred": false,
   "evidence": [
@@ -11,7 +10,9 @@
    "Mentor and guide junior developers in both technical and professional development.",
    "Provide updates to the Data Analytics Manager"
   ],
-  "note": "Required 15+ years sets principal under rule 1 (the 8+ years AI/ML figure is only preferred). Duties alone read closer to senior_plus: mentoring juniors, leading client projects and reporting to a Data Analytics Manager, with no org-wide strategy or managing managers. [2026-09-16: converted from principal/None to the five-level scheme]"
+  "note": "15+ years stated, so staff_principal. Duties (mentoring analysts, leading client engagements, no org-wide strategy or managing managers) read closer to senior, so borderline.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

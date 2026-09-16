@@ -18,7 +18,6 @@ from db.models import Job, utcnow
 ROLES = ("user", "admin")
 # Decided 2026-09-16. Years: entry [0, 2), mid_senior [2, 5), senior [5, 9), staff_principal [9, ∞).
 SENIORITY_LEVELS = ("intern", "entry", "mid_senior", "senior", "staff_principal")
-NON_FIT_REASONS = ("agency", "contract")
 APPLICATION_STAGES = ("applied", "recruiter_screen", "interview", "offer", "rejected", "withdrawn")
 
 JOB_ID = Job.__table__.c.id
@@ -102,13 +101,13 @@ class JobSeniority(CloudBase):
     __tablename__ = "job_seniority"
     __table_args__ = (
         _one_of("ck_job_seniority_level", "level", SENIORITY_LEVELS),
-        _one_of("ck_job_seniority_non_fit_reason", "non_fit_reason", NON_FIT_REASONS),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     job_id: Mapped[int] = mapped_column(ForeignKey(JOB_ID), unique=True)
     level: Mapped[str | None]                                          # NULL = nothing inferable
-    non_fit_reason: Mapped[str | None]                                 # hard non-fit for every user
+    is_agency: Mapped[bool] = mapped_column(default=False)             # posted by a staffing/recruiting firm for a hidden employer
+    is_contract: Mapped[bool] = mapped_column(default=False)           # contract / temporary / fixed-term / part-time freelance
     years_required: Mapped[int | None]
     inferred: Mapped[bool | None]
     confidence: Mapped[str | None]

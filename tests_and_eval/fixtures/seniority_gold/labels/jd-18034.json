@@ -1,9 +1,8 @@
 {
  "job_id": 18034,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": "agency",
   "years_required": 10,
   "inferred": false,
   "evidence": [
@@ -11,7 +10,9 @@
    "Direct Hire (no 3rd parties)",
    "As Company's AI and autonomy ambitions grow"
   ],
-  "note": "10+ years gives staff despite the Senior title. Posted by Calance, a staffing firm, for an anonymized client ('Company'); it is a direct-hire placement, not contract, but still agency-posted. [2026-09-16: converted from staff/agency to the five-level scheme]"
+  "note": "10+ years stated, so staff_principal despite the Senior title. Borderline: highly hands-on (racking, cabling, fleet health), though it leads GPU cluster vision company-wide. Calance, a staffing firm, posts a direct-hire role for an anonymized client, so agency.",
+  "is_agency": true,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

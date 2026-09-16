@@ -1,9 +1,8 @@
 {
  "job_id": 18373,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "mid_senior",
-  "non_fit_reason": "agency",
   "years_required": 4,
   "inferred": false,
   "evidence": [
@@ -11,7 +10,9 @@
    "4+ years of engineering experience.",
    "The company’s name is confidential at this stage."
   ],
-  "note": "4+ years → 4 → mid (rule 1), even though project ownership and working with the founder read somewhat senior. Posted by MeeBoss as a confidential search with 'send me your resume' for an unnamed company, so agency. [2026-09-16: converted from mid/agency to the five-level scheme]"
+  "note": "4+ years stated, so mid_senior, though owning projects end to end with the founder reads somewhat senior. MeeBoss runs a confidential search for an unnamed company, so agency.",
+  "is_agency": true,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

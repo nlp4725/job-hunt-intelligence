@@ -3,14 +3,15 @@
  "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": null,
   "years_required": 10,
   "inferred": false,
   "evidence": [
    "10+ years of experience in software development or architecture",
    "Define and maintain the enterprise AI architecture strategy"
   ],
-  "note": "10+ years overall is the minimum (the 5 years AI figure is a subset of it), so staff; enterprise-wide AI architecture strategy is consistent. [2026-09-16: converted from staff/None to the five-level scheme]"
+  "note": "10+ years stated (5 years AI is a subset), so staff_principal. Defines enterprise-wide AI architecture strategy, standards and governance.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

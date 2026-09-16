@@ -1,9 +1,8 @@
 {
  "job_id": 16624,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": null,
   "years_required": null,
   "inferred": true,
   "evidence": [
@@ -11,7 +10,9 @@
    "drive technical direction for agents and evals across our team",
    "8+ years in roles such as software engineer"
   ],
-  "note": "The only year figure (8+) is a preferred qualification, not required, so years_required is null and the level is inferred from the Staff title and duties (technical direction, architecting shared platforms across the GTM org). The poster name 'Drift AI' does not match the Anthropic content, which may be a repost; no agency signals in the text itself. [2026-09-16: converted from staff/None to the five-level scheme]"
+  "note": "No required years (8+ is preferred only); inferred staff_principal from the Staff title, setting technical direction for agents across the team, and architecting shared platforms used across the GTM org. Poster 'Drift AI' does not match the Anthropic content, so it may be a repost.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

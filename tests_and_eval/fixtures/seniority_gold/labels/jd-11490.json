@@ -3,7 +3,6 @@
  "split": "tune",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 8,
   "inferred": false,
   "evidence": [
@@ -11,7 +10,9 @@
    "mentoring and leading a team of engineers",
    "Make critical architecture decisions"
   ],
-  "note": "Overall requirement is 8+ years; the 5+/3+/2+ figures are for specific technologies, not alternative paths, so 8 is the minimum. Mentoring and leading a team matches senior_plus; 'Lead' title fits. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+  "note": "8+ years stated (other figures are for specific technologies), so senior. Mentors and leads a team of engineers and makes architecture decisions, matching the Lead title.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

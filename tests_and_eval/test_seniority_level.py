@@ -11,7 +11,7 @@ fake model.
 import pytest
 
 from analysis.seniority_fit import proposed_scores, seniority_fit, validate_scores
-from db.cloud_models import NON_FIT_REASONS, SENIORITY_LEVELS
+from db.cloud_models import SENIORITY_LEVELS
 
 
 @pytest.mark.parametrize("target, expected", [
@@ -23,12 +23,11 @@ def test_the_proposal_is_five_minus_the_distance_from_the_chosen_level(target, e
     assert proposed_scores(target) == expected
 
 
-def test_the_five_levels_and_two_non_fit_reasons():
+def test_the_five_levels():
     """Decided 2026-09-16: intern, entry (0-2 years), mid_senior (2-5),
     senior (5-9), staff_principal (9+). An internship is a level, so an
-    internship seeker can score it; only agency and contract are not a fit."""
+    internship seeker can score it; agency and contract are separate flags."""
     assert SENIORITY_LEVELS == ("intern", "entry", "mid_senior", "senior", "staff_principal")
-    assert NON_FIT_REASONS == ("agency", "contract")
 
 
 def test_old_local_scores_map_onto_the_new_levels():
@@ -47,12 +46,12 @@ def test_an_unknown_level_to_propose_from_is_rejected():
 
 def test_fit_is_a_lookup_in_the_users_own_table():
     table = {**proposed_scores("mid_senior"), "entry": 5, "not_a_fit": 2, "unknown": 1}
-    assert seniority_fit("entry", None, table) == 5
-    assert seniority_fit("staff_principal", None, table) == 3
-    assert seniority_fit(None, None, table) == 1
-    for reason in NON_FIT_REASONS:
+    assert seniority_fit("entry", False, False, table) == 5
+    assert seniority_fit("staff_principal", False, False, table) == 3
+    assert seniority_fit(None, False, False, table) == 1
+    for agency, contract in ((True, False), (False, True), (True, True)):
         for level in (*SENIORITY_LEVELS, None):
-            assert seniority_fit(level, reason, table) == 2   # a non-fit posting uses that row whatever its level
+            assert seniority_fit(level, agency, contract, table) == 2   # either flag uses the not-a-fit row
 
 
 def test_a_complete_table_of_whole_scores_is_valid():
@@ -83,25 +82,27 @@ class TestLevelPrompt:
         text = SENIORITY_LEVEL_PROMPT.lower()
         assert "my profile" not in text and "prioritizing" not in text and "score 0" not in text
 
-    def test_every_level_and_non_fit_reason_is_described(self):
+    def test_every_level_and_both_flags_are_described(self):
         from judge.seniority_level import SENIORITY_LEVEL_PROMPT
 
-        for name in (*SENIORITY_LEVELS, *NON_FIT_REASONS):
+        for name in ("is_agency", "is_contract"):
+            assert f'"{name}"' in SENIORITY_LEVEL_PROMPT, name
+        for name in SENIORITY_LEVELS:
             assert f"`{name}`" in SENIORITY_LEVEL_PROMPT, name
 
     def test_fractional_years_round_up(self):
         from judge.seniority_level import JobSeniorityLevel
 
         result = JobSeniorityLevel(evidence="1.5+ years", years_required=1.5, inferred=False,
-                                   confidence="high", note=None, non_fit_reason=None, level="entry")
+                                   confidence="high", note=None, is_agency=False, is_contract=False, level="entry")
         assert result.years_required == 2
 
     def test_null_written_as_text_counts_as_null(self):
         from judge.seniority_level import JobSeniorityLevel
 
         result = JobSeniorityLevel(evidence="", years_required=None, inferred=True, confidence="low",
-                                   note=None, non_fit_reason="null", level="None")
-        assert (result.non_fit_reason, result.level) == (None, None)
+                                   note=None, is_agency=False, is_contract=False, level="None")
+        assert result.level is None
 
     def test_unknown_level_names_fail_validation(self):
         from pydantic import ValidationError
@@ -110,13 +111,29 @@ class TestLevelPrompt:
 
         with pytest.raises(ValidationError):
             JobSeniorityLevel(evidence="", years_required=None, inferred=True, confidence="low",
-                              note=None, non_fit_reason=None, level="junior")
+                              note=None, is_agency=False, is_contract=False, level="junior")
+
+    def test_an_empty_answer_is_retried(self):
+        from judge.seniority_level import JobSeniorityLevel, classify_job_seniority
+
+        answer = JobSeniorityLevel(evidence="", years_required=None, inferred=True, confidence="low",
+                                   note=None, is_agency=False, is_contract=False, level=None)
+
+        class FlakyModel:
+            calls = 0
+
+            def invoke(self, messages):
+                self.calls += 1
+                return None if self.calls == 1 else answer
+
+        model = FlakyModel()
+        assert classify_job_seniority("posting", llm=model) is answer and model.calls == 2
 
     def test_classification_sends_the_prompt_and_the_posting(self):
         from judge.seniority_level import SENIORITY_LEVEL_PROMPT, JobSeniorityLevel, classify_job_seniority
 
         answer = JobSeniorityLevel(evidence="3+ years", years_required=3, inferred=False,
-                                   confidence="high", note=None, non_fit_reason=None, level="mid_senior")
+                                   confidence="high", note=None, is_agency=False, is_contract=False, level="mid_senior")
 
         class FakeModel:
             def invoke(self, messages):

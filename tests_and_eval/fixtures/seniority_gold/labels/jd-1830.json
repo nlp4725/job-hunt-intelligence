@@ -3,7 +3,6 @@
  "split": "tune",
  "draft": {
   "level": "mid_senior",
-  "non_fit_reason": null,
   "years_required": 2,
   "inferred": false,
   "evidence": [
@@ -11,7 +10,9 @@
    "Scope and lead large projects, addressing ambiguity, creating plans",
    "Teach and mentor members of the engineering team"
   ],
-  "note": "Stated 2+ years gives mid under rule 1 (years win over title). However the duties (lead large projects, help set team roadmap, mentor) read closer to senior/senior_plus, so the reviewer may want to weigh that conflict. [2026-09-16: converted from mid/None to the five-level scheme]"
+  "note": "States 2+ years, so mid_senior. The duties (lead large projects, mentor, shape the roadmap) read closer to senior, but stated years win.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

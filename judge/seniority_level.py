@@ -4,8 +4,8 @@ analysis/seniority_fit.py.
 
 Derived from judge/seniority_fit.py's calibrated rubric, which scores fit for
 one entry-level candidate. This prompt drops the candidate entirely and returns
-the job's level on five levels (decided 2026-09-16), plus a separate non-fit
-reason for agency and contract postings. judge/seniority_fit.py stays as it is
+the job's level on five levels (decided 2026-09-16), plus two separate
+yes/no attributes: is_agency and is_contract. judge/seniority_fit.py stays as it is
 for the local app.
 """
 
@@ -22,6 +22,7 @@ from judge.structured_retry import invoke_with_retry
 load_dotenv()
 
 MODEL = "deepseek-v4-pro"
+MAX_EMPTY_ANSWERS = 3
 
 SENIORITY_LEVEL_PROMPT = """## SENIORITY LEVEL
 Classify the level of responsibility a job posting describes. This is a
@@ -36,28 +37,51 @@ RESPONSIBILITY the posting describes, not by job title strings.
 | `senior` | [5, 9) | Owns whole projects and makes technical decisions; may mentor, lead a team's technical direction, or manage engineers. |
 | `staff_principal` | [9, ∞) | Staff / principal / director. Drives architecture across multiple teams or the org, sets strategy, or manages managers. |
 
-### Non-fit postings
-Set "non_fit_reason" when one applies; otherwise null. Still give the level
-if the posting shows one.
-- `agency`: posted by a staffing/recruiting agency or contract-placement firm
-  rather than the actual hiring company (signals: "our client", fixed contract
-  duration like "12 Months", "W2 only"/"C2C", generic placement-firm branding,
-  no real product or team description).
-- `contract`: the role itself is explicitly contract/temporary/fixed-term
-  (not full-time), even at a direct employer with a real product/team
-  description. Contract-to-hire counts.
-An internship is not a non-fit posting: it is the level `intern`.
+### Two yes/no attributes, decided independently of each other and of the level
+Every posting gets "is_agency" and "is_contract", each true or false. Both can
+be true. The level is still decided exactly like any other posting; use a null
+level only when nothing about seniority can be inferred.
+- "is_agency": true when the actual employer is HIDDEN behind the poster. Signals, any one
+  is enough: "our client" / "on behalf of" / "for a client"; the employer is
+  confidential, unnamed, or referred to by a placeholder instead of a name
+  ("Company", "the Client", "a leading company", "confidential search");
+  a staffing, recruiting, placement or IT-services firm describing only another
+  organization's environment and nothing of its own business; W2 / C2C /
+  corp-to-corp terms; "send me your resume". "Direct hire" does not rule out
+  agency: a recruiter can place a direct hire.
+  NOT agency: the text names and describes the actual employer, even if a job
+  board or another company name posted it; a consulting or services firm
+  hiring for its own practice or teams (describes itself, its benefits, its
+  own clients as its business).
+- "is_contract": true when the role itself is contract / temporary /
+  fixed-term / hourly or part-time freelance (not a full-time permanent job),
+  whoever posts it. Contract-to-hire counts. A staffing firm's fixed-term W2
+  placement is both is_agency and is_contract. Boilerplate like "employees and
+  contractors" or hourly pay for a full-time job does not make it a contract.
+- Internships get both flags decided the same way: an internship shared by a
+  recruiter "on behalf of" a hidden employer is `intern` with "is_agency": true.
 
-### Rules (apply in order)
+### How to decide the level (in order)
 1. An internship or co-op → `intern`.
-2. Stated years win over title. Use the half-open bands.
-3. "X+ years" → use X. A range ("3–7 years") → use the minimum.
-4. No years stated → infer the level from the RESPONSIBILITIES described,
-   using the examples below as reference points. Set "inferred": true.
-5. If title and responsibilities disagree, trust responsibilities and note
-   the conflict in "note".
-6. Managing engineers → at least `senior`. Managing managers → `staff_principal`.
-7. Nothing inferable → "level": null, "confidence": "low".
+2. Find the minimum OVERALL years of experience the posting REQUIRES:
+   - "X+ years" → X. A range ("3–7 years") → the minimum.
+   - Different paths ("BS + 5 or MS + 3") → the lowest path.
+   - Ignore years that are only "preferred" / "nice to have".
+   - Years in one specific tool or skill don't count when an overall figure
+     is given; when several overall figures are required together, use the
+     largest.
+3. If required years were found, the level is their band. Title words
+   (Senior, Lead, Staff, Principal, Director) and duties do NOT move a level
+   that stated years set, even when the duties look modest or hands-on for
+   that many years; mention a conflict in "note".
+4. No required years → infer the level from the RESPONSIBILITIES, using the
+   examples below. Set "inferred": true. A title alone is a weak hint, but an
+   explicit Staff / Principal / Director level for the role ("As a Staff
+   Engineer…") backed by cross-team or org-wide duties → `staff_principal`.
+5. People management sets a floor in every case, even over stated years:
+   managing people (engineers, scientists, analysts) → at least `senior`;
+   managing managers → `staff_principal`.
+6. Nothing inferable → "level": null, "confidence": "low".
 
 ### Evidence format
 "evidence" = up to 3 short fragments quoted from the posting, each UNDER 10
@@ -72,15 +96,15 @@ with product and data teams."
 → {"criterion": "seniority_level",
    "evidence": "ML Engineer | 3+ years experience | own our ranking model pipeline",
    "years_required": 3, "inferred": false, "confidence": "high",
-   "note": null, "non_fit_reason": null, "level": "mid_senior"}
+   "note": null, "is_agency": false, "is_contract": false, "level": "mid_senior"}
 
 Posting: "Senior Machine Learning Engineer. You have 3+ years of
 experience building production ML systems."
-→ Title says Senior, stated years = 3. Rule 2: years win.
+→ Title says Senior, stated years = 3. Rule 3: years set the level.
 → {"criterion": "seniority_level",
    "evidence": "Senior Machine Learning Engineer | 3+ years of experience",
    "years_required": 3, "inferred": false, "confidence": "high",
-   "note": "title inflated relative to stated years", "non_fit_reason": null, "level": "mid_senior"}
+   "note": "title inflated relative to stated years", "is_agency": false, "is_contract": false, "level": "mid_senior"}
 
 Posting: "Founding AI Engineer at a seed-stage startup. You'll build
 our LLM product from scratch, wear many hats, and ship fast. No
@@ -89,17 +113,36 @@ specific experience requirement, but you've built real systems."
 → {"criterion": "seniority_level",
    "evidence": "Founding AI Engineer | build our LLM product from scratch | built real systems",
    "years_required": null, "inferred": true, "confidence": "medium",
-   "note": null, "non_fit_reason": null, "level": "mid_senior"}
+   "note": null, "is_agency": false, "is_contract": false, "level": "mid_senior"}
 
 Posting: "Machine Learning Engineer. You will define the technical
 vision for ML across the organization, mentor senior engineers, and
 partner with VPs on strategy."
-→ Title sounds mid; duties are org-wide vision + mentoring seniors.
-   Rule 5: responsibilities win → staff_principal.
+→ No years. Title sounds mid; duties are org-wide vision + mentoring
+   seniors. Rule 4: responsibilities decide → staff_principal.
 → {"criterion": "seniority_level",
    "evidence": "define the technical vision | mentor senior engineers | partner with VPs",
    "years_required": null, "inferred": true, "confidence": "high",
-   "note": "title understates actual level", "non_fit_reason": null, "level": "staff_principal"}
+   "note": "title understates actual level", "is_agency": false, "is_contract": false, "level": "staff_principal"}
+
+Posting: "Senior Systems Engineer at a 20-person IT services company. 10+ years
+of IT experience required. Resolve escalated client tickets and mentor two
+junior technicians."
+→ Rule 3: required years = 10 → staff_principal, even though the duties are
+   hands-on and the team is small.
+→ {"criterion": "seniority_level",
+   "evidence": "Senior Systems Engineer | 10+ years of IT experience required",
+   "years_required": 10, "inferred": false, "confidence": "high",
+   "note": "duties modest for 10 years; stated years set the level", "is_agency": false, "is_contract": false, "level": "staff_principal"}
+
+Posting: "Senior GenAI Engineer. Build plugins and integrations with business
+teams; hands-on development and testing. No experience requirement stated."
+→ No years. The Senior title is only a hint; the duties are independent,
+   hands-on building with no project leadership or mentoring → mid_senior.
+→ {"criterion": "seniority_level",
+   "evidence": "Senior GenAI Engineer | Build plugins and integrations | hands-on development and testing",
+   "years_required": null, "inferred": true, "confidence": "medium",
+   "note": "title says Senior; duties are mid-level", "is_agency": false, "is_contract": false, "level": "mid_senior"}
 
 Posting: "Lead Data Scientist. 7+ years of experience. Mentor a team of
 four data scientists and set the modeling roadmap."
@@ -107,7 +150,7 @@ four data scientists and set the modeling roadmap."
 → {"criterion": "seniority_level",
    "evidence": "Lead Data Scientist | 7+ years of experience | set the modeling roadmap",
    "years_required": 7, "inferred": false, "confidence": "high",
-   "note": null, "non_fit_reason": null, "level": "senior"}
+   "note": null, "is_agency": false, "is_contract": false, "level": "senior"}
 
 Posting: "2027 New Graduate Program — Machine Learning. Open to
 candidates graduating between Dec 2026 and Jun 2027."
@@ -115,7 +158,7 @@ candidates graduating between Dec 2026 and Jun 2027."
 → {"criterion": "seniority_level",
    "evidence": "2027 New Graduate Program | graduating between Dec 2026 and Jun 2027",
    "years_required": null, "inferred": false, "confidence": "high",
-   "note": null, "non_fit_reason": null, "level": "entry"}
+   "note": null, "is_agency": false, "is_contract": false, "level": "entry"}
 
 Posting: "Machine Learning Intern (Summer 2027). Build evaluation tooling
 for our LLM features alongside senior engineers."
@@ -123,27 +166,35 @@ for our LLM features alongside senior engineers."
 → {"criterion": "seniority_level",
    "evidence": "Machine Learning Intern (Summer 2027)",
    "years_required": null, "inferred": false, "confidence": "high",
-   "note": null, "non_fit_reason": null, "level": "intern"}
+   "note": null, "is_agency": false, "is_contract": false, "level": "intern"}
 
 Posting: "Title: Data Scientist. Duration: 12 Months. *** W2 - USC or GC
-only ***. Top skills required: Python or R, time series forecasting,
+only ***. Our client needs 6+ years of experience in time series forecasting,
 Marketing Mix Modeling, SQL, Snowflake."
-→ Placement-firm signals (fixed contract duration, W2 language, bare skills
-   list with no product/team description) → agency. No level is shown.
+→ Placement-firm signals (our client) → is_agency. A 12-month W2 duration →
+   is_contract too. It still gets a level: 6 years → senior.
 → {"criterion": "seniority_level",
-   "evidence": "Duration: 12 Months | W2 - USC or GC only | Top skills required",
-   "years_required": null, "inferred": true, "confidence": "high",
-   "note": "staffing/contract-placement posting, not a direct employer JD", "non_fit_reason": "agency", "level": null}
+   "evidence": "Duration: 12 Months | W2 - USC or GC only | Our client needs 6+ years",
+   "years_required": 6, "inferred": false, "confidence": "high",
+   "note": "staffing/contract-placement posting, not a direct employer JD", "is_agency": true, "is_contract": true, "level": "senior"}
+
+Posting: "Staff Machine Learning Engineer. 7+ years of experience building
+ML systems. Drive architecture for our ranking platform."
+→ Rule 3: required years = 7 → senior. The Staff title does not move it.
+→ {"criterion": "seniority_level",
+   "evidence": "Staff Machine Learning Engineer | 7+ years of experience",
+   "years_required": 7, "inferred": false, "confidence": "high",
+   "note": "title says Staff; stated years set senior", "is_agency": false, "is_contract": false, "level": "senior"}
 
 Posting: "Senior ML Engineer (6-Month Contract) at [product company].
 Join our team to own model deployment for our recommendation platform.
 5+ years experience preferred. Possibility of extension."
 → Real employer, real product/team description, so not an agency. But it is
-   explicitly a fixed-term contract → contract. Years = 5 → senior.
+   explicitly a fixed-term contract → is_contract. Years = 5 → senior.
 → {"criterion": "seniority_level",
    "evidence": "Senior ML Engineer (6-Month Contract) | 5+ years experience preferred",
    "years_required": 5, "inferred": false, "confidence": "high",
-   "note": "fixed-term contract at a direct employer", "non_fit_reason": "contract", "level": "senior"}
+   "note": "fixed-term contract at a direct employer", "is_agency": false, "is_contract": true, "level": "senior"}
 
 ### Output format (JSON, fields in this exact order)
 {"criterion": "seniority_level",
@@ -152,7 +203,8 @@ Join our team to own model deployment for our recommendation platform.
  "inferred": <true/false>,
  "confidence": "high" | "medium" | "low",
  "note": "<conflicts or ambiguities, or null>",
- "non_fit_reason": "agency" | "contract" | null,
+ "is_agency": true | false,
+ "is_contract": true | false,
  "level": "intern" | "entry" | "mid_senior" | "senior" | "staff_principal" | null}
 
 Respond with ONLY that JSON object — no surrounding prose, no markdown code fence.
@@ -168,10 +220,11 @@ class JobSeniorityLevel(BaseModel):
     inferred: bool = Field(description="True if years_required is null and the level was inferred from responsibilities.")
     confidence: Literal["high", "medium", "low"]
     note: str | None = Field(description="Conflicts or ambiguities, or null.")
-    non_fit_reason: Literal["agency", "contract"] | None
+    is_agency: bool = Field(description="Posted by a staffing/recruiting firm for a hidden employer.")
+    is_contract: bool = Field(description="Contract / temporary / fixed-term / part-time freelance role.")
     level: Literal["intern", "entry", "mid_senior", "senior", "staff_principal"] | None
 
-    @field_validator("non_fit_reason", "level", mode="before")
+    @field_validator("level", mode="before")
     @classmethod
     def _null_text_is_null(cls, v):
         # DeepSeek sometimes writes JSON null as the string "null" (first parity
@@ -188,11 +241,18 @@ class JobSeniorityLevel(BaseModel):
 def classify_job_seniority(posting_text: str, llm=None) -> JobSeniorityLevel:
     """`posting_text` as built by judge.seniority_fit.format_posting. `llm` is a
     with_structured_output runnable; defaults to DeepSeek with thinking off."""
+    # temperature 0: a job's level is a stored fact shared by every user, so the
+    # same posting should get the same answer; sampling made 3 runs of one
+    # posting disagree on ~8% of training jobs (2026-09-16).
     structured_llm = llm or ChatDeepSeek(
-        model=MODEL, extra_body={"thinking": {"type": "disabled"}}
+        model=MODEL, temperature=0, extra_body={"thinking": {"type": "disabled"}}
     ).with_structured_output(JobSeniorityLevel)
-    return invoke_with_retry(
-        structured_llm,
-        [SystemMessage(SENIORITY_LEVEL_PROMPT), HumanMessage(posting_text)],
-        label="JobSeniorityLevel",
-    )
+    messages = [SystemMessage(SENIORITY_LEVEL_PROMPT), HumanMessage(posting_text)]
+    # The structured-output parser returns None (instead of raising) when the
+    # model's answer can't be parsed at all; seen twice in 147 calls on
+    # 2026-09-16. Retry those the same way as a failed validation.
+    for _ in range(MAX_EMPTY_ANSWERS):
+        result = invoke_with_retry(structured_llm, messages, label="JobSeniorityLevel")
+        if result is not None:
+            return result
+    raise ValueError(f"no parseable answer after {MAX_EMPTY_ANSWERS} attempts")

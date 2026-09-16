@@ -1,16 +1,17 @@
 {
  "job_id": 7896,
- "split": "tune",
+ "split": "test",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 8,
   "inferred": false,
   "evidence": [
    "8+ years of industry experience, including 3+ years managing engineers",
    "lead a team of ML engineers"
   ],
-  "note": "8+ years falls in the senior_plus band, and managing a team of ML engineers (not managers) is senior_plus under rule 5. Direct employer, permanent role. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+  "note": "8+ years stated, so senior. Manages a team of ML engineers (not managers) and sets the team's modeling strategy.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

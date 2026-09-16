@@ -1,16 +1,17 @@
 {
  "job_id": 4887,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": null,
   "years_required": null,
   "inferred": true,
   "evidence": [
    "As a Senior Staff (P5) Data Scientist",
    "Mentor data scientists, advise managers on technical direction"
   ],
-  "note": "No years stated; inferred staff from the Senior Staff title and org-wide technical leadership without people management. Could arguably be principal given executive-facing strategy work. [2026-09-16: converted from staff/None to the five-level scheme]"
+  "note": "No years stated; inferred staff_principal from the Senior Staff (P5) title and org-wide technical leadership partnering with executives, without people management.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

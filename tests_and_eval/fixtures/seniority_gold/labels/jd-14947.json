@@ -2,16 +2,16 @@
  "job_id": 14947,
  "split": "tune",
  "draft": {
-  "level": "senior",
-  "non_fit_reason": null,
+  "level": "mid_senior",
   "years_required": null,
   "inferred": true,
   "evidence": [
-   "Looking for a Senior GenAI Engineer with strong hands-on experience",
-   "Translate business requirements into practical AI Skills, plugins, and MCP-based solutions",
-   "Excellent communication and stakeholder-management skills"
+   "Develop Python-based GenAI applications and APIs",
+   "Design and build MCP servers, tools, and integrations"
   ],
-  "note": "No years stated; duties are hands-on building of MCP servers/plugins from business requirements with heavy stakeholder contact, which fits senior (owns solutions) but shows no mentoring or leadership, so could be mid. Fractal is an analytics/AI consultancy hiring full-time employees, not a staffing agency."
+  "note": "No years stated. Title says Senior but duties are hands-on building of plugins/MCP servers with business teams, with no project leadership or mentoring, so responsibilities point to mid_senior.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

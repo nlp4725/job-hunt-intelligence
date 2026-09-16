@@ -1,16 +1,17 @@
 {
  "job_id": 7785,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": null,
   "years_required": 10,
   "inferred": false,
   "evidence": [
    "10–15+ years of senior leadership experience",
    "leading a high-performing global team of process engineers"
   ],
-  "note": "Range of 10–15+ takes the minimum of 10, which is staff under rule 1. The Director title and global-team leadership suggest principal, but the posting never says it manages managers. Note this is manufacturing engineering, not software. [2026-09-16: converted from staff/None to the five-level scheme]"
+  "note": "10–15+ years stated (minimum 10), so staff_principal, matching the Director title and leading a global engineering team. Manufacturing engineering, not software.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

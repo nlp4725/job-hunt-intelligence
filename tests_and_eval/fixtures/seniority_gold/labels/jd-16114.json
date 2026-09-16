@@ -3,14 +3,15 @@
  "split": "tune",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 5,
   "inferred": false,
   "evidence": [
    "5+ years of experience in backend software engineering, cloud engineering, or platform development",
    "Ability to independently own and deliver engineering tasks and small projects."
   ],
-  "note": "5+ years maps to senior. Mentoring junior engineers is listed but scope is features and small projects working under senior engineers and architects, not team technical direction."
+  "note": "5+ years stated, so senior. Borderline: owns features and 'small projects' working with senior engineers and architects, though it mentors junior engineers.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

@@ -2,16 +2,16 @@
  "job_id": 8060,
  "split": "tune",
  "draft": {
-  "level": "senior",
-  "non_fit_reason": null,
+  "level": "mid_senior",
   "years_required": null,
   "inferred": true,
   "evidence": [
-   "own the end-to-end journey from first process file to a running",
-   "At 12 months: 3–5 customers with viable deployments.",
-   "Enterprise production experience: you’ve shipped something inside a large organisation"
+   "you’ve shipped something inside a large organisation and stayed to see it operate",
+   "own the end-to-end journey from first process file"
   ],
-  "note": "No years stated; inferred. Owns whole customer deployments end to end with high autonomy and requires proven enterprise production experience, which reads as senior; no mentoring or cross-team leadership duties."
+  "note": "No years stated; owns customer deployments end to end and needs enterprise production experience, without leading others, so inferred mid_senior.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

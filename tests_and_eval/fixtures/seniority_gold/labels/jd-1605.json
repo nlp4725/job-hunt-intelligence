@@ -1,9 +1,8 @@
 {
  "job_id": 1605,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "mid_senior",
-  "non_fit_reason": "agency",
   "years_required": null,
   "inferred": true,
   "evidence": [
@@ -11,7 +10,9 @@
    "This role will lead work at the intersection of data",
    "Compensation: $100,000 – $140,000 annually"
   ],
-  "note": "No years stated; inferred mid from prototyping and delivery duties and modest pay, despite 'lead work' and 'influence architecture' language (could be senior). Ladders posting 'for our client' with no named company, so agency. [2026-09-16: converted from mid/agency to the five-level scheme]"
+  "note": "No years stated; inferred mid_senior from hands-on prototyping and delivery and $100–140k pay, despite 'lead work' wording. Ladders posting 'for our client' with no named company, so agency.",
+  "is_agency": true,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

@@ -16,9 +16,9 @@ from tests_and_eval.test_cloud_resumes import (  # noqa: F401  (fixtures)
 from tests_and_eval.test_cloud_users import _user
 
 
-def _level(level=None, non_fit_reason=None) -> JobSeniorityLevel:
+def _level(level=None, is_agency=False, is_contract=False) -> JobSeniorityLevel:
     return JobSeniorityLevel(evidence="e", years_required=None, inferred=True, confidence="medium",
-                             note=None, non_fit_reason=non_fit_reason, level=level)
+                             note=None, is_agency=is_agency, is_contract=is_contract, level=level)
 
 
 def _scored_user(db, store, cipher, target="entry", **profile):
@@ -39,7 +39,7 @@ class TestScoresUseJobLevels:
 
         jobs = _jobs(db)
         db.add_all([JobSeniority(job_id=jobs["1"].id, level="mid_senior"),
-                    JobSeniority(job_id=jobs["2"].id, level="senior", non_fit_reason="contract")])
+                    JobSeniority(job_id=jobs["2"].id, level="senior", is_contract=True)])
         table = {**proposed_scores("entry"), "mid_senior": 5, "not_a_fit": 2}
         user = _scored_user(db, store, cipher, seniority_scores=table)
 

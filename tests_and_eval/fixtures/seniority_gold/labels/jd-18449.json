@@ -3,13 +3,14 @@
  "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": null,
   "years_required": 10,
   "inferred": false,
   "evidence": [
    "10+ years building ML for physical/engineering systems"
   ],
-  "note": "Stated 10+ years wins over the plain 'ML Engineer' title and the hands-on IC duties, which on their own would read closer to senior. Direct employer (Molex/Koch). [2026-09-16: converted from staff/None to the five-level scheme]"
+  "note": "10+ years stated, so staff_principal. Borderline: hands-on IC building surrogate models with no cross-team leadership, which reads senior.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

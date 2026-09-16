@@ -1,9 +1,8 @@
 {
  "job_id": 1767,
- "split": "tune",
+ "split": "test",
  "draft": {
   "level": "mid_senior",
-  "non_fit_reason": "agency",
   "years_required": null,
   "inferred": true,
   "evidence": [
@@ -11,7 +10,9 @@
    "Approximately 20 hours per week",
    "Deep hands-on experience in Machine Learning and/or Natural Language Processing"
   ],
-  "note": "Poster 'Call For Referral' describes no company, product or team, just a part-time W-2 hourly AI-evaluation gig, which matches placement-firm signals (could also be read as contract since it is part-time hourly). No years stated; duties are independent task design and model evaluation with no leadership, inferred mid. [2026-09-16: converted from mid/agency to the five-level scheme]"
+  "note": "No years stated; inferred mid_senior from independent task design and model evaluation with no leadership. 'Call For Referral' names no company, product or team and offers part-time hourly W-2 work, so agency.",
+  "is_agency": true,
+  "is_contract": true
  },
  "gold": null,
  "status": "draft"

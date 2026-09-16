@@ -3,14 +3,15 @@
  "split": "test",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 8,
   "inferred": false,
   "evidence": [
    "8+ years of experience in IT or product security",
    "2+ years of experience in security analysis"
   ],
-  "note": "Two concurrent requirements: 2+ years in AI security and a basic requirement of 8+ years in IT or product security; these are not alternative paths, so the binding minimum is 8 -> senior_plus. Leading standards and governance for the Chief AI Office fits. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+  "note": "8+ years stated (plus 2+ in AI security, a concurrent requirement), so senior. Leads technical standards and governance for the Chief AI Office.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

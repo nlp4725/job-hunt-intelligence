@@ -3,7 +3,6 @@
  "split": "tune",
  "draft": {
   "level": "staff_principal",
-  "non_fit_reason": "agency",
   "years_required": null,
   "inferred": true,
   "evidence": [
@@ -11,7 +10,9 @@
    "Must be able to work W2",
    "Mentor internal teams on AI agent design"
   ],
-  "note": "TEKsystems (Allegis staffing firm) placing a W2 1-year contract, so agency (also contract). No years stated; despite the Principal title the duties are hands-on agent building plus reusable architecture patterns and mentoring, with no org strategy or managing managers, so inferred staff rather than principal. [2026-09-16: converted from staff/agency to the five-level scheme]"
+  "note": "No years stated; inferred staff_principal from the Principal Architect title, 'Expert Level', and setting reusable architecture patterns across the organization. TEKsystems (Allegis) staffing placement on a 1-year W-2 contract, so agency (also contract).",
+  "is_agency": true,
+  "is_contract": true
  },
  "gold": null,
  "status": "draft"

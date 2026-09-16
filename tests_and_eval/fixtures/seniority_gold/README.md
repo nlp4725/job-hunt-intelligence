@@ -10,7 +10,7 @@ Human-confirmed seniority labels for tuning and testing `judge/seniority_level.p
 
 **Tune vs test.** The prompt is changed only while looking at `tune` results. `test` is scored once, at the end, with the final prompt. Looking at `test` failures and changing the prompt again would turn it into a second tuning set.
 
-**Target.** On `test`, ≥95% of runs within one point of the label, where points are the entry-level score table (`analysis.seniority_fit.proposed_scores("entry")`: intern 4, entry 5, mid_senior 4, senior 3, staff_principal 2, not a fit 0, unclear 3).
+**Split and target (decided 2026-09-16).** 80/20, stratified by label: `tune` is the training set, `test` is scored once at the end. A run is correct only when level, `is_agency` and `is_contract` all match; the target is ≥90% of runs on training before the test run.
 
 ## How to label
 
@@ -24,11 +24,11 @@ A label describes the **job**, not any candidate. Judge by the level of responsi
 | `senior` | [5, 9) | Owns whole projects, makes technical decisions; may mentor, set a team's technical direction or manage engineers |
 | `staff_principal` | [9, ∞) | Staff / principal / director. Drives architecture across teams or the org, sets strategy, or manages managers |
 
-**Not a fit** (`non_fit_reason`, otherwise null). Still give the level when the posting shows one.
-- `agency`: posted by a staffing / recruiting / contract-placement firm rather than the company doing the work. Signals: "our client", fixed contract duration, W2 / C2C / corp-to-corp, placement-firm branding, no real product or team description. A recruiting firm's *own* internal role is not `agency`.
-- `contract`: the role itself is explicitly contract / temporary / fixed-term / part-time freelance, even at a direct employer. "Contract-to-hire" counts as contract.
+**Two yes/no flags**, each decided on its own (both can be true). Still give the level when the posting shows one.
+- `is_agency`: posted by a staffing / recruiting / contract-placement firm rather than the company doing the work. Signals: "our client", fixed contract duration, W2 / C2C / corp-to-corp, placement-firm branding, no real product or team description. A recruiting firm's *own* internal role is not `agency`.
+- `is_contract`: the role itself is contract / temporary / fixed-term / hourly or part-time freelance, whoever posts it. "Contract-to-hire" counts. A staffing firm's fixed-term W2 placement is both flags. Boilerplate ("employees and contractors", hourly pay for a full-time job) is not.
 
-An internship is **not** a non-fit posting: it is the level `intern`.
+An internship is the level `intern`; its flags are decided like any posting's (a recruiter sharing it for a hidden employer → `is_agency`).
 
 **Rules, in order**
 1. An internship or co-op → `intern`.
@@ -43,7 +43,7 @@ An internship is **not** a non-fit posting: it is the level `intern`.
 
 ```json
 {"job_id": 12769, "split": "tune",
- "draft": {"level": "staff_principal", "non_fit_reason": "agency", "years_required": 12, "inferred": false,
+ "draft": {"level": "staff_principal", "is_agency": true, "is_contract": true, "years_required": 12, "inferred": false,
            "evidence": ["verbatim fragment under 15 words", "..."], "note": "why, in one or two sentences"},
  "gold": null, "status": "draft"}
 ```

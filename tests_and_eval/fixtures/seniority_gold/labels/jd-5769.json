@@ -1,16 +1,17 @@
 {
  "job_id": 5769,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "entry",
-  "non_fit_reason": null,
   "years_required": 1,
   "inferred": false,
   "evidence": [
    "1+ years of experience in electrical schematics/SLD creation",
    "Master’s degree in Electrical Engineering"
   ],
-  "note": "Stated 1+ years -> entry; duties are supporting/assisting roles under engineering experts. Requires a Master's, but years band governs."
+  "note": "1+ years stated, so entry. Supporting and assisting duties alongside engineering experts. Requires a Master's, but the years set the level.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"

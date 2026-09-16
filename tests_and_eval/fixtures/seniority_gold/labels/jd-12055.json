@@ -1,16 +1,17 @@
 {
  "job_id": 12055,
- "split": "test",
+ "split": "tune",
  "draft": {
   "level": "senior",
-  "non_fit_reason": null,
   "years_required": 3,
   "inferred": false,
   "evidence": [
    "3+ years of experience managing data scientists",
    "Mentor and manage junior and mid-level data scientists"
   ],
-  "note": "The only required figure is 3+ years of managing data scientists (7+ is only preferred), which alone would be mid. But it is a people-manager role, and rule 5 puts those at senior_plus or higher, so senior_plus. [2026-09-16: converted from senior_plus/None to the five-level scheme]"
+  "note": "Only required figure is 3+ years managing data scientists (7+ is preferred). Inferred senior: a technical lead who manages a team of data scientists and sets its technical direction.",
+  "is_agency": false,
+  "is_contract": false
  },
  "gold": null,
  "status": "draft"
