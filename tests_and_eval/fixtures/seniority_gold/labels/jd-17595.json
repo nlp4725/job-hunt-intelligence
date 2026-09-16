@@ -13,6 +13,17 @@
   "note": "3+ years stated (the 12 years only substitutes for a degree), so mid_senior. Borderline: the posting also offers a track leading agentic solutions and developing talent. Accenture hires directly, so not agency.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "mid_senior",
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "Minimum of 3 years of engineering experience with cloud-native systems",
+   "or by owning critical technical areas end-to-end as a senior IC",
+   "OR equivalent (minimum 12 years) work experience."
+  ],
+  "note": "3+ years stated (the 12 years only substitutes for a degree), so mid_senior. Borderline: the posting also offers a track leading agentic solutions and developing talent. Accenture hires directly, so not agency. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

@@ -12,6 +12,16 @@
   "note": "7+ years stated, so senior (the 5+ Python and 3+ NLP figures are narrower skill requirements). Lead title, but the body describes a hands-on IC.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years in data science, ML engineering, or related roles",
+   "seeking a hands-on Data Scientist to build predictive models"
+  ],
+  "note": "7+ years stated, so senior (the 5+ Python and 3+ NLP figures are narrower skill requirements). Lead title, but the body describes a hands-on IC. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

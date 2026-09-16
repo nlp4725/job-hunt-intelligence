@@ -12,6 +12,16 @@
   "note": "No years stated. Title says Senior but duties are hands-on building of plugins/MCP servers with business teams, with no project leadership or mentoring, so responsibilities point to mid_senior.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "mid_senior",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "Develop Python-based GenAI applications and APIs",
+   "Design and build MCP servers, tools, and integrations"
+  ],
+  "note": "No years stated. Title says Senior but duties are hands-on building of plugins/MCP servers with business teams, with no project leadership or mentoring, so responsibilities point to mid_senior. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

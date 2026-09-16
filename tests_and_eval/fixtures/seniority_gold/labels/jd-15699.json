@@ -12,6 +12,16 @@
   "note": "1+ years stated, so entry. Hands-on field deployment and debugging with no leadership duties.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "entry",
+  "years_required": 1,
+  "inferred": false,
+  "evidence": [
+   "1+ years of experience in software engineering, systems engineering, robotics",
+   "You'll be expected to understand the software deeply enough to modify it"
+  ],
+  "note": "1+ years stated, so entry. Hands-on field deployment and debugging with no leadership duties. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

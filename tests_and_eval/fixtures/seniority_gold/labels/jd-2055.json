@@ -12,6 +12,16 @@
   "note": "12–15+ years stated (minimum 12), so staff_principal. Sr. Director/VP role owning company-wide AI strategy and building an AI organization. Syner-G hires for its own role, so not agency.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "staff_principal",
+  "years_required": 12,
+  "inferred": false,
+  "evidence": [
+   "12 to 15 or more years of experience in AI, machine learning",
+   "Lead the strategic planning, development, and execution of the company’s AI roadmap"
+  ],
+  "note": "12–15+ years stated (minimum 12), so staff_principal. Sr. Director/VP role owning company-wide AI strategy and building an AI organization. Syner-G hires for its own role, so not agency. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

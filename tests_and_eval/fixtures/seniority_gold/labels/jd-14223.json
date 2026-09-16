@@ -12,6 +12,16 @@
   "note": "3–4 years stated (minimum 3), so mid_senior. Owns the ingestion pipelines end to end. Direct employer (Alt).",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "mid_senior",
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "3-4 years in data engineering or a closely adjacent seat",
+   "Strong Python, 3+ years hands-on"
+  ],
+  "note": "3–4 years stated (minimum 3), so mid_senior. Owns the ingestion pipelines end to end. Direct employer (Alt). [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

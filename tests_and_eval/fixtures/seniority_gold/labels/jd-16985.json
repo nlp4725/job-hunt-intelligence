@@ -12,6 +12,16 @@
   "note": "8+ years stated, so senior. Leads the design of enterprise AI copilots and agents across Microsoft and Anthropic platforms.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 8,
+  "inferred": false,
+  "evidence": [
+   "8+ years of professional software development experience",
+   "leads the design and implementation of enterprise AI copilots"
+  ],
+  "note": "8+ years stated, so senior. Leads the design of enterprise AI copilots and agents across Microsoft and Anthropic platforms. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

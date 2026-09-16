@@ -13,6 +13,17 @@
   "note": "15+ years stated, so staff_principal. Duties (mentoring analysts, leading client engagements, no org-wide strategy or managing managers) read closer to senior, so borderline.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "staff_principal",
+  "years_required": 15,
+  "inferred": false,
+  "evidence": [
+   "15+ years of professional experience in client-facing or consulting work.",
+   "Mentor and guide junior developers in both technical and professional development.",
+   "Provide updates to the Data Analytics Manager"
+  ],
+  "note": "15+ years stated, so staff_principal. Duties (mentoring analysts, leading client engagements, no org-wide strategy or managing managers) read closer to senior, so borderline. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

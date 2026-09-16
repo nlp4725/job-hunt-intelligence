@@ -12,6 +12,16 @@
   "note": "No years stated; owns customer deployments end to end and needs enterprise production experience, without leading others, so inferred mid_senior.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "mid_senior",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "you’ve shipped something inside a large organisation and stayed to see it operate",
+   "own the end-to-end journey from first process file"
+  ],
+  "note": "No years stated; owns customer deployments end to end and needs enterprise production experience, without leading others, so inferred mid_senior. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

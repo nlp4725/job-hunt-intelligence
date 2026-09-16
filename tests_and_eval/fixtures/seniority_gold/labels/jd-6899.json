@@ -12,6 +12,16 @@
   "note": "10+ years stated, so staff_principal. Program lead coordinating multidisciplinary teams across a healthcare AI portfolio. Direct defense employer.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "staff_principal",
+  "years_required": 10,
+  "inferred": false,
+  "evidence": [
+   "Ten (10) or more years of experience managing complex",
+   "lead multidisciplinary teams of scientists, engineers, data scientists"
+  ],
+  "note": "10+ years stated, so staff_principal. Program lead coordinating multidisciplinary teams across a healthcare AI portfolio. Direct defense employer. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

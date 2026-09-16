@@ -12,6 +12,16 @@
   "note": "1+ years stated, so entry. Supporting and assisting duties alongside engineering experts. Requires a Master's, but the years set the level.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "entry",
+  "years_required": 1,
+  "inferred": false,
+  "evidence": [
+   "1+ years of experience in electrical schematics/SLD creation",
+   "Master’s degree in Electrical Engineering"
+  ],
+  "note": "1+ years stated, so entry. Supporting and assisting duties alongside engineering experts. Requires a Master's, but the years set the level. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

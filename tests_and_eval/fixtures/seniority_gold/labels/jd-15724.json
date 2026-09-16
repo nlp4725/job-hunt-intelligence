@@ -13,6 +13,17 @@
   "note": "7+ years stated, so senior. Principal Software Engineer in the body; mentors engineers and leads small project teams of 2–5. Posted by Torentify for a DEPT® role, which may be a repost, but no agency signals in the text.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of professional software development experience",
+   "seeking a Principal Software Engineer",
+   "Mentor P1 and P2 engineers"
+  ],
+  "note": "7+ years stated, so senior. Principal Software Engineer in the body; mentors engineers and leads small project teams of 2–5. Posted by Torentify for a DEPT® role, which may be a repost, but no agency signals in the text. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

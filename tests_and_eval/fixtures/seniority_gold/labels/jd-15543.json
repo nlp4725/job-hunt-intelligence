@@ -12,6 +12,16 @@
   "note": "10+ years stated, so staff_principal despite the Senior title. Borderline: duties are the top technical resource and mentor at a small managed-services firm, with no cross-team or org-wide architecture, which reads senior.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "staff_principal",
+  "years_required": 10,
+  "inferred": false,
+  "evidence": [
+   "10+ years of IT experience",
+   "Actively mentor and develop Network/Systems Engineers"
+  ],
+  "note": "10+ years stated, so staff_principal despite the Senior title. Borderline: duties are the top technical resource and mentor at a small managed-services firm, with no cross-team or org-wide architecture, which reads senior. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

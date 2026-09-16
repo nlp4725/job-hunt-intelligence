@@ -13,6 +13,17 @@
   "note": "7+ years stated (3+ of them leading teams), so senior. People manager building a Data & AI team; manages engineers, not managers.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of experience in Data, Analytics, Data Engineering, or AI.",
+   "3+ years leading technical teams.",
+   "Build and scale a high-performing Data & AI organization."
+  ],
+  "note": "7+ years stated (3+ of them leading teams), so senior. People manager building a Data & AI team; manages engineers, not managers. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

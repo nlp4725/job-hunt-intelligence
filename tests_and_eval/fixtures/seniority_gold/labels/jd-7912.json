@@ -12,6 +12,16 @@
   "note": "7+ years stated, so senior despite the Principal title (the 5+ figures are for specific tools). Duties are hands-on platform building with no cross-team or org strategy. Raft is a direct employer.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of relevant hands-on experience in software engineering",
+   "Principal MLOps Engineer"
+  ],
+  "note": "7+ years stated, so senior despite the Principal title (the 5+ figures are for specific tools). Duties are hands-on platform building with no cross-team or org strategy. Raft is a direct employer. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

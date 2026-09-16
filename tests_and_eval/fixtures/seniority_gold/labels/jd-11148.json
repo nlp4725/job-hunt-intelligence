@@ -12,6 +12,16 @@
   "note": "3 years stated in the minimum qualifications, so mid_senior. Leading test-process improvements is within mid_senior scope.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "mid_senior",
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "3 years of experience in Python.",
+   "3 years of experience in system testing and automation testing"
+  ],
+  "note": "3 years stated in the minimum qualifications, so mid_senior. Leading test-process improvements is within mid_senior scope. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

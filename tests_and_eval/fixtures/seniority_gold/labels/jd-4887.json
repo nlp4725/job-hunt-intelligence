@@ -12,6 +12,16 @@
   "note": "No years stated; inferred staff_principal from the Senior Staff (P5) title and org-wide technical leadership partnering with executives, without people management.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "staff_principal",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "As a Senior Staff (P5) Data Scientist",
+   "Mentor data scientists, advise managers on technical direction"
+  ],
+  "note": "No years stated; inferred staff_principal from the Senior Staff (P5) title and org-wide technical leadership partnering with executives, without people management. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

@@ -12,6 +12,16 @@
   "note": "Titled Staff, but 7+ years puts it in the senior band and stated years win. The architecture-leadership duties could argue for staff_principal.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of experience in Machine Learning Engineering or Backend Engineering",
+   "3+ years of technical leadership, acting as a lead"
+  ],
+  "note": "Titled Staff, but 7+ years puts it in the senior band and stated years win. The architecture-leadership duties could argue for staff_principal. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

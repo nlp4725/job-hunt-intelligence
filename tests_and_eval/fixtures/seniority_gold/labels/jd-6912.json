@@ -12,6 +12,16 @@
   "note": "10+ years stated (plus 3 years pre-sales), so staff_principal despite the Senior title. Fujitsu hires its consultants as full-time employees, so not agency or contract.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "staff_principal",
+  "years_required": 10,
+  "inferred": false,
+  "evidence": [
+   "Minimum 10 years of Data/ ML engineer and solution experience",
+   "Extensive experience (10+ Yrs.)"
+  ],
+  "note": "10+ years stated (plus 3 years pre-sales), so staff_principal despite the Senior title. Fujitsu hires its consultants as full-time employees, so not agency or contract. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

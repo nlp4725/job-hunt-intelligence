@@ -13,6 +13,17 @@
   "note": "States 2+ years, so mid_senior. The duties (lead large projects, mentor, shape the roadmap) read closer to senior, but stated years win.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "mid_senior",
+  "years_required": 2,
+  "inferred": false,
+  "evidence": [
+   "Have 2+ years of experience as a software engineer",
+   "Scope and lead large projects, addressing ambiguity, creating plans",
+   "Teach and mentor members of the engineering team"
+  ],
+  "note": "States 2+ years, so mid_senior. The duties (lead large projects, mentor, shape the roadmap) read closer to senior, but stated years win. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

@@ -13,6 +13,17 @@
   "note": "5–8 years stated (minimum 5), so senior; hands-on technical leadership and mentoring fit. Fixed 6-month W-2 contract, so contract. CBTS says it hires into its own team.",
   "is_contract": true
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 5,
+  "inferred": false,
+  "evidence": [
+   "5–8 years of software engineering experience.",
+   "(W2 Contract Only/ No 3rd Parties)",
+   "Duration: 6 Months"
+  ],
+  "note": "5–8 years stated (minimum 5), so senior; hands-on technical leadership and mentoring fit. Fixed 6-month W-2 contract, so contract. CBTS says it hires into its own team. [confirmed by Nasi 2026-09-16]",
+  "is_contract": true
+ },
+ "status": "confirmed"
 }

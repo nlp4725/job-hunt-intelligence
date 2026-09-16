@@ -12,6 +12,16 @@
   "note": "10–15+ years stated (minimum 10), so staff_principal, matching the Director title and leading a global engineering team. Manufacturing engineering, not software.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "staff_principal",
+  "years_required": 10,
+  "inferred": false,
+  "evidence": [
+   "10–15+ years of senior leadership experience",
+   "leading a high-performing global team of process engineers"
+  ],
+  "note": "10–15+ years stated (minimum 10), so staff_principal, matching the Director title and leading a global engineering team. Manufacturing engineering, not software. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

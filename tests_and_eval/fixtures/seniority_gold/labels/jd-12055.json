@@ -12,6 +12,16 @@
   "note": "Only required figure is 3+ years managing data scientists (7+ is preferred). Inferred senior: a technical lead who manages a team of data scientists and sets its technical direction.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "3+ years of experience managing data scientists",
+   "Mentor and manage junior and mid-level data scientists"
+  ],
+  "note": "Only required figure is 3+ years managing data scientists (7+ is preferred). Inferred senior: a technical lead who manages a team of data scientists and sets its technical direction. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

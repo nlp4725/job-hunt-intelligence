@@ -13,6 +13,17 @@
   "note": "7+ years stated, so senior. Owns complex customer engagements end to end and mentors consultants. Direct Pendo role.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 7,
+  "inferred": false,
+  "evidence": [
+   "7+ years of experience in a customer-facing technical role within B2B SaaS",
+   "Own multiple complex technical projects end-to-end",
+   "Mentor consultants on data flows, API usage, debugging approaches"
+  ],
+  "note": "7+ years stated, so senior. Owns complex customer engagements end to end and mentors consultants. Direct Pendo role. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

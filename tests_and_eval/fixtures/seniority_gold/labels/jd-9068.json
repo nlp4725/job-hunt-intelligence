@@ -12,6 +12,16 @@
   "note": "8+ years stated (plus 2+ in AI security, a concurrent requirement), so senior. Leads technical standards and governance for the Chief AI Office.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 8,
+  "inferred": false,
+  "evidence": [
+   "8+ years of experience in IT or product security",
+   "2+ years of experience in security analysis"
+  ],
+  "note": "8+ years stated (plus 2+ in AI security, a concurrent requirement), so senior. Leads technical standards and governance for the Chief AI Office. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

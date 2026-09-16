@@ -11,6 +11,15 @@
   "note": "8+ years stated, so senior. Borderline: customer deployment work with no mentoring or cross-team direction and $88–135k pay reads closer to mid_senior.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 8,
+  "inferred": false,
+  "evidence": [
+   "At least 8+ years of experience in a technical role related to VoIP"
+  ],
+  "note": "8+ years stated, so senior. Borderline: customer deployment work with no mentoring or cross-team direction and $88–135k pay reads closer to mid_senior. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

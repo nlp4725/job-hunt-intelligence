@@ -13,6 +13,17 @@
   "note": "No years stated; inferred senior from end-to-end ownership of the AI lifecycle, mentoring and architecture influence; title matches. TCS hires directly, so not agency.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "lead full AI lifecycle from experimentation to production",
+   "own end-to-end implementation, deployment, and operations",
+   "Autonomous ownership; mentoring; architecture influence"
+  ],
+  "note": "No years stated; inferred senior from end-to-end ownership of the AI lifecycle, mentoring and architecture influence; title matches. TCS hires directly, so not agency. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

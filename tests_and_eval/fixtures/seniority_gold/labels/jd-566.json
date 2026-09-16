@@ -13,6 +13,17 @@
   "note": "No years stated; inferred senior. Senior IC who operates independently and shapes technical direction within partner integrations.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "This is a senior individual contributor role with broad scope.",
+   "shape technical direction within integrations",
+   "Lead technical design and implementation for complex external integrations"
+  ],
+  "note": "No years stated; inferred senior. Senior IC who operates independently and shapes technical direction within partner integrations. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

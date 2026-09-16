@@ -12,6 +12,16 @@
   "note": "3–6 years stated (minimum 3), so mid_senior; the 2 years of ML deployment is within that. No company description, but no client or contract language, so not agency.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "mid_senior",
+  "years_required": 3,
+  "inferred": false,
+  "evidence": [
+   "3–6 years of experience as an MLOps, DevOps, or Software Engineer",
+   "with at least 2 years dedicated to deploying ML models in production"
+  ],
+  "note": "3–6 years stated (minimum 3), so mid_senior; the 2 years of ML deployment is within that. No company description, but no client or contract language, so not agency. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

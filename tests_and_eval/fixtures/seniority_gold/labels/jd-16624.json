@@ -13,6 +13,17 @@
   "note": "No required years (8+ is preferred only); inferred staff_principal from the Staff title, setting technical direction for agents across the team, and architecting shared platforms used across the GTM org. Poster 'Drift AI' does not match the Anthropic content, so it may be a repost.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "staff_principal",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "As a Staff AI Engineer on the GTM Claudification team",
+   "drive technical direction for agents and evals across our team",
+   "8+ years in roles such as software engineer"
+  ],
+  "note": "No required years (8+ is preferred only); inferred staff_principal from the Staff title, setting technical direction for agents across the team, and architecting shared platforms used across the GTM org. Poster 'Drift AI' does not match the Anthropic content, so it may be a repost. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

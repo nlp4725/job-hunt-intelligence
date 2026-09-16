@@ -12,6 +12,16 @@
   "note": "No years stated; inferred senior from leading ML initiatives end to end, architecture decisions and mentoring less experienced team members.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "Mentor and provide technical guidance to less experienced team members",
+   "Lead significant data-quality initiatives end-to-end"
+  ],
+  "note": "No years stated; inferred senior from leading ML initiatives end to end, architecture decisions and mentoring less experienced team members. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

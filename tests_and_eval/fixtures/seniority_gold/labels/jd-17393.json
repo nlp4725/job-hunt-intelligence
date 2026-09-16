@@ -11,6 +11,15 @@
   "note": "No years stated; the posting explicitly asks for an early-career engineer, so entry. Works fairly independently with the Head of People, so mid_senior is a defensible alternative.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "entry",
+  "years_required": null,
+  "inferred": true,
+  "evidence": [
+   "We're looking for an early-career engineer to partner directly with our Head of People"
+  ],
+  "note": "No years stated; the posting explicitly asks for an early-career engineer, so entry. Works fairly independently with the Head of People, so mid_senior is a defensible alternative. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

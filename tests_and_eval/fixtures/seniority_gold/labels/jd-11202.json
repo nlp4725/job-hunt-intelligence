@@ -13,6 +13,17 @@
   "note": "6 years stated (with 2 in management and 4 as tech lead), so senior. Tech Lead Manager managing engineers and defining a project roadmap; reports to a Senior Staff TLM.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 6,
+  "inferred": false,
+  "evidence": [
+   "6 years of software engineering experience on large scale/high complexity system",
+   "2 years of software management experience",
+   "Define roadmap/portfolio of projects optimizing for end results"
+  ],
+  "note": "6 years stated (with 2 in management and 4 as tech lead), so senior. Tech Lead Manager managing engineers and defining a project roadmap; reports to a Senior Staff TLM. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

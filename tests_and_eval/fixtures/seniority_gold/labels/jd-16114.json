@@ -12,6 +12,16 @@
   "note": "5+ years stated, so senior. Borderline: owns features and 'small projects' working with senior engineers and architects, though it mentors junior engineers.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 5,
+  "inferred": false,
+  "evidence": [
+   "5+ years of experience in backend software engineering, cloud engineering, or platform development",
+   "Ability to independently own and deliver engineering tasks and small projects."
+  ],
+  "note": "5+ years stated, so senior. Borderline: owns features and 'small projects' working with senior engineers and architects, though it mentors junior engineers. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

@@ -12,6 +12,16 @@
   "note": "8+ years stated, so senior. Manages a team of ML engineers (not managers) and sets the team's modeling strategy.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "senior",
+  "years_required": 8,
+  "inferred": false,
+  "evidence": [
+   "8+ years of industry experience, including 3+ years managing engineers",
+   "lead a team of ML engineers"
+  ],
+  "note": "8+ years stated, so senior. Manages a team of ML engineers (not managers) and sets the team's modeling strategy. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }

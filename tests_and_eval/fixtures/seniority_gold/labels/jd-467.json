@@ -11,6 +11,15 @@
   "note": "4+ years stated, so mid_senior. Hands-on deployment of AI agents for customer pilots; no people or cross-team leadership.",
   "is_contract": false
  },
- "gold": null,
- "status": "draft"
+ "gold": {
+  "level": "mid_senior",
+  "years_required": 4,
+  "inferred": false,
+  "evidence": [
+   "Demonstrate 4+ years in customer-facing technical roles shipping complex SaaS"
+  ],
+  "note": "4+ years stated, so mid_senior. Hands-on deployment of AI agents for customer pilots; no people or cross-team leadership. [confirmed by Nasi 2026-09-16]",
+  "is_contract": false
+ },
+ "status": "confirmed"
 }
