@@ -178,6 +178,17 @@ class UserJobScore(CloudBase):
     scored_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
+class RescoreQueue(CloudBase):
+    """Jobs captured since users were last scored. The capture route (admin
+    role) adds a job; cloud_api/rescore_worker.py (table owner) scores it for
+    every user and removes it."""
+
+    __tablename__ = "rescore_queue"
+
+    job_id: Mapped[int] = mapped_column(ForeignKey(JOB_ID), primary_key=True)
+    queued_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
 class ApiToken(CloudBase):
     """Long-lived admin tokens for the extension and skill, stored hashed."""
 

@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from cloud_api.auth.decorators import require_admin, require_user
 from cloud_api.auth.tokens import create_api_token, revoke_api_token
 from cloud_api.auth.verify import FakeVerifier
-from cloud_api import user_data
+from cloud_api import admin_data, user_data
 from cloud_api.dev_storage import dev_storage
 from cloud_api.user_data import onboarding_state
 from resume.resume_text import UnsupportedResume
@@ -25,9 +25,15 @@ from resume.storage import URL_EXPIRES_SECONDS
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
+def _classify_with_deepseek(posting: str):
+    from judge.seniority_level import classify_job_seniority
+
+    return classify_job_seniority(posting)
+
+
 def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host: str = "127.0.0.1",
                cors_origins: tuple[str, ...] = (), storage=None, cipher=None,
-               admin_database_url: str | None = None) -> Flask:
+               admin_database_url: str | None = None, classify=None) -> Flask:
     """database_url: a login in the jhi_app role (user requests).
     admin_database_url: a login in the jhi_admin_api role (admin routes);
     defaults to database_url for single-login local setups."""
@@ -44,6 +50,7 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
 
     app = Flask(__name__)
     app.config["VERIFIER"] = verifier
+    app.config["CLASSIFY"] = classify or _classify_with_deepseek   # job seniority level, once per captured job
     app.config["USER_SESSION"] = sessionmaker(bind=user_engine)     # opened by require_user
     app.config["ADMIN_SESSION"] = sessionmaker(bind=admin_engine)   # opened by require_admin
     app.config["STORAGE"] = storage     # resume.storage.S3ResumeStorage, or DevSignedStorage in dev
@@ -192,6 +199,46 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     def delete_account():
         user_data.delete_account(g.db, g.user, app.config["STORAGE"])
         return "", 204
+
+    @app.post("/api/v1/admin/captures")
+    @require_admin
+    def capture():
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            return error(400, "a JSON object is required")
+        try:
+            return jsonify(admin_data.capture(g.db, body, app.config["CLASSIFY"]))
+        except ValueError as exc:
+            return error(400, str(exc))
+
+    @app.get("/api/v1/admin/captures/<linkedin_id>")
+    @require_admin
+    def cached_capture(linkedin_id: str):
+        cached = admin_data.cached_capture(g.db, linkedin_id)
+        return jsonify(cached) if cached else error(404, "not captured yet")
+
+    @app.get("/api/v1/admin/agencies")
+    @require_admin
+    def agencies():
+        return jsonify(admin_data.agency_list())
+
+    @app.post("/api/v1/admin/collection-pages")
+    @require_admin
+    def collection_page():
+        try:
+            return jsonify(admin_data.record_collection_page(g.db, request.get_json(silent=True) or {})), 201
+        except ValueError as exc:
+            return error(400, str(exc))
+
+    @app.patch("/api/v1/admin/jobs/<int:job_id>")
+    @require_admin
+    def expire_job(job_id: int):
+        try:
+            return jsonify(admin_data.set_expired(g.db, job_id, (request.get_json(silent=True) or {}).get("expired")))
+        except LookupError:
+            return error(404, "job not found")
+        except ValueError as exc:
+            return error(400, str(exc))
 
     @app.post("/api/v1/admin/tokens")
     @require_admin

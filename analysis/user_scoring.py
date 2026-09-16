@@ -27,8 +27,8 @@ def active_profile(db, user_id: int) -> UserProfile | None:
     return db.query(UserProfile).filter_by(user_id=user_id).order_by(UserProfile.version.desc()).first()
 
 
-def score_user(db, user_id: int) -> int:
-    """Upsert one user_job_scores row per scorable job; returns how many."""
+def score_user(db, user_id: int, job_ids: list[int] | None = None) -> int:
+    """Upsert one user_job_scores row per scorable job (or only `job_ids`); returns how many."""
     profile = active_profile(db, user_id)
     resume = db.get(UserResume, profile.resume_id) if profile and profile.resume_id else None
     if resume is None or resume.skills_confirmed is None:
@@ -36,6 +36,8 @@ def score_user(db, user_id: int) -> int:
     resume_skills = set(resume.skills_confirmed)
 
     scorable = [Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None)]
+    if job_ids is not None:
+        scorable.append(Job.id.in_(job_ids))
     skills_by_job: dict[int, set[str]] = defaultdict(set)
     for job_id, name in db.query(JobSkill.job_id, JobSkill.skill_name).join(Job, Job.id == JobSkill.job_id).filter(*scorable):
         skills_by_job[job_id].add(name)
@@ -60,6 +62,9 @@ def score_user(db, user_id: int) -> int:
         stmt = insert(UserJobScore).values(rows[start:start + BATCH])
         updates = {column: stmt.excluded[column] for column in rows[0] if column not in ("user_id", "job_id")}
         db.execute(stmt.on_conflict_do_update(constraint="uq_user_job_scores_user_job", set_=updates))
+    if job_ids is not None:
+        db.expire_all()
+        return len(rows)
     # A job that has since become a duplicate (or lost its text) keeps no stale score.
     unscorable = db.query(Job.id).filter(or_(Job.duplicate_of_job_id.isnot(None), Job.raw_text.is_(None)))
     db.query(UserJobScore).filter(UserJobScore.user_id == user_id, UserJobScore.job_id.in_(unscorable)) \
