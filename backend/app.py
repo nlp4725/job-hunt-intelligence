@@ -21,7 +21,7 @@ import json
 import pathlib
 from datetime import datetime, timedelta
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS
 from sqlalchemy import func
 
@@ -53,6 +53,23 @@ _EXTENSION_DETAIL_FIELDS = (
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+# The React rebuild of the dashboard (frontend/, from the Figma Make design).
+# Served from its production build; `npm run dev` in frontend/ is the
+# hot-reloading alternative and proxies /api back here. Unknown paths fall back
+# to index.html so a reload on any client-side URL still loads the app.
+_FRONTEND_DIST = pathlib.Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+
+@app.route("/app/")
+@app.route("/app/<path:path>")
+def react_app(path=""):
+    if not (_FRONTEND_DIST / "index.html").exists():
+        return "Frontend not built — run `npm install && npm run build` in frontend/.", 404
+    if path and (_FRONTEND_DIST / path).is_file():
+        return send_from_directory(_FRONTEND_DIST, path)
+    return send_from_directory(_FRONTEND_DIST, "index.html")
 
 
 @app.route("/api/jobs")
