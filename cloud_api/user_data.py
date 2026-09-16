@@ -9,17 +9,19 @@ Underneath, Postgres row-level security (layer 3) enforces the same rule for
 the request's transaction, from the user id set by set_request_user.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import and_, func, or_, text
+from sqlalchemy import and_, func, text
 
 from analysis.seniority_fit import proposed_scores
+from analysis.user_expertise_scoring import active_expertise_profile
 from analysis.user_scoring import active_profile, set_seniority_scores, set_seniority_target
+from db.board_filters import not_agency
 from db.cloud_models import (
-    APPLICATION_STAGES, ApplicationEvent, JobSeniority, JobTracking, User, UserJobScore, UserProfile, UserResume,
+    APPLICATION_STAGES, ApplicationEvent, ExpertiseProfile, JobSeniority, JobTracking, User, UserJobExpertise,
+    UserJobScore, UserProfile, UserResume,
 )
 from db.models import Company, Job, utcnow
-from judge.agency_blocklist import AGENCY_COMPANY_NAME_SUBSTRINGS
 from resume import ingest
 
 
@@ -31,15 +33,37 @@ def set_request_user(db, user_id: int) -> None:
 
 
 def onboarding_state(db, user: User) -> dict:
+    """The required steps, then Expertise Match: a paid step anyone may skip,
+    which never holds up `complete`."""
     resumes = _processed_resumes(db, user)
     profile = active_profile(db, user.id)
-    return {
+    state = {
         "resume": bool(resumes),
         "skills_confirmed": any(r.skills_confirmed is not None for r in resumes),
         "level": profile is not None,
         "scores_confirmed": profile is not None and profile.seniority_scores is not None,
     }
+    state["complete"] = all(state.values())
+    state["expertise"] = expertise_step(db, user)
+    return state
 
+
+class PaidFeature(Exception):
+    """A paid-member feature called on a free plan: 402."""
+
+
+class TooManyDrafts(Exception):
+    """Over the daily expertise draft limit: 429."""
+
+
+def expertise_step(db, user: User) -> str:
+    """"done" (a confirmed profile), "skipped", "locked" (free plan: upgrade or
+    skip) or "pending" (paid, not done yet)."""
+    if active_expertise_profile(db, user.id) is not None:
+        return "done"
+    if user.expertise_skipped_at is not None:
+        return "skipped"
+    return "pending" if user.plan == "paid" else "locked"
 
 
 def _processed_resumes(db, user: User) -> list[UserResume]:
@@ -114,6 +138,116 @@ def confirm_scores(db, user: User, scores) -> dict:
     return profile_view(set_seniority_scores(db, user.id, scores))
 
 
+# --- expertise profile (paid) ---------------------------------------------------
+
+EXPERTISE_DRAFTS_PER_DAY = 3        # each draft is one ~$0.014 LLM call, 40-100s
+EXPERTISE_TEXT_MAX = 600
+EXPERTISE_MAIN_WORK_MAX = 8
+
+
+def expertise_view(row: ExpertiseProfile | None) -> dict | None:
+    if row is None:
+        return None
+    return {"version": row.version, "summary": row.summary, "main_work": row.main_work, "dream": row.dream,
+            "confirmed": row.confirmed_at is not None, "created_at": row.created_at.isoformat()}
+
+
+def _latest_draft(db, user: User, after_version: int) -> ExpertiseProfile | None:
+    return (db.query(ExpertiseProfile)
+            .filter(ExpertiseProfile.user_id == user.id, ExpertiseProfile.confirmed_at.is_(None),
+                    ExpertiseProfile.version > after_version)
+            .order_by(ExpertiseProfile.version.desc()).first())
+
+
+def get_expertise(db, user: User) -> dict:
+    active = active_expertise_profile(db, user.id)
+    return {"plan": user.plan, "step": expertise_step(db, user), "profile": expertise_view(active),
+            "draft": expertise_view(_latest_draft(db, user, active.version if active else 0))}
+
+
+def _text(value, field: str, required: bool) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{field} must be text")
+    value = value.strip()
+    if required and not value:
+        raise ValueError(f"{field} is required")
+    if len(value) > EXPERTISE_TEXT_MAX:
+        raise ValueError(f"{field} is over {EXPERTISE_TEXT_MAX} characters")
+    return value
+
+
+def validate_expertise(profile) -> dict:
+    """The same rules as judge/expertise_profile.validate_profile: summary and
+    at least one main_work line required, dream optional."""
+    sections = {"summary", "main_work", "dream"}
+    if not isinstance(profile, dict) or set(profile) != sections:
+        raise ValueError(f"profile must have exactly: {', '.join(sorted(sections))}")
+    if not isinstance(profile["main_work"], list):
+        raise ValueError("main_work must be a list")
+    lines = [_text(v, "main_work", False) for v in profile["main_work"] if isinstance(v, str) and v.strip()]
+    if not lines:
+        raise ValueError("main_work needs at least one line")
+    if len(lines) > EXPERTISE_MAIN_WORK_MAX:
+        raise ValueError(f"at most {EXPERTISE_MAIN_WORK_MAX} main_work lines")
+    return {"summary": _text(profile["summary"], "summary", True), "main_work": lines,
+            "dream": _text(profile["dream"], "dream", False)}
+
+
+def _paid_with_resume(db, user: User) -> UserResume:
+    if user.plan != "paid":
+        raise PaidFeature("Expertise Match is a paid-member feature")
+    profile = active_profile(db, user.id)
+    resume = db.get(UserResume, profile.resume_id) if profile and profile.resume_id else None
+    if resume is None or resume.skills_confirmed is None:
+        raise ValueError("upload and confirm a resume first")
+    return resume
+
+
+def _next_expertise_version(db, user: User) -> int:
+    latest = db.query(func.max(ExpertiseProfile.version)).filter(ExpertiseProfile.user_id == user.id).scalar()
+    return (latest or 0) + 1
+
+
+def draft_expertise(db, user: User, drafter) -> dict:
+    """One LLM call drafts summary and main_work from the redacted resume; the
+    user edits it and writes dream. Raises PaidFeature, TooManyDrafts or ValueError."""
+    resume = _paid_with_resume(db, user)
+    since = utcnow() - timedelta(days=1)
+    recent = (db.query(func.count(ExpertiseProfile.id))
+              .filter(ExpertiseProfile.user_id == user.id, ExpertiseProfile.confirmed_at.is_(None),
+                      ExpertiseProfile.created_at >= since).scalar())
+    if recent >= EXPERTISE_DRAFTS_PER_DAY:
+        raise TooManyDrafts(f"at most {EXPERTISE_DRAFTS_PER_DAY} drafts a day")
+    drafted = drafter(resume.redacted_text or "")
+    lines = [str(v).strip()[:EXPERTISE_TEXT_MAX] for v in drafted.get("main_work", []) if str(v).strip()]
+    row = ExpertiseProfile(user_id=user.id, version=_next_expertise_version(db, user), resume_id=resume.id,
+                           summary=str(drafted.get("summary", "")).strip()[:EXPERTISE_TEXT_MAX],
+                           main_work=lines[:EXPERTISE_MAIN_WORK_MAX], dream="", confirmed_at=None)
+    db.add(row)
+    db.flush()
+    return expertise_view(row)
+
+
+def save_expertise(db, user: User, profile) -> dict:
+    """Confirm the user's profile as a new version; the expertise worker scores
+    jobs against it. Raises PaidFeature or ValueError."""
+    resume = _paid_with_resume(db, user)
+    cleaned = validate_expertise(profile)
+    row = ExpertiseProfile(user_id=user.id, version=_next_expertise_version(db, user), resume_id=resume.id,
+                           confirmed_at=utcnow(), **cleaned)
+    db.add(row)
+    user.expertise_skipped_at = None
+    db.flush()
+    return expertise_view(row)
+
+
+def skip_expertise(db, user: User) -> dict:
+    if user.expertise_skipped_at is None:
+        user.expertise_skipped_at = utcnow()
+        db.flush()
+    return {"step": expertise_step(db, user)}
+
+
 # --- job board ----------------------------------------------------------------
 
 def tracking_view(row: JobTracking | None) -> dict | None:
@@ -124,15 +258,18 @@ def tracking_view(row: JobTracking | None) -> dict | None:
             "not_interested_note": row.not_interested_note, "note": row.note}
 
 
-def _not_agency():
-    """The same agency filter the local app applies before screening."""
-    name = func.lower(func.coalesce(Job.company_name, ""))
-    return and_(*(~name.contains(fragment, autoescape=True) for fragment in AGENCY_COMPANY_NAME_SUBSTRINGS),
-                or_(Company.industry.is_(None), Company.industry != "Staffing and Recruiting"))
+def expertise_score_view(row: UserJobExpertise | None, active_version: int | None) -> dict | None:
+    if row is None:
+        return None
+    return {"expertise_score": row.expertise_score, "domain": row.domain_score, "capability": row.capability_score,
+            "dream": row.dream_score, "evidence": row.evidence, "stale": row.profile_version != active_version}
 
 
 def job_board(db, user: User, limit: int = 100, offset: int = 0) -> list[dict]:
-    """Shared jobs with the caller's own scores and tracking. Never returns raw_text."""
+    """Shared jobs with the caller's own scores and tracking. Never returns raw_text.
+    Expertise is shown next to total_score, not added to it; it is null for
+    jobs not scored yet and for free plans."""
+    active_expertise = active_expertise_profile(db, user.id)
     applied_by_company = dict(
         db.query(Job.company_name, func.count(JobTracking.id))
         .join(JobTracking, JobTracking.job_id == Job.id)
@@ -140,12 +277,13 @@ def job_board(db, user: User, limit: int = 100, offset: int = 0) -> list[dict]:
         .group_by(Job.company_name).all())
     rows = (db.query(Job.id, Job.job_id, Job.title, Job.company_name, Job.location, Job.workplace_type,
                      Job.posted_date, Job.url, Job.first_seen_at, JobSeniority.level, JobSeniority.is_contract,
-                     UserJobScore, JobTracking)
+                     UserJobScore, JobTracking, UserJobExpertise)
             .outerjoin(Company, Company.id == Job.company_id)
             .outerjoin(JobSeniority, JobSeniority.job_id == Job.id)
             .outerjoin(UserJobScore, and_(UserJobScore.job_id == Job.id, UserJobScore.user_id == user.id))
             .outerjoin(JobTracking, and_(JobTracking.job_id == Job.id, JobTracking.user_id == user.id))
-            .filter(Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None), _not_agency())
+            .outerjoin(UserJobExpertise, and_(UserJobExpertise.job_id == Job.id, UserJobExpertise.user_id == user.id))
+            .filter(Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None), not_agency())
             .order_by(UserJobScore.total_score.desc().nullslast(), Job.first_seen_at.desc(), Job.id.desc())
             .limit(limit).offset(offset).all())
     board = []
@@ -160,6 +298,8 @@ def job_board(db, user: User, limit: int = 100, offset: int = 0) -> list[dict]:
                 "skill_score": score.skill_score, "seniority_fit": score.seniority_fit, "total_score": score.total_score,
                 "skill_matched": score.skill_matched, "skill_group_matched": score.skill_group_matched,
                 "skill_missing": score.skill_missing},
+            "expertise": (expertise_score_view(r.UserJobExpertise, active_expertise.version if active_expertise else None)
+                          if user.plan == "paid" else None),
             "tracking": tracking_view(r.JobTracking),
             "company_applied_count": applied_by_company.get(r.company_name, 0),
         })

@@ -1,15 +1,16 @@
 """Admin-route logic on shared tables: captures, cached lookups, the agency
-list, collection pages and expiry (productization plan §2, §6).
+list, collection pages, expiry and member plans (productization plan §2, §6).
 
 Runs as jhi_admin_api, which has no access to per-user tables. A capture only
 queues its job in rescore_queue; cloud_api/rescore_worker.py scores it for users.
 """
 
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 
 from analysis.title_filter import classify_track
 from db.classify_job_seniority import PROMPT_VERSION
-from db.cloud_models import JobSeniority, RescoreQueue
+from db.cloud_models import PLANS, JobSeniority, RescoreQueue
 from db.job_writer import save_new_job
 from db.models import CollectionPage, ExtractionEvent, Job
 from judge.agency_blocklist import AGENCY_COMPANY_NAME_SUBSTRINGS, is_agency_job
@@ -112,3 +113,17 @@ def set_expired(db, job_id: int, expired) -> dict:
     job.expired = expired
     db.flush()
     return job_summary(job)
+
+
+def set_plan(db, email, plan) -> dict:
+    """Until payments exist, an admin sets a member's plan. Goes through the
+    set_user_plan database function, the admin role's only way to change a
+    users row it does not own. Raises ValueError or LookupError."""
+    if plan not in PLANS:
+        raise ValueError(f"plan must be one of {', '.join(PLANS)}")
+    if not isinstance(email, str) or "@" not in email:
+        raise ValueError("email required")
+    user_id = db.execute(text("SELECT set_user_plan(:email, :plan)"), {"email": email.strip(), "plan": plan}).scalar()
+    if user_id is None:
+        raise LookupError("no such user")
+    return {"email": email.strip().lower(), "plan": plan}

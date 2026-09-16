@@ -29,9 +29,11 @@ APP_LOGIN = "jhi_api_test"
 
 
 def _per_user_models():
-    from db.cloud_models import ApplicationEvent, JobTracking, UserJobScore, UserProfile, UserResume
+    from db.cloud_models import (
+        ApplicationEvent, ExpertiseProfile, JobTracking, UserJobExpertise, UserJobScore, UserProfile, UserResume,
+    )
 
-    return [UserResume, UserProfile, UserJobScore, JobTracking, ApplicationEvent]
+    return [UserResume, UserProfile, UserJobScore, JobTracking, ApplicationEvent, ExpertiseProfile, UserJobExpertise]
 
 
 @pytest.fixture
@@ -68,7 +70,9 @@ def app_engine(app_url):
 @pytest.fixture
 def seeded(pg_engine, app_url):  # noqa: F811
     """Two users (a@, b@ as dev logins) with one row each in every per-user table, written as the owner."""
-    from db.cloud_models import ApplicationEvent, JobTracking, User, UserJobScore, UserProfile, UserResume
+    from db.cloud_models import (
+        ApplicationEvent, ExpertiseProfile, JobTracking, User, UserJobExpertise, UserJobScore, UserProfile, UserResume,
+    )
     from db.models import Job
 
     with Session(pg_engine) as db, db.begin():
@@ -85,6 +89,9 @@ def seeded(pg_engine, app_url):  # noqa: F811
                 UserJobScore(user_id=user.id, job_id=job.id, profile_version=1, skill_score=3),
                 JobTracking(user_id=user.id, job_id=job.id, note=f"{name}'s private note"),
                 ApplicationEvent(user_id=user.id, job_id=job.id, stage="applied", occurred_at=datetime(2026, 9, 1)),
+                ExpertiseProfile(user_id=user.id, version=1, summary=f"{name}'s summary", main_work=["x"], dream=""),
+                UserJobExpertise(user_id=user.id, job_id=job.id, profile_version=1, domain_score=1,
+                                 capability_score=1, dream_score=1, expertise_score=1.0),
             ])
             ids[name] = user.id
         ids["job"] = job.id
@@ -188,7 +195,8 @@ class TestApiUnderRowLevelSecurity:
 def test_cloud_api_reaches_per_user_tables_only_through_the_access_layer():
     """A new route that queries a per-user model directly fails here, before RLS
     has to catch it."""
-    per_user = {"UserResume", "UserProfile", "UserJobScore", "JobTracking", "ApplicationEvent"}
+    per_user = {"UserResume", "UserProfile", "UserJobScore", "JobTracking", "ApplicationEvent",
+                "ExpertiseProfile", "UserJobExpertise"}
     offenders = []
     for path in sorted((REPO / "cloud_api").rglob("*.py")):
         if path.name == "user_data.py":

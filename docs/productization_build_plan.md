@@ -11,9 +11,11 @@ Status: plan, revised 2026-09-15 (second revision: user side restored from `mult
 - **The user side** (resume ingest, a user profile with a seniority target taken from user input, per-user scores, application history) follows [`multi_tenant_plan.md`](multi_tenant_plan.md), with one change: seniority is classified **once per job** and each user's fit is computed in code, instead of a per-user prompt (§3.3). Postgres + Alembic, JWT auth and the AWS layout also still apply from there.
 - **Resume parsing and skill extraction** are specified in [`resume_jd_skill_pipeline.md`](resume_jd_skill_pipeline.md). That document wins on details (package `resume/`, not `profile/`; deterministic extraction; PII redaction).
 
-**Who pays:** Nasi pays for all LLM calls for now. Users trigger none.
+**Who pays:** Nasi pays for all LLM calls for now. Free members trigger none. Paid members trigger Expertise Match calls (§3.5).
 
-**Out of scope:** users running collection, the AI chat widget, payments. **Deferred:** Expertise Match for users. Nasi's hardcoded D/C/W prompt is not parameterized; it is likely to be replaced by a semantic resume-to-JD match, designed separately.
+**Tiers:** Skill Match, Seniority Fit and tracking are free. **Expertise Match is a paid-member feature** (decided 2026-09-16): a per-user profile and one LLM call per (member, job), replacing Nasi's hardcoded D/C/W prompt for members. It is an optional onboarding step: free members see it locked and skip it, and paid members fill it in or skip it (§3.5, §7).
+
+**Out of scope:** users running collection, the AI chat widget, payment processing (an admin sets a member's plan until then).
 
 ---
 
@@ -83,7 +85,7 @@ flowchart LR
 2. **Everything about a user is private.** Resume, profile, scores, tracking and application history are keyed by `user_id`. A user can only read or write their own rows.
 3. **The user id comes only from the verified token.** No endpoint accepts a user id in a path, query string or body.
 4. **User input wins over inference.** The seniority target is what the user chose, never a value inferred from the resume that overrides it.
-5. **No per-user LLM calls.** Every LLM call is per job (seniority level for everyone, Expertise for Nasi) and Nasi pays for it. A user's scores are computed in code from stored data, so uploading a resume or changing a seniority target rescores the whole board in seconds.
+5. **No per-user LLM calls on the free tier.** Every free-tier LLM call is per job (seniority level for everyone, Expertise for Nasi) and Nasi pays for it. A user's Skill and Seniority scores are computed in code from stored data, so uploading a resume or changing a seniority target rescores the whole board in seconds. The one exception is paid Expertise Match (§3.5): per member, capped per run, run by a background worker, never inside a board request.
 
 ---
 
@@ -174,7 +176,7 @@ build_profile(processed: ProcessedResume, user_input: ProfileInput) -> UserProfi
 - **`UserProfile` is versioned, not mutated.** Editing the profile or uploading a new resume writes `version = n+1`. Old screening results stay attributable to the profile that produced them.
 - **Nasi's profile** is created by migration from today's resume rows with target `entry`, so Nasi's scores don't change (parity check, §3.4).
 - `career_goals` and the admin `resume` table fold into Nasi's `user_profiles` / `resumes` rows.
-- **Expertise is not in the profile yet.** It will be added when the semantic match is designed.
+- **Expertise lives in its own versioned profile** (`expertise_profiles`, paid members only), not in `user_profiles`: §3.5.
 
 ### 3.3 Seniority: job level once per job, fit per user in code
 
@@ -235,6 +237,7 @@ The agency rule, contract rule, evidence format and `judge/structured_retry.py` 
 | Score table confirmed (`set_seniority_scores`) | — | All jobs, from the table (new profile version) | None |
 | Nasi captures a new job | Every user | Every user | 1 level classification, shared |
 | Level prompt version bumped | — | Every user, after the gate passes and jobs are re-classified | 1 per re-classified job |
+| Paid member confirms an expertise profile | — | — | Expertise worker: 1 per (member, job), capped per run; earlier scores are marked stale until rescored |
 
 ### 3.4 Evaluation
 
@@ -266,6 +269,16 @@ score_drift(window_days: int) -> DriftReport        # alarm on a >0.5 mean shift
 **Parity check before any user sees a score:** on the existing dataset, `seniority_fit(classify_job_seniority(posting), "entry")` must match today's seniority MAE (0.317) within noise. If it doesn't, removing the profile paragraph changed how postings are judged.
 
 ---
+
+### 3.5 Expertise Match (paid members)
+
+Designed and evaluated separately (`judge/expertise_profile.py`, `judge/user_expertise_match.py`, gold set `tests_and_eval/fixtures/expertise_fit_gold/`). The cloud side:
+
+- **Plan.** `users.plan` is `free` or `paid`. A user can never set it: sign-up can only create a free row, `jhi_app` has no update grant on the column, and `jhi_admin_api` changes it only through the `set_user_plan(email, plan)` database function (`PUT /api/v1/admin/plans`) until payments exist.
+- **Profile.** One LLM call (thinking on, ~$0.014, 40–100 s) drafts `summary` and `main_work` from the **redacted** resume; the member edits them and writes `dream`. Drafts are rows with `confirmed_at` NULL; confirming writes a new version. At most 3 drafts a day per member.
+- **Scores.** `cloud_api/expertise_worker.py` runs as the table owner. For each paid member with a confirmed expertise profile and resume, it scores up to `--limit` board jobs per run (best Skill + Seniority first, agencies and duplicates excluded, jobs already scored for the current profile version skipped) and writes `user_job_expertise`: domain, capability and dream 0–5 with evidence, and `expertise_score` = capability 0.5 + dream 0.3 + domain 0.2, computed in code. Members can read their rows but never write them.
+- **Board.** `expertise` is shown **next to** `total_score`, not added to it, so free and paid totals stay comparable. It is null for free members and unscored jobs, and `stale` when scored against an older profile version.
+- **Onboarding.** `onboarding.expertise` is `locked` (free), `pending` (paid, not done), `skipped` or `done`. It never affects `onboarding.complete`.
 
 ## 4. Data model
 
@@ -328,7 +341,7 @@ erDiagram
         json skill_matched
         json skill_missing
         int seniority_score "fit: job level × target, computed"
-        int expertise_score "Nasi only until redesigned"
+        int expertise_score "Nasi only; members: user_job_expertise"
         int total_score
     }
     job_tracking {
@@ -474,14 +487,18 @@ Walking the route map means a newly added route is covered automatically.
 | Route | Auth | Purpose |
 |---|---|---|
 | `GET /api/public/stats` | none | Landing page numbers: collected today, total scored, remote count, last collection time. Aggregates only |
-| `GET /api/v1/me` | user | Account, role and onboarding state; creates the user on first login |
+| `GET /api/v1/me` | user | Account, role, plan and onboarding state (`complete`, plus the optional `expertise` step); creates the user on first login |
 | `DELETE /api/v1/me` | user | Delete account and all the user's data |
 | `POST /api/v1/me/resume` | user | Returns a presigned upload URL; on completion, `process_resume` → extracted skills for confirmation |
 | `GET /api/v1/me/resume` | user | Current resume version, extracted and confirmed skills |
 | `PUT /api/v1/me/resume/skills` | user | Confirm / edit the skill set → new resume version, Skill Match recomputed |
 | `GET /api/v1/me/profile` | user | Current profile: seniority target, target roles, note |
 | `PUT /api/v1/me/profile` | user | Update profile → new version; Seniority Fit recomputed for every job in code |
-| `GET /api/v1/jobs` | user | Shared jobs joined with the caller's own scores and tracking; `company_applied_count` is per caller |
+| `GET /api/v1/me/expertise` | user | Plan, expertise step, confirmed profile and latest unconfirmed draft |
+| `POST /api/v1/me/expertise/draft` | user (paid) | LLM draft of summary + main work from the redacted resume. 402 free plan, 409 no confirmed resume, 429 over 3 a day |
+| `PUT /api/v1/me/expertise` | user (paid) | Confirm `{summary, main_work, dream}` → new version; the worker rescores. 402 free plan |
+| `POST /api/v1/me/expertise/skip` | user | Skip the onboarding step (any plan) |
+| `GET /api/v1/jobs` | user | Shared jobs joined with the caller's own scores, expertise (paid) and tracking; `company_applied_count` is per caller |
 | `PUT /api/v1/me/tracking/{job_id}` | user | Upsert own applied / not_interested / notes; appends an application event on status change |
 | `POST /api/v1/me/applications/{job_id}/events` | user | Record a later stage (recruiter screen, interview, offer, rejected) |
 | `GET /api/v1/me/applications` | user | The caller's applications with stage history |
@@ -493,6 +510,7 @@ Walking the route map means a newly added route is covered automatically.
 | `PATCH /api/v1/admin/jobs/{id}` | admin | Shared fields: `expired` |
 | `GET /api/v1/admin/health` | admin | Full health (last run, failing fields, incomplete run, daily LLM spend) |
 | `POST/DELETE /api/v1/admin/tokens` | admin | Create/revoke extension tokens |
+| `PUT /api/v1/admin/plans` | admin | Set a member's plan by email (`free` / `paid`) until payments exist |
 
 The old unauthenticated routes (`/api/jobs`, `/api/extension/*`, the old `PATCH /api/jobs/<id>`) are removed once the extension and React app have moved over.
 
@@ -504,14 +522,14 @@ The old unauthenticated routes (`/api/jobs`, `/api/extension/*`, the old `PATCH 
 |---|---|---|
 | `/` | public | Landing page from the Figma design: hero, the animated scoring demo using real top jobs, a ticker fed by `/api/public/stats`. No hardcoded numbers |
 | `/login`, `/signup` | public | Provider's hosted or embedded UI |
-| `/app/onboarding` | user | Required after first login: **1.** upload resume → **2.** confirm skills → **3.** pick seniority level (Intern · Entry 0–2 yrs · Mid–senior 2–5 · Senior 5–9 · Staff / principal 9+), target roles, optional note → **4.** "We score seniority 0–5": the proposed score for each job level, not a fit and level unclear, each adjustable; agree or adjust, then confirm (locked; editable later in Settings) → **5.** the board opens with the user's Skill Match and Seniority Fit on every job, no waiting |
+| `/app/onboarding` | user | Required after first login: **1.** upload resume → **2.** confirm skills → **3.** pick seniority level (Intern · Entry 0–2 yrs · Mid–senior 2–5 · Senior 5–9 · Staff / principal 9+), target roles, optional note → **4.** "We score seniority 0–5": the proposed score for each job level, not a fit and level unclear, each adjustable; agree or adjust, then confirm (locked; editable later in Settings) → **5. Expertise Match (paid, optional).** Free members: a locked card explaining the feature, with "Upgrade" and "Skip". Paid members: "Draft from my resume" (spinner, up to ~2 min) → edit summary and main-work lines → write the dream industry / role → confirm; or "Skip". Skipping never blocks the board → **6.** the board opens with the user's Skill Match and Seniority Fit on every job, no waiting; expertise scores fill in as the worker reaches them |
 | `/app` | user | Today's board with the caller's own scores. Status actions write to `/me/tracking`; "Applied" view shows the caller's applications and stages |
-| `/app/settings` | user | Display name; resume (re-upload, edit skills); seniority target and roles; "Update my old scores" (§9); delete account |
+| `/app/settings` | user | Display name; plan; resume (re-upload, edit skills); seniority target and roles; expertise profile (paid: edit and re-confirm; skipped members can come back to it here); "Update my old scores" (§9); delete account |
 | `/app/admin` | admin | Full health, extension tokens, collection stats, LLM spend |
 
 - The API client attaches the JWT, and a 401 redirects to `/login`. A user who hasn't finished onboarding is redirected to `/app/onboarding`.
 - **"Mark expired" moves to admin only.** Users get "Not interested" with a reason instead.
-- **Expertise column** is shown to Nasi only until the semantic match replaces it.
+- **Expertise column** is shown to paid members (their `expertise.expertise_score`, with domain / capability / dream and evidence on hover; greyed when `stale`) and to Nasi. Free members see a locked column header linking to the upgrade card. It sits beside the total and is not added into it.
 
 ---
 
@@ -525,7 +543,7 @@ The old unauthenticated routes (`/api/jobs`, `/api/extension/*`, the old `PATCH 
 | **4** | **Profile + per-job seniority level** | `user_profile/`; `SENIORITY_LEVEL_PROMPT` + `JobSeniority`; `seniority_fit(level, target)`; `user_scoring`; backfill `job_seniority` (score-0 jobs re-classified); level eval set + regression gate | Parity: fit with target `entry` matches Nasi's seniority MAE 0.317 within noise; fit unit-tested for every level × target; gate blocks a deliberately bad prompt |
 | **5** | **Auth + separate access** | `auth/` module, `FakeVerifier`, `require_user` / `require_admin`, `user_data_repo`, RLS policies + DB roles, `/api/v1` routes, CORS narrowed | §5.4 suite green |
 | **6** | **Extension → local and cloud** | Each capture goes to the local server exactly as today **and** to the cloud API (admin token; offline queue for the cloud copy); collection pages also posted to the cloud; cloud capture rescores every user | Local captures and scores unchanged; the cloud receives every capture of a full skill run, and stopping the cloud API mid-run loses none |
-| **7** | **Frontend auth, onboarding + tracking** | Login/signup, onboarding flow, settings, JWT client, per-user scores and "Applied" view with stages, admin page | Two browser profiles with different resumes and seniority targets see different scores on the same jobs and only their own tracking |
+| **7** | **Frontend auth, onboarding + tracking** | Login/signup, onboarding flow (including the optional paid expertise step), settings, JWT client, per-user scores and "Applied" view with stages, admin page (including plans) | Two browser profiles with different resumes and seniority targets see different scores on the same jobs and only their own tracking |
 | **8** | **Landing page** | Figma hero + demo + ticker on `/api/public/stats` | Works logged out; every number comes from the API |
 | **9** | **Hosting** | Identity provider (real `verify_jwt`), managed Postgres, object storage for resumes, API host, static hosting for `frontend/dist`, secrets manager for DeepSeek + DB credentials, backups, spend alarms | Nasi's daily skill runs push to the hosted API; a second real user onboards, gets scores and tracks jobs |
 | **10** | **Taxonomy refresh on a schedule** | The `taxonomy-refresh` skill (§9) scheduled as a biweekly cloud routine against hosted Postgres; read-only DB role, secrets, PR permission, failure alert | A scheduled run opens a PR with candidates, corpus checks, tests and a churn report; merging it and re-extracting updates `job_skills` |
@@ -540,10 +558,13 @@ Phases 1–5 are all local. Phase 4's prompt-parity eval and phase 5's isolation
 
 **Status (2026-09-15): phase 3 built.** Decision: **one active resume per user** (the one the latest profile version points at); other uploads stay as earlier versions. `resume/store.py` (Fernet-encrypted files and text, `LocalFileStore` until S3), `resume/ingest.py` (`add_resume`, `confirm_skills`: only taxonomy skill names, first confirmation in place, edits write a new version, activation writes a new profile version and rescores), `analysis/user_scoring.py` (`score_user` upserts `user_job_scores` from stored skill sets, duplicates not scored). `python -m db.import_owner_resumes` on the live copy: pm resume v1, ml_ai resume v2 (active), 13,665 jobs scored in 14 s. On 11,045 ml_ai jobs with a local skill score, 11,006 match; of the 39 that don't, 35 are stale local scores (re-scoring the JD text with today's code gives the cloud value) and 4 come from stored `job_skills` that predate the current taxonomy (fixed by the pending re-extraction). PM-track jobs are scored against the active ml_ai resume, as decided.
 
+**Status (2026-09-16): phase 6 built** on `feat/phase5-auth`. 6A: `POST /api/v1/admin/captures` takes the extension's existing body, filters agencies, classifies the level once and queues the job; `cloud_api/rescore_worker.py` (owner) scores queued jobs for every user. 6B: `extension/cloud_sync.js` sends each capture to the cloud without waiting on it, queues it in `chrome.storage.local` when the cloud is unreachable or the token is rejected (401/403), retries in order on the next capture and every 5 minutes, and stays off until a URL and token are saved on the options page. **Paid expertise (backend):** migration `f1b3d5e7a924`, `/api/v1/me/expertise*`, `PUT /api/v1/admin/plans`, `cloud_api/expertise_worker.py` (§3.5). The worker and draft route call `judge/user_expertise_match.py` and `judge/expertise_profile.py`, which merge from the expertise work.
+
 **Cost at this shape** (Nasi pays for all of it for now)
 
 - **LLM, per job only:** seniority level (shared) + Nasi's Expertise ≈ $0.0037 per job off-peak, ~400 jobs/day ≈ $1.50/day. The same as today, for any number of users.
-- **Per user:** $0 in LLM. Skill Match and Seniority Fit are computed in code.
+- **Per free user:** $0 in LLM. Skill Match and Seniority Fit are computed in code.
+- **Per paid member:** ~$0.014 per profile draft (at most 3 a day), plus one Expertise call per (member, job) up to the worker's per-run limit. The member's resume and profile form the cached system prompt across their jobs, so later calls are mostly cache hits. Price the plan above this.
 - **One-off:** re-classifying today's score-0 jobs in the phase 4 backfill.
 - **Hosting:** a small Postgres (~$13–15/mo), a small API host, object storage (a few dollars).
 - **Guardrail:** a daily LLM spend alarm on Nasi's DeepSeek account.
@@ -640,7 +661,8 @@ Only Skill Match is affected. Seniority and Expertise come from LLM calls and ne
 
 **Decided 2026-09-15**
 - **Seniority is per job.** The LLM classifies the level once; each user's fit is computed in code (§3.3).
-- **Nasi pays for LLM calls for now.** Users trigger none, so no per-user quotas are needed. Revisit if the Expertise redesign adds per-user cost.
+- **Nasi pays for LLM calls for now.** Free members trigger none. Paid members' expertise calls are capped (3 drafts a day, `--limit` jobs per worker run).
+- **Expertise Match is a paid-member feature** (2026-09-16), an optional onboarding step anyone can skip; shown beside the total, not added to it (§3.5).
 - **Host: AWS** (Cognito, RDS Postgres, S3, Lambda or App Runner, Secrets Manager).
 - **LinkedIn terms of service: OK to go.** A terms-of-use page and a privacy policy covering resumes still ship before launch.
 - **Open sign-up** at launch.
@@ -651,7 +673,8 @@ Only Skill Match is affected. Seniority and Expertise come from LLM calls and ne
 1. **Fit shape above and below target.** The default is symmetric: one level off either way costs 1 point. A user may mind an over-senior role more than a junior one, or the reverse. Keep symmetric until users say otherwise.
 2. **Collection vs senior users.** Nasi's skill skips Staff/Principal titles, so users with a senior target see a thin board. Accept it (the board is curated), or widen collection.
 3. **Can users mark a listing expired?** Shared expiry helps everyone but lets one user hide a job from all. Admin-only in v1 is the safe default.
-4. **Expertise for users.** Semantic resume-to-JD match, designed separately. Until then `total_score` for users is Skill + Seniority; decide how it's scaled so it isn't compared with Nasi's three-part total.
+4. **Payments.** Which provider, the price, and what happens to expertise scores when a member downgrades (kept read-only, or hidden). Until then an admin sets plans.
+5. **Expertise worker limit.** How many jobs per member per run, and whether new captures jump the queue for paid members.
 
 ## 11. Known issues to fix along the way
 

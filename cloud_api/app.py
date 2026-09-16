@@ -31,9 +31,15 @@ def _classify_with_deepseek(posting: str):
     return classify_job_seniority(posting)
 
 
+def _draft_with_deepseek(resume_text: str) -> dict:
+    from judge.expertise_profile import draft_expertise_profile
+
+    return draft_expertise_profile(resume_text)
+
+
 def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host: str = "127.0.0.1",
                cors_origins: tuple[str, ...] = (), storage=None, cipher=None,
-               admin_database_url: str | None = None, classify=None) -> Flask:
+               admin_database_url: str | None = None, classify=None, draft_expertise=None) -> Flask:
     """database_url: a login in the jhi_app role (user requests).
     admin_database_url: a login in the jhi_admin_api role (admin routes);
     defaults to database_url for single-login local setups."""
@@ -51,6 +57,7 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     app = Flask(__name__)
     app.config["VERIFIER"] = verifier
     app.config["CLASSIFY"] = classify or _classify_with_deepseek   # job seniority level, once per captured job
+    app.config["DRAFT_EXPERTISE"] = draft_expertise or _draft_with_deepseek   # paid: expertise profile draft
     app.config["USER_SESSION"] = sessionmaker(bind=user_engine)     # opened by require_user
     app.config["ADMIN_SESSION"] = sessionmaker(bind=admin_engine)   # opened by require_admin
     app.config["STORAGE"] = storage     # resume.storage.S3ResumeStorage, or DevSignedStorage in dev
@@ -78,7 +85,7 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     def me():
         user = g.user
         return jsonify({
-            "id": user.id, "email": user.email, "display_name": user.display_name, "role": user.role,
+            "id": user.id, "email": user.email, "display_name": user.display_name, "role": user.role, "plan": user.plan,
             "onboarding": onboarding_state(g.db, user),
         })
 
@@ -155,6 +162,38 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
             return jsonify(user_data.confirm_scores(g.db, g.user, (request.get_json(silent=True) or {}).get("scores")))
         except ValueError as exc:
             return error(400, str(exc))
+
+    @app.get("/api/v1/me/expertise")
+    @require_user
+    def get_expertise():
+        return jsonify(user_data.get_expertise(g.db, g.user))
+
+    @app.post("/api/v1/me/expertise/draft")
+    @require_user
+    def draft_expertise_profile():
+        try:
+            return jsonify(user_data.draft_expertise(g.db, g.user, app.config["DRAFT_EXPERTISE"])), 201
+        except user_data.PaidFeature as exc:
+            return error(402, str(exc))
+        except user_data.TooManyDrafts as exc:
+            return error(429, str(exc))
+        except ValueError as exc:
+            return error(409, str(exc))
+
+    @app.put("/api/v1/me/expertise")
+    @require_user
+    def save_expertise():
+        try:
+            return jsonify(user_data.save_expertise(g.db, g.user, request.get_json(silent=True)))
+        except user_data.PaidFeature as exc:
+            return error(402, str(exc))
+        except ValueError as exc:
+            return error(400, str(exc))
+
+    @app.post("/api/v1/me/expertise/skip")
+    @require_user
+    def skip_expertise():
+        return jsonify(user_data.skip_expertise(g.db, g.user))
 
     @app.get("/api/v1/jobs")
     @require_user
@@ -237,6 +276,17 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
             return jsonify(admin_data.set_expired(g.db, job_id, (request.get_json(silent=True) or {}).get("expired")))
         except LookupError:
             return error(404, "job not found")
+        except ValueError as exc:
+            return error(400, str(exc))
+
+    @app.put("/api/v1/admin/plans")
+    @require_admin
+    def set_plan():
+        body = request.get_json(silent=True) or {}
+        try:
+            return jsonify(admin_data.set_plan(g.db, body.get("email"), body.get("plan")))
+        except LookupError:
+            return error(404, "no such account")
         except ValueError as exc:
             return error(400, str(exc))
 

@@ -230,7 +230,8 @@ class TestApi:
         assert response.status_code == 200
         body = response.get_json()
         assert (body["email"], body["role"]) == ("a@example.com", "user")
-        assert body["onboarding"] == {"resume": False, "skills_confirmed": False, "level": False, "scores_confirmed": False}
+        assert body["onboarding"] == {"resume": False, "skills_confirmed": False, "level": False, "scores_confirmed": False,
+                                      "complete": False, "expertise": "locked"}
 
     def test_admin_routes_refuse_users_and_accept_the_owner(self, client, pg_engine):  # noqa: F811
         _seed_owner(pg_engine)

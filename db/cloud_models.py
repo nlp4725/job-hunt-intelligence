@@ -16,6 +16,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from db.models import Job, utcnow
 
 ROLES = ("user", "admin")
+# Paid members get Expertise Match (per-user LLM calls). Set by an admin until
+# payments exist; a user can never set their own plan.
+PLANS = ("free", "paid")
 # Decided 2026-09-16. Years: entry [0, 2), mid_senior [2, 5), senior [5, 9), staff_principal [9, ∞).
 SENIORITY_LEVELS = ("intern", "entry", "mid_senior", "senior", "staff_principal")
 APPLICATION_STAGES = ("applied", "recruiter_screen", "interview", "offer", "rejected", "withdrawn")
@@ -33,7 +36,7 @@ class CloudBase(DeclarativeBase):
 
 class User(CloudBase):
     __tablename__ = "users"
-    __table_args__ = (_one_of("ck_users_role", "role", ROLES),)
+    __table_args__ = (_one_of("ck_users_role", "role", ROLES), _one_of("ck_users_plan", "plan", PLANS))
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # The identity provider's `sub`, the only identity input once set. NULL until
@@ -42,6 +45,8 @@ class User(CloudBase):
     email: Mapped[str] = mapped_column(unique=True)
     display_name: Mapped[str | None]
     role: Mapped[str] = mapped_column(default="user")
+    plan: Mapped[str] = mapped_column(default="free", server_default="free")
+    expertise_skipped_at: Mapped[datetime | None]                     # onboarding's expertise step, skipped
     last_active_at: Mapped[datetime | None]
     taxonomy_version_seen: Mapped[str | None]                         # skills_extractor fingerprint; the update pop-up shows once per version
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
@@ -92,6 +97,48 @@ class UserProfile(CloudBase):
     note: Mapped[str | None] = mapped_column(Text)
     years_experience: Mapped[int | None]                               # inferred from the resume, a hint only
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class ExpertiseProfile(CloudBase):
+    """Paid tier. The short profile the per-user Expertise Match judge reads
+    next to the resume (judge/expertise_profile.py): summary and main_work
+    drafted by one LLM call from the resume and edited by the user, dream
+    written by the user. Versioned like user_profiles: a draft is a row with
+    confirmed_at NULL; confirming writes a new row, so every expertise score
+    stays attributable to the profile that produced it."""
+
+    __tablename__ = "expertise_profiles"
+    __table_args__ = (UniqueConstraint("user_id", "version", name="uq_expertise_profiles_user_version"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    version: Mapped[int]
+    resume_id: Mapped[int | None] = mapped_column(ForeignKey("resumes.id", ondelete="SET NULL"))
+    summary: Mapped[str] = mapped_column(Text)
+    main_work: Mapped[list] = mapped_column(JSON)
+    dream: Mapped[str] = mapped_column(Text, default="")
+    confirmed_at: Mapped[datetime | None]                              # NULL = an unreviewed LLM draft
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class UserJobExpertise(CloudBase):
+    """Paid tier. One LLM call per (user, job) by cloud_api/expertise_worker.py
+    (table owner); users only read their own rows. Kept apart from
+    user_job_scores, whose rows are recomputed in code for every user."""
+
+    __tablename__ = "user_job_expertise"
+    __table_args__ = (UniqueConstraint("user_id", "job_id", name="uq_user_job_expertise_user_job"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    job_id: Mapped[int] = mapped_column(ForeignKey(JOB_ID))
+    profile_version: Mapped[int]                                       # expertise_profiles.version scored against
+    domain_score: Mapped[int]
+    capability_score: Mapped[int]
+    dream_score: Mapped[int]
+    evidence: Mapped[dict | None] = mapped_column(JSON)                # {domain, capability, dream, note}
+    expertise_score: Mapped[float]                                     # weighted in code: capability .5, dream .3, domain .2
+    scored_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
 class JobSeniority(CloudBase):
