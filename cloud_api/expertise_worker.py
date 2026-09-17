@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from analysis.user_expertise_scoring import ExpertiseReport, score_user_expertise
+from cloud_api.observability import log_event, metric
 from cloud_api.settings import owner_database_url
 from db.cloud_models import User
 
@@ -37,6 +38,9 @@ def run_expertise(owner_url: str, scorer=None, limit: int = 50) -> ExpertiseRepo
                 total.failed += report.failed
     finally:
         engine.dispose()
+    metric("ExpertiseScored", total.scored)
+    metric("ExpertiseFailed", total.failed)
+    log_event("expertise_run", users=total.users, scored=total.scored, failed=total.failed)
     return total
 
 

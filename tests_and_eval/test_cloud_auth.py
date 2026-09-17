@@ -231,7 +231,7 @@ class TestApi:
         body = response.get_json()
         assert (body["email"], body["role"]) == ("a@example.com", "user")
         assert body["onboarding"] == {"resume": False, "skills_confirmed": False, "level": False, "scores_confirmed": False,
-                                      "complete": False, "expertise": "locked"}
+                                      "complete": False, "expertise": "locked", "board_scored": False}
 
     def test_admin_routes_refuse_users_and_accept_the_owner(self, client, pg_engine):  # noqa: F811
         _seed_owner(pg_engine)
@@ -245,9 +245,29 @@ class TestApi:
         owner = {"Authorization": "Bearer dev:owner@example.com"}
         created = client.post("/api/v1/admin/tokens", json={"label": "extension"}, headers=owner).get_json()
         with_token = {"Authorization": f"Bearer {created['token']}"}
-        assert client.post("/api/v1/admin/tokens", json={"label": "second"}, headers=with_token).status_code == 201
+        assert client.get("/api/v1/admin/agencies", headers=with_token).status_code == 200
         assert client.delete(f"/api/v1/admin/tokens/{created['id']}", headers=owner).status_code == 204
-        assert client.post("/api/v1/admin/tokens", json={"label": "third"}, headers=with_token).status_code == 401
+        assert client.get("/api/v1/admin/agencies", headers=with_token).status_code == 401
+
+    def test_token_scopes(self, client, pg_engine):  # noqa: F811
+        """The extension's collector token can only collect; an admin token can do admin
+        work; no token can create tokens, so a leaked token can't mint more."""
+        _seed_owner(pg_engine)
+        owner = {"Authorization": "Bearer dev:owner@example.com"}
+        collector = client.post("/api/v1/admin/tokens", json={"label": "extension"}, headers=owner).get_json()
+        admin = client.post("/api/v1/admin/tokens", json={"label": "ops", "scope": "admin"}, headers=owner).get_json()
+        assert (collector["scope"], admin["scope"]) == ("collector", "admin")
+        assert client.post("/api/v1/admin/tokens", json={"label": "x", "scope": "root"}, headers=owner).status_code == 400
+        as_collector = {"Authorization": f"Bearer {collector['token']}"}
+        as_admin = {"Authorization": f"Bearer {admin['token']}"}
+        plan = {"email": "owner@example.com", "plan": "paid"}
+
+        assert client.get("/api/v1/admin/agencies", headers=as_collector).status_code == 200
+        assert client.put("/api/v1/admin/plans", json=plan, headers=as_collector).status_code == 403
+        assert client.put("/api/v1/admin/plans", json=plan, headers=as_admin).status_code == 200
+        for token in (as_collector, as_admin):
+            assert client.post("/api/v1/admin/tokens", json={"label": "more"}, headers=token).status_code == 403
+            assert client.delete(f"/api/v1/admin/tokens/{collector['id']}", headers=token).status_code == 403
 
     def test_an_api_token_is_not_a_user_login(self, client, pg_engine):  # noqa: F811
         """Admin tokens are for the extension and skill, never for /me routes."""

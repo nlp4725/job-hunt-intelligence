@@ -43,13 +43,15 @@ def client(app_url, admin_url, board, drafter, tmp_path):  # noqa: F811
     from cryptography.fernet import Fernet
 
     from cloud_api.app import create_app
+    from cloud_api.rescore import InlinePublisher
     from cloud_api.auth.verify import FakeVerifier
     from resume.storage import DevSignedStorage
     from resume.store import ResumeCipher
 
     app = create_app(app_url, admin_database_url=admin_url, verifier=FakeVerifier(), auth_mode="dev", host="127.0.0.1",
                      storage=DevSignedStorage(root=tmp_path / "files", secret=b"s", base_url="http://localhost"),
-                     cipher=ResumeCipher(Fernet.generate_key()), draft_expertise=drafter)
+                     cipher=ResumeCipher(Fernet.generate_key()), draft_expertise=drafter,
+                     rescore_publisher=InlinePublisher(PG_URL))
     app.config["TESTING"] = True
     return app.test_client()
 

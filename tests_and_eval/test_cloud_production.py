@@ -21,6 +21,7 @@ PROD_ENV = {
     "JHI_ADMIN_DB_PASSWORD": "secret", "COGNITO_USER_POOL_ID": "us-east-1_abc", "COGNITO_CLIENT_ID": "client",
     "RESUME_BUCKET": "resumes", "RESUME_KMS_KEY_ID": "key-id", "JHI_RESUME_KEY": "x" * 43 + "=",
     "CORS_ORIGINS": "https://app.example.com, https://example.com",
+    "RESCORE_QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/123456789012/jhi-rescore",
 }
 
 

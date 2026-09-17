@@ -3,7 +3,7 @@
 # group) and S3 (gateway endpoint) only, and sign in to Postgres with IAM
 # database authentication, so they need no password and no Secrets Manager.
 #
-#   jhi-rescore     every 5 minutes: drains rescore_queue, scores new jobs for every user
+#   jhi-rescore     SQS jhi-rescore messages (sqs.tf) + hourly reconcile: scores users' boards
 #   jhi-admin-task  by hand: {"command": "status"} or {"command": "import_sqlite", "s3_key": "imports/..."}
 #
 # Same image as the API; awslambdaric is the entry point.
@@ -86,7 +86,7 @@ locals {
       handler  = "cloud_api.lambda_handlers.rescore"
       db_login = "jhi_rescore"
       user_env = "JHI_RESCORE_DB_USER"
-      timeout  = 300
+      timeout  = 120 # the SQS visibility timeout is 6× this (sqs.tf)
       memory   = 1024
       extra    = {}
     }
@@ -196,26 +196,6 @@ resource "aws_lambda_function" "this" {
   }
 
   depends_on = [aws_iam_role_policy_attachment.lambda_vpc, aws_cloudwatch_log_group.lambda]
-}
-
-# --- rescore schedule ----------------------------------------------------------------
-
-resource "aws_cloudwatch_event_rule" "rescore" {
-  name                = "jhi-rescore"
-  schedule_expression = "rate(5 minutes)"
-}
-
-resource "aws_cloudwatch_event_target" "rescore" {
-  rule = aws_cloudwatch_event_rule.rescore.name
-  arn  = aws_lambda_function.this["rescore"].arn
-}
-
-resource "aws_lambda_permission" "rescore_schedule" {
-  statement_id  = "AllowEventBridgeSchedule"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.this["rescore"].function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.rescore.arn
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_errors" {

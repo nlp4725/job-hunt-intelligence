@@ -222,28 +222,25 @@ class UserJobScore(CloudBase):
     skill_missing: Mapped[list | None] = mapped_column(JSON)
     seniority_fit: Mapped[int | None]
     total_score: Mapped[int | None]
+    scoring_version: Mapped[str | None]                                # analysis/user_scoring.SCORING_VERSION
     scored_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
-class RescoreQueue(CloudBase):
-    """Jobs captured since users were last scored. The capture route (admin
-    role) adds a job; cloud_api/rescore_worker.py (table owner) scores it for
-    every user and removes it."""
-
-    __tablename__ = "rescore_queue"
-
-    job_id: Mapped[int] = mapped_column(ForeignKey(JOB_ID), primary_key=True)
-    queued_at: Mapped[datetime] = mapped_column(default=utcnow)
+TOKEN_SCOPES = ("collector", "admin")
 
 
 class ApiToken(CloudBase):
-    """Long-lived admin tokens for the extension and skill, stored hashed."""
+    """Long-lived tokens for the extension and skill, stored hashed.
+    scope "collector": captures, agency list, collection stats, expiring jobs.
+    scope "admin": every admin route except creating tokens (only a signed-in admin person can)."""
 
     __tablename__ = "api_tokens"
+    __table_args__ = (_one_of("ck_api_tokens_scope", "scope", TOKEN_SCOPES),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     token_hash: Mapped[str] = mapped_column(unique=True)               # sha256; plaintext shown once
+    scope: Mapped[str] = mapped_column(default="collector", server_default="collector")
     label: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_used_at: Mapped[datetime | None]

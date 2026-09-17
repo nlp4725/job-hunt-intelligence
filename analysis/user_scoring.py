@@ -21,6 +21,9 @@ from db.cloud_models import JobSeniority, UserJobScore, UserProfile, UserResume
 from db.models import Job, JobSkill, utcnow
 
 BATCH = 1000
+# Bump when the scoring logic itself changes (not the taxonomy, not a profile):
+# the hourly reconciliation rescores every row computed by an older version.
+SCORING_VERSION = "skill-seniority-1"
 
 
 def active_profile(db, user_id: int) -> UserProfile | None:
@@ -55,6 +58,7 @@ def score_user(db, user_id: int, job_ids: list[int] | None = None) -> int:
             "skill_score": match["score"], "skill_ratio": match["ratio"], "skill_matched": match["matched_skills"],
             "skill_group_matched": match["group_matched_skills"], "skill_missing": match["missing_skills"],
             "seniority_fit": fit, "total_score": None if fit is None else match["score"] + fit, "scored_at": now,
+            "scoring_version": SCORING_VERSION,
         })
 
     db.flush()
@@ -73,7 +77,7 @@ def score_user(db, user_id: int, job_ids: list[int] | None = None) -> int:
     return len(rows)
 
 
-def set_seniority_scores(db, user_id: int, scores: dict, target: str | None = None) -> UserProfile:
+def set_seniority_scores(db, user_id: int, scores: dict, target: str | None = None, rescore: bool = True) -> UserProfile:
     """Confirm a user's seniority score table: write it on a new profile version
     (the level they picked, if given, and everything else carried over) and
     rescore. Earlier versions keep their tables. No LLM call: job levels are
@@ -90,11 +94,12 @@ def set_seniority_scores(db, user_id: int, scores: dict, target: str | None = No
     )
     db.add(profile)
     db.flush()
-    score_user(db, user_id)
+    if rescore:   # the cloud API passes False and queues the rescore instead (cloud_api/rescore.py)
+        score_user(db, user_id)
     return profile
 
 
-def set_seniority_target(db, user_id: int, target: str) -> UserProfile:
+def set_seniority_target(db, user_id: int, target: str, rescore: bool = True) -> UserProfile:
     """Save the level the user picked (onboarding, or later in Settings) on a
     new profile version, then rescore. Its score table starts unconfirmed
     (NULL), so scoring uses the proposal for this level until the next screen
@@ -110,5 +115,6 @@ def set_seniority_target(db, user_id: int, target: str) -> UserProfile:
     )
     db.add(profile)
     db.flush()
-    score_user(db, user_id)
+    if rescore:   # the cloud API passes False and queues the rescore instead (cloud_api/rescore.py)
+        score_user(db, user_id)
     return profile

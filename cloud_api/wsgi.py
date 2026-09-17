@@ -7,11 +7,13 @@ Environment (set by terraform/app/ecs.tf):
     COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID
     RESUME_BUCKET, RESUME_KMS_KEY_ID, JHI_RESUME_KEY
     CORS_ORIGINS                                 comma-separated, e.g. https://app.example.com
+    RESCORE_QUEUE_URL                            SQS queue for rescore messages
     DEEPSEEK_API_KEY                             read by the LLM client
 """
 
 from cloud_api.app import create_app
 from cloud_api.auth.verify import CognitoVerifier
+from cloud_api.rescore import SqsPublisher
 from cloud_api.settings import CachedJwks, cognito_issuer, database_url, fernet_key_from_secret, required
 from resume.storage import S3ResumeStorage, make_s3_client
 from resume.store import ResumeCipher
@@ -29,6 +31,7 @@ def build_app():
         admin_database_url=database_url("JHI_ADMIN_DB_USER", "JHI_ADMIN_DB_PASSWORD"),
         auth_mode="cognito", host="0.0.0.0", cors_origins=origins,
         storage=storage, cipher=ResumeCipher(fernet_key_from_secret(required("JHI_RESUME_KEY"))),
+        rescore_publisher=SqsPublisher(required("RESCORE_QUEUE_URL"), region=region),
     )
 
 

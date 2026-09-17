@@ -43,8 +43,8 @@ def bootstrap():
     return _resources("bootstrap")
 
 
-def test_no_sqs_and_no_nat_gateway():
-    pattern = re.compile(r'^\s*(?:resource|data)\s+"(aws_sqs_\w+|aws_nat_gateway)"', re.M)
+def test_no_nat_gateway():
+    pattern = re.compile(r'^\s*(?:resource|data)\s+"(aws_nat_gateway)"', re.M)
     offenders = [f"{p.name}: {m}" for p in _tf_files() for m in pattern.findall(p.read_text())]
     assert offenders == []
 
@@ -135,7 +135,27 @@ def test_api_is_https_with_a_redirect_and_a_long_idle_timeout(app):
 
 def test_workers_are_scheduled(app):
     assert app["aws_cloudwatch_event_target.worker"]["ecs_target"][0]["launch_type"] == "FARGATE"   # expertise: needs DeepSeek
-    assert app["aws_cloudwatch_event_target.rescore"]["arn"] == '${aws_lambda_function.this["rescore"].arn}'   # database only
+    reconcile = app["aws_cloudwatch_event_target.reconcile"]
+    assert reconcile["arn"] == '${aws_lambda_function.this["rescore"].arn}' and "reconcile" in reconcile["input"]
+
+
+def test_rescore_queue_retries_dead_letters_and_is_encrypted(app):
+    queue, dlq = app["aws_sqs_queue.rescore"], app["aws_sqs_queue.rescore_dlq"]
+    assert queue["sqs_managed_sse_enabled"] is True and dlq["sqs_managed_sse_enabled"] is True
+    assert "maxReceiveCount" in queue["redrive_policy"] and "rescore_dlq.arn" in queue["redrive_policy"]
+    lambda_timeout = int(re.search(r"timeout\s*=\s*(\d+)\s*#", (ROOT / "app" / "lambda.tf").read_text()).group(1))
+    assert queue["visibility_timeout_seconds"] >= 6 * lambda_timeout
+    mapping = app["aws_lambda_event_source_mapping.rescore"]
+    assert mapping["function_response_types"] == ["ReportBatchItemFailures"]
+    assert mapping["scaling_config"][0]["maximum_concurrency"] <= 5
+
+
+def test_observability_alarms_and_dashboard(app):
+    alarms = (ROOT / "app" / "observability.tf").read_text()
+    for alarm in ("rescore-dlq", "rescore-queue-age", "rescore-publish-failed", "unscored-job-age", "db-permission-denied",
+                  "api-unhandled-errors", "resume-parse-failures", "seniority-classify-failures", "token-scope-denied"):
+        assert f"{alarm} = {{" in alarms, alarm
+    assert "aws_cloudwatch_dashboard.main" in app and "aws_cloudwatch_metric_alarm.api_p95_latency" in app
     assert app["aws_ecs_service.api"]["wait_for_steady_state"] is True
 
 

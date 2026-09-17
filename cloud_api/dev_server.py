@@ -22,6 +22,7 @@ from sqlalchemy.engine import make_url
 
 from cloud_api.app import create_app
 from cloud_api.auth.verify import FakeVerifier
+from cloud_api.rescore import InlinePublisher
 from resume.storage import DevSignedStorage
 from resume.store import ResumeCipher
 
@@ -56,7 +57,8 @@ def main() -> None:
                      storage=DevSignedStorage(root=Path(args.files), secret=secrets.token_bytes(32),
                                               base_url=f"http://127.0.0.1:{args.port}"),
                      cipher=ResumeCipher(key),
-                     classify=(lambda posting: None) if args.classify == "off" else None)
+                     classify=(lambda posting: None) if args.classify == "off" else None,
+                     rescore_publisher=InlinePublisher(args.owner_url))   # scores right away, no SQS locally
     app.run(host="127.0.0.1", port=args.port)
 
 

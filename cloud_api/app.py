@@ -5,19 +5,30 @@ backend/, which stays unchanged.
     create_app(database_url, verifier=FakeVerifier(), auth_mode="dev", host="127.0.0.1")  # local
 
 One database session per request: committed when the request succeeds,
-rolled back when it raises.
+rolled back when it raises. Rescore messages queued during the request are
+published only after the commit (cloud_api/rescore.py). Every request writes
+one structured log line; unhandled errors and database permission errors are
+logged with a request id and counted (cloud_api/observability.py).
 """
+
+import time
+import traceback
+import uuid
 
 from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 from sqlalchemy import create_engine
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
+from werkzeug.exceptions import HTTPException
 
-from cloud_api.auth.decorators import require_admin, require_user
+from cloud_api.auth.decorators import require_admin, require_admin_person, require_collector, require_user
 from cloud_api.auth.tokens import create_api_token, revoke_api_token
 from cloud_api.auth.verify import FakeVerifier
 from cloud_api import admin_data, user_data
 from cloud_api.dev_storage import dev_storage
+from cloud_api.observability import Timer, log_event, metric
+from cloud_api.rescore import job_message, queue_after_commit, user_message
 from cloud_api.user_data import onboarding_state
 from resume.resume_text import UnsupportedResume
 from resume.storage import URL_EXPIRES_SECONDS
@@ -39,10 +50,13 @@ def _draft_with_deepseek(resume_text: str) -> dict:
 
 def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host: str = "127.0.0.1",
                cors_origins: tuple[str, ...] = (), storage=None, cipher=None,
-               admin_database_url: str | None = None, classify=None, draft_expertise=None) -> Flask:
+               admin_database_url: str | None = None, classify=None, draft_expertise=None,
+               rescore_publisher=None) -> Flask:
     """database_url: a login in the jhi_app role (user requests).
     admin_database_url: a login in the jhi_admin_api role (admin routes);
-    defaults to database_url for single-login local setups."""
+    defaults to database_url for single-login local setups.
+    rescore_publisher: SqsPublisher in production, InlinePublisher locally;
+    None drops messages (the hourly reconciliation still scores everything)."""
     if auth_mode == "dev" and host not in LOCAL_HOSTS:
         raise RuntimeError("dev login (FakeVerifier) is only allowed when the server is bound to localhost")
     if auth_mode != "dev" and isinstance(verifier, FakeVerifier):
@@ -62,23 +76,69 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     app.config["ADMIN_SESSION"] = sessionmaker(bind=admin_engine)   # opened by require_admin
     app.config["STORAGE"] = storage     # resume.storage.S3ResumeStorage, or DevSignedStorage in dev
     app.config["CIPHER"] = cipher       # resume.store.ResumeCipher for extracted resume text
+    app.config["RESCORE_PUBLISHER"] = rescore_publisher
     if auth_mode == "dev":
         app.register_blueprint(dev_storage)
     if cors_origins:
         CORS(app, origins=list(cors_origins))
 
+    @app.before_request
+    def start_request():
+        g.request_id = request.headers.get("X-Request-Id") or uuid.uuid4().hex
+        g.started = time.perf_counter()
+
+    @app.after_request
+    def log_request(response):
+        user = g.get("user")
+        log_event("request", request_id=g.get("request_id"), method=request.method,
+                  route=request.url_rule.rule if request.url_rule else "unmatched", status=response.status_code,
+                  duration_ms=round((time.perf_counter() - g.get("started", time.perf_counter())) * 1000, 1),
+                  user_id=user.id if user is not None else None, token_scope=g.get("token_scope"))
+        response.headers["X-Request-Id"] = g.get("request_id", "")
+        return response
+
+    @app.errorhandler(Exception)
+    def unhandled(exc):
+        if isinstance(exc, HTTPException):
+            return exc
+        g.failed = True   # roll back: a handled exception doesn't reach teardown as `exc`
+        if isinstance(exc, DBAPIError) and getattr(exc.orig, "sqlstate", None) == "42501":
+            metric("DbPermissionDenied")
+            log_event("db_permission_denied", level="error", request_id=g.get("request_id"), error=str(exc.orig).splitlines()[0])
+        else:
+            metric("ApiUnhandledError")
+            log_event("unhandled_error", level="error", request_id=g.get("request_id"), error_type=type(exc).__name__,
+                      stack=traceback.format_exc(limit=20))
+        return jsonify({"error": "internal error", "request_id": g.get("request_id")}), 500
+
     @app.teardown_request
     def close_session(exc):
         db = g.pop("db", None)
-        if db is None:
+        messages = g.pop("rescore_messages", [])
+        committed = False
+        if db is not None:
+            try:
+                if exc is None and not g.get("failed"):
+                    db.commit()
+                    committed = True
+                else:
+                    db.rollback()
+            finally:
+                db.close()
+        if committed and messages:
+            publish_rescores(messages)
+
+    def publish_rescores(messages):
+        publisher = app.config["RESCORE_PUBLISHER"]
+        if publisher is None:
+            log_event("rescore_not_published", level="warning", count=len(messages), reason="no publisher")
             return
         try:
-            if exc is None:
-                db.commit()
-            else:
-                db.rollback()
-        finally:
-            db.close()
+            publisher.publish(messages)
+            metric("RescorePublished", len(messages))
+        except Exception as exc:   # the request already succeeded; reconciliation catches up
+            metric("RescorePublishFailed", len(messages))
+            log_event("rescore_publish_failed", level="error", count=len(messages), error_type=type(exc).__name__, error=str(exc)[:300])
 
     @app.get("/healthz")
     def healthz():
@@ -113,13 +173,19 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     @require_user
     def finish_resume_upload(version: int):
         try:
-            return jsonify(user_data.finish_resume_upload(g.db, g.user, version, app.config["STORAGE"], app.config["CIPHER"]))
+            with Timer() as timer:
+                resume = user_data.finish_resume_upload(g.db, g.user, version, app.config["STORAGE"], app.config["CIPHER"])
         except LookupError:
             return error(404, "resume not found")
         except FileNotFoundError:
             return error(409, "the file has not been uploaded yet")
         except UnsupportedResume as exc:
+            metric("ResumeParseFailed")
+            log_event("resume_parse_failed", level="warning", user_id=g.user.id, reason=type(exc).__name__)
             return error(415, str(exc))
+        metric("ResumeProcessed")
+        metric("ResumeProcessingMs", timer.ms, unit="Milliseconds")
+        return jsonify(resume)
 
     @app.get("/api/v1/me/resume")
     @require_user
@@ -133,7 +199,9 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
         if not isinstance(skills, list) or not all(isinstance(s, str) for s in skills):
             return error(400, "skills must be a list of skill names")
         try:
-            return jsonify(user_data.confirm_resume_skills(g.db, g.user, resume_id, skills))
+            resume = user_data.confirm_resume_skills(g.db, g.user, resume_id, skills)
+            queue_after_commit(user_message(g.user.id))
+            return jsonify(resume)
         except LookupError:
             return error(404, "resume not found")
         except ValueError as exc:
@@ -157,7 +225,9 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     @require_user
     def pick_level():
         try:
-            return jsonify(user_data.pick_level(g.db, g.user, (request.get_json(silent=True) or {}).get("level")))
+            profile = user_data.pick_level(g.db, g.user, (request.get_json(silent=True) or {}).get("level"))
+            queue_after_commit(user_message(g.user.id))
+            return jsonify(profile)
         except ValueError as exc:
             return error(400, str(exc))
 
@@ -165,7 +235,9 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     @require_user
     def confirm_scores():
         try:
-            return jsonify(user_data.confirm_scores(g.db, g.user, (request.get_json(silent=True) or {}).get("scores")))
+            profile = user_data.confirm_scores(g.db, g.user, (request.get_json(silent=True) or {}).get("scores"))
+            queue_after_commit(user_message(g.user.id))
+            return jsonify(profile)
         except ValueError as exc:
             return error(400, str(exc))
 
@@ -177,8 +249,18 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     @app.post("/api/v1/me/expertise/draft")
     @require_user
     def draft_expertise_profile():
+        def timed_drafter(resume_text):
+            try:
+                with Timer() as timer:
+                    draft = app.config["DRAFT_EXPERTISE"](resume_text)
+            except Exception:
+                metric("ExpertiseDraftFailed")
+                raise
+            metric("ExpertiseDraftMs", timer.ms, unit="Milliseconds")
+            return draft
+
         try:
-            return jsonify(user_data.draft_expertise(g.db, g.user, app.config["DRAFT_EXPERTISE"])), 201
+            return jsonify(user_data.draft_expertise(g.db, g.user, timed_drafter)), 201
         except user_data.PaidFeature as exc:
             return error(402, str(exc))
         except user_data.TooManyDrafts as exc:
@@ -246,29 +328,35 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
         return "", 204
 
     @app.post("/api/v1/admin/captures")
-    @require_admin
+    @require_collector
     def capture():
         body = request.get_json(silent=True)
         if not isinstance(body, dict):
+            metric("CaptureOutcome", dimensions={"Outcome": "invalid"})
             return error(400, "a JSON object is required")
         try:
-            return jsonify(admin_data.capture(g.db, body, app.config["CLASSIFY"]))
+            result = admin_data.capture(g.db, body, app.config["CLASSIFY"])
         except ValueError as exc:
+            metric("CaptureOutcome", dimensions={"Outcome": "invalid"})
             return error(400, str(exc))
+        metric("CaptureOutcome", dimensions={"Outcome": result["status"]})
+        if result["status"] in ("scored", "saved"):
+            queue_after_commit(job_message(result["job"]["id"]))
+        return jsonify(result)
 
     @app.get("/api/v1/admin/captures/<linkedin_id>")
-    @require_admin
+    @require_collector
     def cached_capture(linkedin_id: str):
         cached = admin_data.cached_capture(g.db, linkedin_id)
         return jsonify(cached) if cached else error(404, "not captured yet")
 
     @app.get("/api/v1/admin/agencies")
-    @require_admin
+    @require_collector
     def agencies():
         return jsonify(admin_data.agency_list())
 
     @app.post("/api/v1/admin/collection-pages")
-    @require_admin
+    @require_collector
     def collection_page():
         try:
             return jsonify(admin_data.record_collection_page(g.db, request.get_json(silent=True) or {})), 201
@@ -276,7 +364,7 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
             return error(400, str(exc))
 
     @app.patch("/api/v1/admin/jobs/<int:job_id>")
-    @require_admin
+    @require_collector
     def expire_job(job_id: int):
         try:
             return jsonify(admin_data.set_expired(g.db, job_id, (request.get_json(silent=True) or {}).get("expired")))
@@ -297,16 +385,21 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
             return error(400, str(exc))
 
     @app.post("/api/v1/admin/tokens")
-    @require_admin
+    @require_admin_person
     def create_token():
-        label = str((request.get_json(silent=True) or {}).get("label", "")).strip()[:100]
+        body = request.get_json(silent=True) or {}
+        label = str(body.get("label", "")).strip()[:100]
         if not label:
             return jsonify({"error": "label required"}), 400
-        row, plaintext = create_api_token(g.db, g.user, label)
-        return jsonify({"id": row.id, "label": row.label, "token": plaintext}), 201
+        try:
+            row, plaintext = create_api_token(g.db, g.user, label, scope=body.get("scope", "collector"))
+        except ValueError as exc:
+            return error(400, str(exc))
+        log_event("api_token_created", user_id=g.user.id, token_id=row.id, scope=row.scope)
+        return jsonify({"id": row.id, "label": row.label, "scope": row.scope, "token": plaintext}), 201
 
     @app.delete("/api/v1/admin/tokens/<int:token_id>")
-    @require_admin
+    @require_admin_person
     def revoke_token(token_id: int):
         if not revoke_api_token(g.db, g.user, token_id):
             return jsonify({"error": "no such token"}), 404

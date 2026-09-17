@@ -65,13 +65,15 @@ def board(pg_engine, app_url):  # noqa: F811
 @pytest.fixture
 def client(app_url, admin_url, board, tmp_path):  # noqa: F811
     from cloud_api.app import create_app
+    from cloud_api.rescore import InlinePublisher
     from cloud_api.auth.verify import FakeVerifier
     from resume.storage import DevSignedStorage
     from resume.store import ResumeCipher
 
     storage = DevSignedStorage(root=tmp_path / "files", secret=b"test-secret", base_url="http://localhost")
     app = create_app(app_url, admin_database_url=admin_url, verifier=FakeVerifier(), auth_mode="dev",
-                     host="127.0.0.1", storage=storage, cipher=ResumeCipher(Fernet.generate_key()))
+                     host="127.0.0.1", storage=storage, cipher=ResumeCipher(Fernet.generate_key()),
+                     rescore_publisher=InlinePublisher(PG_URL))
     app.config["TESTING"] = True
     app.config["TEST_STORAGE"] = storage
     return app.test_client()
@@ -213,7 +215,9 @@ class TestTrackingAndApplications:
 @needs_pg
 class TestAccountDeletion:
     def test_deleting_an_account_removes_every_row_and_file(self, client, board, pg_engine):  # noqa: F811
-        from db.cloud_models import ApplicationEvent, JobTracking, User, UserJobScore, UserProfile, UserResume
+        """Every cloud table with a user_id column, found by walking the models, so a
+        per-user table added later is covered without anyone remembering it."""
+        from db.cloud_models import CloudBase, User
 
         _onboard(client, A, "SKILLS\nPython\n", "entry")
         client.put(f"/api/v1/me/tracking/{board['1']}", json={"applied": True}, headers=A)
@@ -221,13 +225,16 @@ class TestAccountDeletion:
         a_id = client.get("/api/v1/me", headers=A).get_json()["id"]
         storage = client.application.config["TEST_STORAGE"]
         assert storage.files._path(f"users/{a_id}").exists()
+        per_user = [t for t in CloudBase.metadata.sorted_tables if "user_id" in t.c]
+        assert {"resumes", "user_profiles", "user_job_scores", "job_tracking", "application_events",
+                "expertise_profiles", "user_job_expertise", "api_tokens"} <= {t.name for t in per_user}
 
         assert client.delete("/api/v1/me", headers=A).status_code == 204
 
         with Session(pg_engine) as db:
             assert db.get(User, a_id) is None
-            for model in (UserResume, UserProfile, UserJobScore, JobTracking, ApplicationEvent):
-                assert db.query(model).filter_by(user_id=a_id).count() == 0, model.__tablename__
-                assert db.query(model).count() > 0 or model in (JobTracking, ApplicationEvent), model.__tablename__
+            leftovers = {t.name: db.execute(text(f"SELECT count(*) FROM {t.name} WHERE user_id = :u"), {"u": a_id}).scalar()
+                         for t in per_user}
+            assert leftovers == dict.fromkeys(leftovers, 0)
         assert not storage.files._path(f"users/{a_id}").exists()
         assert _jobs(client, B)["1"]["scores"] is not None

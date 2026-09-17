@@ -18,7 +18,7 @@ import pytest
 from cryptography.fernet import Fernet
 from moto import mock_aws
 
-from tests_and_eval.test_cloud_db import needs_pg, pg_engine  # noqa: F401  (fixture)
+from tests_and_eval.test_cloud_db import PG_URL, needs_pg, pg_engine  # noqa: F401  (fixture)
 from tests_and_eval.test_cloud_isolation import app_url  # noqa: F401  (fixture)
 
 RESUME_TEXT = "SKILLS\nPython, SQL, Docker, LangGraph\nEXPERIENCE\nBuilt RAG systems on AWS.\n"
@@ -95,13 +95,14 @@ class TestS3ResumeStorage:
 @pytest.fixture
 def client(app_url, tmp_path):  # noqa: F811
     from cloud_api.app import create_app
+    from cloud_api.rescore import InlinePublisher
     from cloud_api.auth.verify import FakeVerifier
     from resume.storage import DevSignedStorage
     from resume.store import ResumeCipher
 
     storage = DevSignedStorage(root=tmp_path / "files", secret=b"test-secret", base_url="http://localhost")
     app = create_app(app_url, verifier=FakeVerifier(), auth_mode="dev", host="127.0.0.1",
-                     storage=storage, cipher=ResumeCipher(Fernet.generate_key()))
+                     storage=storage, cipher=ResumeCipher(Fernet.generate_key()), rescore_publisher=InlinePublisher(PG_URL))
     app.config["TESTING"] = True
     return app.test_client()
 

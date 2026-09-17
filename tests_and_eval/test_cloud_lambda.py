@@ -51,21 +51,82 @@ class FakeContext:
         return self.remaining_ms
 
 
+def _sqs_event(*messages, bodies=None):
+    import json
+
+    bodies = bodies or [json.dumps(m) for m in messages]
+    return {"Records": [{"messageId": f"m{i}", "body": body, "attributes": {"ApproximateReceiveCount": "1"}}
+                        for i, body in enumerate(bodies)]}
+
+
+@pytest.fixture
+def quiet_client(client):  # noqa: F811
+    """The capture fixture's client, with messages recorded but not scored inline,
+    so the Lambda handler does the scoring."""
+    from tests_and_eval.test_cloud_captures import RecordingPublisher
+
+    client.published.clear()
+    client.application.config["RESCORE_PUBLISHER"] = RecordingPublisher(client.published)
+    return client
+
+
 @needs_pg
 class TestRescoreLambda:
-    def test_scores_queued_jobs_for_every_user_as_the_narrow_role(self, client, scorer_url, pg_engine, monkeypatch):  # noqa: F811
+    def test_sqs_messages_are_scored_as_the_narrow_role(self, quiet_client, scorer_url, pg_engine, monkeypatch):  # noqa: F811
         from cloud_api import lambda_handlers
-        from db.cloud_models import RescoreQueue, UserJobScore
+        from db.cloud_models import UserJobScore
 
+        client = quiet_client
         _onboard(client, A, "SKILLS\nPython, SQL, LLM\n", "entry")
         job_ids = [_capture(client, str(n), company=f"Co{n}").get_json()["job"]["id"] for n in (200, 201)]
         monkeypatch.setenv("JHI_DATABASE_URL", scorer_url)
 
-        assert lambda_handlers.rescore({}, FakeContext()) == {"jobs": 2, "scores": 2}
+        result = lambda_handlers.rescore(_sqs_event(*client.published), FakeContext())
+
+        assert result == {"batchItemFailures": []}
+        assert [m["type"] for m in client.published] == ["user", "user", "job", "job"]   # level, skills, two captures
         with Session(pg_engine) as db:
-            assert db.query(RescoreQueue).count() == 0
             assert {s.job_id for s in db.query(UserJobScore).filter(UserJobScore.job_id.in_(job_ids))} == set(job_ids)
-        assert lambda_handlers.rescore({}, FakeContext()) == {"jobs": 0, "scores": 0}
+
+    def test_only_failed_messages_are_retried(self, scorer_url, pg_engine, monkeypatch):  # noqa: F811
+        from cloud_api import lambda_handlers
+
+        _upgrade(PG_URL)
+        monkeypatch.setenv("JHI_DATABASE_URL", scorer_url)
+        event = _sqs_event(bodies=['{"type": "job", "job_id": 999999}', "not json", '{"type": "delete_everything"}'])
+        result = lambda_handlers.rescore(event, FakeContext())
+        assert result == {"batchItemFailures": [{"itemIdentifier": "m1"}, {"itemIdentifier": "m2"}]}   # a missing job is not an error
+
+    def test_reconcile_scores_what_lost_messages_missed(self, quiet_client, scorer_url, pg_engine, monkeypatch):  # noqa: F811
+        from cloud_api import lambda_handlers
+        from db.cloud_models import UserJobScore
+
+        client = quiet_client
+        _onboard(client, A, "SKILLS\nPython, SQL, LLM\n", "entry")   # messages recorded, never delivered
+        _capture(client, "300")
+        monkeypatch.setenv("JHI_DATABASE_URL", scorer_url)
+
+        first = lambda_handlers.rescore({"type": "reconcile"}, FakeContext())
+        assert first["stale_users"] == 1                     # never scored: full board
+        with Session(pg_engine) as db:
+            assert db.query(UserJobScore).count() >= 1
+
+        _capture(client, "301", company="Other")               # one more lost job message
+        assert lambda_handlers.rescore({"type": "reconcile"}, FakeContext()) == {"stale_users": 0, "missing_scores": 1}
+        assert lambda_handlers.rescore({"type": "reconcile"}, FakeContext()) == {"stale_users": 0, "missing_scores": 0}
+
+    def test_a_scoring_logic_change_rescores_everyone(self, quiet_client, scorer_url, pg_engine, monkeypatch):  # noqa: F811
+        import analysis.rescoring
+        from cloud_api import lambda_handlers
+
+        client = quiet_client
+        _onboard(client, A, "SKILLS\nPython\n", "entry")
+        _capture(client, "400")
+        monkeypatch.setenv("JHI_DATABASE_URL", scorer_url)
+        lambda_handlers.rescore({"type": "reconcile"}, FakeContext())
+        monkeypatch.setattr(analysis.rescoring, "SCORING_VERSION", "skill-seniority-2")
+        monkeypatch.setattr("analysis.user_scoring.SCORING_VERSION", "skill-seniority-2")
+        assert lambda_handlers.rescore({"type": "reconcile"}, FakeContext())["stale_users"] == 1
 
     def test_the_scorer_role_cannot_read_private_activity(self, client, scorer_url):  # noqa: F811
         engine = create_engine(scorer_url)
@@ -84,7 +145,7 @@ class TestAdminLambda:
 
         monkeypatch.setenv("JHI_DATABASE_URL", importer_url)
         assert lambda_handlers.admin({"command": "status"}, None) == {
-            "jobs": 0, "jobs_last_24h": 0, "jobs_with_level": 0, "rescore_queue": 0}
+            "jobs": 0, "jobs_last_24h": 0, "jobs_with_level": 0}
 
     def test_only_listed_commands_run(self, importer_url, monkeypatch):
         from cloud_api import lambda_handlers

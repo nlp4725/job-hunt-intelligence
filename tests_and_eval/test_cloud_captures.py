@@ -1,11 +1,12 @@
 """Phase 6A: collection into the cloud (productization plan §2, §6).
 
-The extension sends each capture to POST /api/v1/admin/captures with an admin
-token. The admin route saves the job with the same code as the local app,
-filters agencies, classifies the job's seniority level once, and queues the
-job for scoring. It cannot write any user's scores (the admin role has no
-access to per-user tables), so a worker running as the table owner drains
-rescore_queue and scores those jobs for every user with a confirmed resume.
+The extension sends each capture to POST /api/v1/admin/captures with a
+collector token. The admin route saves the job with the same code as the local
+app, filters agencies and classifies the job's seniority level once. It cannot
+write any user's scores (the admin role has no access to per-user tables), so
+after its transaction commits it publishes a "score this job" message; the
+rescore Lambda scores the job for every user with a confirmed resume. Here the
+publisher records messages and scores them inline.
 
 Postgres tests need JHI_TEST_POSTGRES_URL. Classification is a fake: no LLM.
 """
@@ -40,6 +41,18 @@ class FakeClassifier:
                                  note=None, is_contract=False, level=self.level)
 
 
+class RecordingPublisher:
+    def __init__(self, published, inner=None, fail=False):
+        self.published, self.inner, self.fail = published, inner, fail
+
+    def publish(self, messages):
+        if self.fail:
+            raise RuntimeError("SQS unavailable")
+        self.published.extend(messages)
+        if self.inner:
+            self.inner.publish(messages)
+
+
 @pytest.fixture
 def classifier():
     return FakeClassifier()
@@ -47,9 +60,11 @@ def classifier():
 
 @pytest.fixture
 def client(app_url, admin_url, pg_engine, classifier, tmp_path):  # noqa: F811
+    published = []
     from cryptography.fernet import Fernet
 
     from cloud_api.app import create_app
+    from cloud_api.rescore import InlinePublisher
     from cloud_api.auth.verify import FakeVerifier
     from db.cloud_models import User
     from resume.storage import DevSignedStorage
@@ -59,9 +74,11 @@ def client(app_url, admin_url, pg_engine, classifier, tmp_path):  # noqa: F811
         db.add(User(email="owner@example.com", role="admin"))
     app = create_app(app_url, admin_database_url=admin_url, verifier=FakeVerifier(), auth_mode="dev", host="127.0.0.1",
                      storage=DevSignedStorage(root=tmp_path / "files", secret=b"s", base_url="http://localhost"),
-                     cipher=ResumeCipher(Fernet.generate_key()), classify=classifier)
+                     cipher=ResumeCipher(Fernet.generate_key()), classify=classifier,
+                     rescore_publisher=RecordingPublisher(published, InlinePublisher(PG_URL)))
     app.config["TESTING"] = True
     client = app.test_client()
+    client.published = published
     token = client.post("/api/v1/admin/tokens", json={"label": "extension"}, headers=OWNER).get_json()["token"]
     client.extension = {"Authorization": f"Bearer {token}"}
     return client
@@ -74,11 +91,8 @@ def _capture(client, linkedin_id, **detail):
                              "extraction_meta": {"strategies": {"title": "builtin"}, "failed_fields": []}})
 
 
-def _queued(pg_engine):  # noqa: F811
-    from db.cloud_models import RescoreQueue
-
-    with Session(pg_engine) as db:
-        return [job_id for (job_id,) in db.query(RescoreQueue.job_id).order_by(RescoreQueue.job_id)]
+def _job_messages(client):
+    return [m["job_id"] for m in client.published if m["type"] == "job"]
 
 
 @needs_pg
@@ -98,24 +112,24 @@ class TestCaptures:
             job = db.query(Job).filter_by(job_id="100").one()
             assert {"Python", "SQL", "LLM"} <= {s for (s,) in db.query(JobSkill.skill_name).filter_by(job_id=job.id)}
             assert db.query(JobSeniority).filter_by(job_id=job.id).one().prompt_version
-        assert _queued(pg_engine) == [body["job"]["id"]]
+        assert _job_messages(client) == [body["job"]["id"], body["job"]["id"]]   # a revisit rescores too: harmless upsert
 
     def test_an_agency_posting_is_blocked_before_classification(self, client, classifier, pg_engine):  # noqa: F811
         body = _capture(client, "101", company="MeeBoss").get_json()
         assert (body["status"], body["reason"]) == ("blocked", "agency")
-        assert classifier.calls == 0 and _queued(pg_engine) == []
+        assert classifier.calls == 0 and _job_messages(client) == []
 
     def test_a_repost_is_marked_duplicate_and_not_classified_again(self, client, classifier, pg_engine):  # noqa: F811
         first = _capture(client, "102").get_json()
         repost = _capture(client, "103").get_json()
         assert (repost["status"], repost["duplicate_of"]) == ("duplicate", first["job"]["id"])
-        assert classifier.calls == 1 and _queued(pg_engine) == [first["job"]["id"]]
+        assert classifier.calls == 1 and _job_messages(client) == [first["job"]["id"]]
 
     def test_a_failed_classification_still_saves_and_queues_the_job(self, client, classifier, pg_engine):  # noqa: F811
         classifier.fail = True
         body = _capture(client, "104").get_json()
         assert body["status"] == "saved" and body["seniority"] is None
-        assert _queued(pg_engine) == [body["job"]["id"]]
+        assert _job_messages(client) == [body["job"]["id"]]
 
     def test_a_capture_without_title_or_text_is_400(self, client):
         response = client.post("/api/v1/admin/captures", headers=client.extension,
@@ -155,20 +169,32 @@ class TestCollectionSupport:
 
 
 @needs_pg
-class TestRescoreWorker:
-    def test_the_worker_scores_new_captures_for_every_onboarded_user(self, client, classifier, pg_engine):  # noqa: F811
-        from cloud_api.rescore_worker import drain_rescore_queue
+class TestRescoreMessages:
+    def test_a_capture_scores_the_job_for_every_onboarded_user(self, client, pg_engine):  # noqa: F811
         from db.cloud_models import UserJobScore
 
         _onboard(client, A, "SKILLS\nPython, SQL, LLM\n", "entry")      # user a: confirmed resume + level
         client.get("/api/v1/me", headers={"Authorization": "Bearer dev:b@example.com"})   # user b: signed in only
         job_id = _capture(client, "108").get_json()["job"]["id"]
 
-        report = drain_rescore_queue(PG_URL)
-
-        assert (report.jobs, report.scores) == (1, 1)
-        assert _queued(pg_engine) == []
         with Session(pg_engine) as db:
             score = db.query(UserJobScore).filter_by(job_id=job_id).one()
-            assert (score.seniority_fit, score.skill_score) == (5, 5)
-        assert drain_rescore_queue(PG_URL).jobs == 0
+            assert (score.seniority_fit, score.skill_score, score.scoring_version) == (5, 5, "skill-seniority-1")
+
+    def test_a_request_that_fails_after_queuing_publishes_nothing(self, client, monkeypatch):  # noqa: F811
+        """The message is queued, then the response can't be built: the request
+        rolls back and nothing is published."""
+        from cloud_api import admin_data
+
+        original = admin_data.capture
+        monkeypatch.setattr(admin_data, "capture", lambda db, body, classify: {**original(db, body, classify), "bad": object()})
+        response = _capture(client, "109")
+        assert response.status_code == 500 and response.get_json()["request_id"]
+        assert client.published == []
+
+    def test_a_failed_publish_does_not_fail_the_capture(self, client, pg_engine, capsys):  # noqa: F811
+        client.application.config["RESCORE_PUBLISHER"] = RecordingPublisher([], fail=True)
+        response = _capture(client, "110")
+        assert response.status_code == 200
+        logs = capsys.readouterr().out
+        assert '"RescorePublishFailed"' in logs and '"event":"rescore_publish_failed"' in logs

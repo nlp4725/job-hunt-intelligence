@@ -189,7 +189,7 @@ class TestApiUnderRowLevelSecurity:
         owner = {"Authorization": "Bearer dev:owner@example.com"}
         created = client.post("/api/v1/admin/tokens", json={"label": "extension"}, headers=owner).get_json()
         with_token = {"Authorization": f"Bearer {created['token']}"}
-        assert client.post("/api/v1/admin/tokens", json={"label": "second"}, headers=with_token).status_code == 201
+        assert client.get("/api/v1/admin/agencies", headers=with_token).status_code == 200
 
 
 def test_cloud_api_reaches_per_user_tables_only_through_the_access_layer():

@@ -44,6 +44,9 @@ def onboarding_state(db, user: User) -> dict:
         "scores_confirmed": profile is not None and profile.seniority_scores is not None,
     }
     state["complete"] = all(state.values())
+    # False while the rescore Lambda hasn't yet scored this profile version: the app shows "scoring your board…"
+    state["board_scored"] = profile is not None and db.query(UserJobScore.id).filter(
+        UserJobScore.user_id == user.id, UserJobScore.profile_version == profile.version).first() is not None
     state["expertise"] = expertise_step(db, user)
     return state
 
@@ -102,7 +105,7 @@ def list_resumes(db, user: User) -> dict:
 
 def confirm_resume_skills(db, user: User, resume_id: int, skills: list[str]) -> dict:
     _own_resume(db, user, resume_id)
-    return resume_view(ingest.confirm_skills(db, user.id, resume_id, skills))
+    return resume_view(ingest.confirm_skills(db, user.id, resume_id, skills, rescore=False))   # the route queues the rescore
 
 
 def resume_download_link(db, user: User, resume_id: int, storage) -> str:
@@ -126,7 +129,7 @@ def get_profile(db, user: User) -> dict:
 
 def pick_level(db, user: User, level) -> dict:
     """Raises ValueError for an unknown level."""
-    return profile_view(set_seniority_target(db, user.id, str(level)))
+    return profile_view(set_seniority_target(db, user.id, str(level), rescore=False))   # the route queues the rescore
 
 
 def confirm_scores(db, user: User, scores) -> dict:
@@ -135,7 +138,7 @@ def confirm_scores(db, user: User, scores) -> dict:
         raise ValueError("scores must be an object of level -> score")
     if active_profile(db, user.id) is None:
         raise ValueError("pick a level first")
-    return profile_view(set_seniority_scores(db, user.id, scores))
+    return profile_view(set_seniority_scores(db, user.id, scores, rescore=False))
 
 
 # --- expertise profile (paid) ---------------------------------------------------

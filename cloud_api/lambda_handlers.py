@@ -5,7 +5,8 @@ They sign in to Postgres with IAM database authentication: the function's own
 AWS role signs a 15-minute token locally, so there is no password and no call
 to Secrets Manager (which would need internet or a paid endpoint).
 
-    rescore  every 5 minutes: score newly captured jobs for every user
+    rescore  SQS batches from jhi-rescore (score a captured job for every user, or
+             rescore one user's board), and hourly {"type": "reconcile"}
     admin    invoked by hand:  aws lambda invoke --function-name jhi-admin-task \\
                                  --payload '{"command": "status"}' out.json
 """
@@ -13,16 +14,15 @@ to Secrets Manager (which would need internet or a paid endpoint).
 import json
 import os
 import tempfile
-from dataclasses import asdict
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+from sqlalchemy.orm import Session
 
-from cloud_api.rescore_worker import RescoreReport, drain_rescore_queue
+from cloud_api.observability import log_event, metric
+from cloud_api.rescore import handle_message, run_reconcile
 from cloud_api.settings import required
-
-SAFETY_MARGIN_MS = 60_000     # stop starting new batches a minute before the timeout
 
 
 def iam_database_url(user_var: str) -> str:
@@ -39,17 +39,32 @@ def iam_database_url(user_var: str) -> str:
 
 
 def rescore(event, context) -> dict:
-    """Drain rescore_queue in batches until it is empty or time is nearly up."""
-    url = iam_database_url("JHI_RESCORE_DB_USER")
-    total = RescoreReport()
-    while True:
-        report = drain_rescore_queue(url)
-        total.jobs += report.jobs
-        total.scores += report.scores
-        if report.jobs == 0 or (context is not None and context.get_remaining_time_in_millis() < SAFETY_MARGIN_MS):
-            break
-    print(json.dumps({"rescore": asdict(total)}), flush=True)
-    return asdict(total)
+    """SQS batch: each message in its own transaction; failed ones are reported
+    back so only they are retried (and moved to the dead-letter queue after 5
+    tries). Or {"type": "reconcile"} from the hourly schedule."""
+    engine = create_engine(iam_database_url("JHI_RESCORE_DB_USER"), connect_args={"options": "-c timezone=UTC"})
+    try:
+        if (event or {}).get("type") == "reconcile":
+            with Session(engine) as db:
+                report = run_reconcile(db)
+            return {"stale_users": report.stale_users, "missing_scores": report.missing_scores}
+
+        failures = []
+        for record in (event or {}).get("Records", []):
+            try:
+                message = json.loads(record["body"])
+                with Session(engine) as db:
+                    handle_message(db, message)
+                    db.commit()
+            except Exception as exc:
+                failures.append({"itemIdentifier": record.get("messageId")})
+                metric("RescoreMessageFailed")
+                log_event("rescore_message_failed", level="error", message_id=record.get("messageId"),
+                          receive_count=record.get("attributes", {}).get("ApproximateReceiveCount"),
+                          error_type=type(exc).__name__, error=str(exc)[:300])
+        return {"batchItemFailures": failures}
+    finally:
+        engine.dispose()
 
 
 # --- admin tasks -------------------------------------------------------------------
@@ -63,7 +78,6 @@ def _status(url: str) -> dict:
                 "jobs_last_24h": conn.execute(text(
                     "SELECT count(*) FROM jobs WHERE first_seen_at > (now() AT TIME ZONE 'utc') - interval '1 day'")).scalar(),
                 "jobs_with_level": conn.execute(text("SELECT count(*) FROM job_seniority")).scalar(),
-                "rescore_queue": conn.execute(text("SELECT count(*) FROM rescore_queue")).scalar(),
             }
     finally:
         engine.dispose()

@@ -1,16 +1,17 @@
 """Admin-route logic on shared tables: captures, cached lookups, the agency
 list, collection pages, expiry and member plans (productization plan §2, §6).
 
-Runs as jhi_admin_api, which has no access to per-user tables. A capture only
-queues its job in rescore_queue; cloud_api/rescore_worker.py scores it for users.
+Runs as jhi_admin_api, which has no access to per-user tables. A capture never
+scores users itself: the route publishes a rescore message after the commit
+(cloud_api/rescore.py) and the jhi-rescore Lambda scores it for every user.
 """
 
 from sqlalchemy import text
-from sqlalchemy.dialects.postgresql import insert
 
 from analysis.title_filter import classify_track
 from db.classify_job_seniority import PROMPT_VERSION
-from db.cloud_models import PLANS, JobSeniority, RescoreQueue
+from cloud_api.observability import Timer, log_event, metric
+from db.cloud_models import PLANS, JobSeniority
 from db.job_writer import save_new_job
 from db.models import CollectionPage, ExtractionEvent, Job
 from judge.agency_blocklist import AGENCY_COMPANY_NAME_SUBSTRINGS, is_agency_job
@@ -62,8 +63,12 @@ def capture(db, body: dict, classify) -> dict:
     seniority = _seniority(db, job)
     if seniority is None:
         try:
-            result = classify(format_posting(job))
-        except Exception:   # the capture is kept; the backfill classifies it later
+            with Timer() as timer:
+                result = classify(format_posting(job))
+            metric("SeniorityClassifyMs", timer.ms, unit="Milliseconds")
+        except Exception as exc:   # the capture is kept; the backfill classifies it later
+            metric("SeniorityClassifyFailed")
+            log_event("seniority_classify_failed", level="warning", job_id=job.id, error_type=type(exc).__name__)
             result = None
         if result is not None:
             seniority = JobSeniority(job_id=job.id, level=result.level, is_contract=result.is_contract,
@@ -71,7 +76,6 @@ def capture(db, body: dict, classify) -> dict:
                                      confidence=result.confidence, evidence=result.evidence, note=result.note,
                                      prompt_version=PROMPT_VERSION)
             db.add(seniority)
-    db.execute(insert(RescoreQueue).values(job_id=job.id).on_conflict_do_nothing())
     db.flush()
     return {"status": "scored" if seniority else "saved", "job": job_summary(job), "seniority": seniority_view(seniority)}
 

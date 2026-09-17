@@ -40,7 +40,7 @@ def add_resume(db, user: User, filename: str, data: bytes, store, cipher: Resume
     return resume
 
 
-def confirm_skills(db, user_id: int, resume_id: int, skills: list[str]) -> UserResume:
+def confirm_skills(db, user_id: int, resume_id: int, skills: list[str], rescore: bool = True) -> UserResume:
     """Save the user's skill set for a resume and make that resume active.
 
     The first confirmation fills in the version in place; editing an already
@@ -75,7 +75,8 @@ def confirm_skills(db, user_id: int, resume_id: int, skills: list[str]) -> UserR
             target_roles=profile.target_roles, note=profile.note, years_experience=profile.years_experience,
         ))
         db.flush()
-        score_user(db, user_id)
+        if rescore:   # the cloud API queues it instead
+            score_user(db, user_id)
     return resume
 
 

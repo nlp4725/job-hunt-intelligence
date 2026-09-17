@@ -1,7 +1,7 @@
 # One image: the API task (with a migrate container that must succeed first)
 # and the scheduled expertise worker, which calls DeepSeek and so needs the
-# internet. Database-only work runs on Lambda (lambda.tf). No SQS: the queue is
-# the rescore_queue table.
+# internet. Database-only work runs on Lambda (lambda.tf); rescoring is queued
+# through SQS (sqs.tf).
 
 resource "aws_ecs_cluster" "main" {
   name = "jhi"
@@ -147,6 +147,7 @@ resource "aws_ecs_task_definition" "api" {
         { name = "RESUME_BUCKET", value = aws_s3_bucket.resumes.bucket },
         { name = "RESUME_KMS_KEY_ID", value = aws_kms_key.resumes.arn },
         { name = "CORS_ORIGINS", value = "https://${local.app_host}" },
+        { name = "RESCORE_QUEUE_URL", value = aws_sqs_queue.rescore.url },
       ])
       secrets = concat(local.login_secrets, local.llm_secrets,
       [{ name = "JHI_RESUME_KEY", valueFrom = aws_secretsmanager_secret.resume_key.arn }])
