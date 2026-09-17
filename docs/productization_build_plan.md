@@ -33,53 +33,523 @@ Status: plan, revised 2026-09-15 (second revision: user side restored from `mult
 
 ---
 
-## 1. Target system design
+## 1. System design
+
+This section is the **high-level design (HLD)**: the big components, where each request goes, where data lives, what breaks first as usage grows, and how we fix it. The **low-level design (LLD)** of individual features (how a score is computed, how the score-table screen locks, which function handles a capture) lives in §3–§7 and in the code.
+
+We build the design the way it should be reasoned about:
+
+1. What the product must do (functional requirements).
+2. How well it must do it (non-functional requirements).
+3. The five sizing questions: users, read vs write, what can never be lost, latency, cost.
+4. Every component, each justified by one of those answers, with its trade-offs.
+5. What we deliberately left out, and the signal that would make us add it.
+
+Status markers used below: **Built** = code and Terraform exist (`terraform/`, `cloud_api/`); **Proposed** = recommended, not built yet; **Later** = only when the stated trigger happens.
+
+### 1.1 Functional requirements (what the product does)
+
+| # | Who | Requirement | Where |
+|---|---|---|---|
+| F1 | Nasi | Collect jobs from LinkedIn with the skill + Chrome extension; every capture reaches local **and** cloud | §2 |
+| F2 | Nasi | Agencies and reposts are filtered before any scoring; each job's seniority level is classified once | §2, §3.3 |
+| F3 | Anyone | Sign up and sign in with email | §5.1 |
+| F4 | User | Upload a resume (PDF/DOCX/TXT), confirm the extracted skills | §3.1 |
+| F5 | User | Pick a seniority level, then confirm or adjust the 0–5 score table | §3.3 |
+| F6 | User | See the shared job board with their **own** Skill Match, Seniority Fit and total | §3.3, §6 |
+| F7 | User | Track jobs (applied, not interested, notes) and application stages | §6 |
+| F8 | Paid member | Expertise profile (LLM draft → edit → confirm) and per-job Expertise Match | §3.5 |
+| F9 | User | Delete their account and every piece of their data | §5.3 |
+| F10 | Nasi (admin) | Tokens for the extension, member plans, health | §6 |
+
+### 1.2 Non-functional requirements (how well)
+
+Nobody sees these in a demo, but every user feels them. Every component in §1.5 exists to meet one of these rows.
+
+| # | Quality | Target at launch | Why this number |
+|---|---|---|---|
+| N1 | **Privacy / isolation** | A user can never read or change another user's resume, scores or tracking, even with a bug in a route | Resumes are PII; one leak ends the product |
+| N2 | **Durability** | Resumes, profiles, tracking and application history: **never lost**, restorable to within ~5 minutes. Jobs: never lost (re-collecting costs Nasi's time). Scores: may be lost (recomputed in code) | See §1.3 Q3 |
+| N3 | **Latency** | Board page p95 < **500 ms** at the API; sign-in and navigation feel instant; resume processing and expertise drafts may take seconds to ~2 min with a spinner | See §1.3 Q4 |
+| N4 | **Availability** | **99.5 %** (≈ 3.6 h down a month) at launch; a database failover of 1–2 min is acceptable | Personal-scale product, no SLA; 99.9 %+ doubles the database bill |
+| N5 | **Capture reliability** | No capture lost when the cloud is down; local collection never slowed by the cloud | The extension's offline queue (§2) |
+| N6 | **Cost** | Under **~$100/month** of AWS at launch, plus DeepSeek | Nasi pays; no revenue yet |
+| N7 | **Operability** | One person can run it: no servers to patch, deploys from `git push`, alarms by email | No ops team |
+| N8 | **Security** | HTTPS everywhere, least-privilege roles, no secrets in code or state, database not reachable from the internet | Public repository, PII |
+
+These requirements fight each other, and the design picks sides deliberately: we accept a 1–2 minute database failover (N4) to stay inside the cost target (N6), and we accept slower background scoring to keep per-user LLM cost at zero on the free tier.
+
+### 1.3 The five sizing questions
+
+**Q1. How many users, how fast growing?**
+Launch with Nasi plus a handful of invited users; plan for **1,000 registered users** within a year and design so **10,000** needs configuration changes, not a rewrite. Collection is one person: ~**450 new jobs on a collection day**, ~2,500/week (measured Sep 3–15, 2026). The corpus today is **15,231 jobs** (119 MB in Postgres, average posting 5.5 KB of text, ~8 skill rows per job).
+
+**Q2. Read-heavy or write-heavy?**
+Two very different paths:
+
+- **User path is read-heavy.** A user opens the board and filters it many times; they write rarely (a tracking click, a resume every few months). Estimate at 1,000 daily users × 20 board loads ≈ 20,000 reads/day ≈ 0.25 requests/s on average, ~3 requests/s at peak. Small for Postgres.
+- **Scoring path is write-heavy and fans out.** Every new job is scored for every user: 450 jobs × 1,000 users = **450,000 score rows written per collection day**, all in the background. Every new user or resume change rewrites that user's whole board (~15,000 rows, 14 s measured).
+
+So the design effort goes into (a) keeping board reads fast with the right index, and (b) keeping the fan-out writes off the request path and bounded in size (§1.5.9).
+
+**Q3. What can never be lost, and what can?**
+
+| Data | Can we lose it? | Consequence for the design |
+|---|---|---|
+| Resume files and text | Never | S3 (11 nines durability) + KMS; encrypted text in Postgres with backups |
+| Profiles, score tables, tracking, application history | Never | Postgres with automated backups + point-in-time restore |
+| Jobs, companies, skills, seniority levels | Must not (expensive to re-collect and re-classify) | Same backups; the local SQLite stays a second copy |
+| Per-user scores | Yes | Recomputed in code from stored data; no special protection |
+| Captures waiting in the extension queue | Must not | Browser storage until the cloud acknowledges |
+| Cached anything | Yes | By definition |
+
+**Q4. How much latency can we afford?**
+The board must feel instant (N3). Uploading a resume "feels like work", so users accept a few seconds of processing. An expertise draft is an explicit "draft from my resume" action and may take ~2 minutes with a spinner. Scoring after a capture is invisible to users and may take minutes.
+
+**Q5. What does it cost?**
+Every box below has a monthly price in §1.8. The rule: the right design meets Q1–Q4 for the least money, so anything not required by an answer above is in §1.7 (left out, with a trigger to add it).
+
+### 1.4 The whole picture
 
 ```mermaid
-flowchart LR
-    subgraph Curator["Nasi's machine (the only collector)"]
-        Claude["Claude in Chrome<br/>linkedin-manual-screen skill"]
-        Ext["Chrome extension<br/>captures each clicked job"]
-        Claude -- "navigates & clicks" --> Ext
+flowchart TB
+    subgraph Nasi["Nasi's Mac (only collector)"]
+        Skill["Claude in Chrome<br/>linkedin-manual-screen skill"]
+        Ext["Chrome extension<br/>offline queue"]
+        Local["Local Flask + SQLite<br/>(unchanged)"]
+        Skill --> Ext --> Local
     end
 
-    subgraph Users["Any user's browser"]
-        App["React app<br/>landing · signup + onboarding · board · my tracking · settings"]
+    subgraph Browser["Any user's browser"]
+        Web["React app"]
     end
 
-    IdP["Identity provider<br/>(email + Google login)"]
+    DNS["Route 53<br/>app.domain · api.domain"]
+    Cognito["Cognito<br/>sign-up · sign-in · JWT"]
+    CF["CloudFront (CDN)<br/>TLS, caches static files"]
+    SiteS3[("S3: web app build")]
 
-    subgraph Cloud["Cloud"]
-        subgraph API["Flask API"]
-            Admin["Admin routes (admin token)<br/>POST /captures · GET /agencies<br/>collection pages · extraction events · health"]
-            Pub["Public routes<br/>GET /public/stats"]
-            UserR["User routes (JWT)<br/>GET /jobs · /me/resume · /me/profile<br/>/me/tracking/:job · /me/applications"]
+    subgraph VPC["VPC · us-east-1 · 2 Availability Zones"]
+        subgraph Public["Public subnets (no inbound except the ALB)"]
+            ALB["Application Load Balancer<br/>HTTPS · health checks"]
+            API["API on ECS Fargate<br/>Flask + gunicorn · stateless<br/>1..N tasks"]
+            ExpW["Expertise worker<br/>scheduled Fargate task"]
         end
-        Enrich["Per-job enrichment (once per job)<br/>normalize + job_skills, dedup, agency<br/>seniority level (LLM)"]
-        Screen["Per-user scoring (no LLM)<br/>skill match from stored skill sets<br/>seniority fit = job level × user target"]
-        S3[("Object storage<br/>resume files, encrypted")]
-        PG[("Postgres<br/>shared: jobs · companies · job_skills · job_seniority<br/>per-user (RLS): users · resumes · user_profiles<br/>screening_results · job_tracking · application_events")]
+        subgraph Isolated["Isolated subnets (no internet route)"]
+            RDS[("RDS Postgres 18<br/>primary · backups · PITR")]
+            RescoreL["Rescore worker (Proposed: Lambda)<br/>every 5 min"]
+            AdminL["Admin tasks (Proposed: Lambda)<br/>data copy · seed · checks"]
+        end
     end
 
-    LLM["DeepSeek V4 Pro"]
+    ResS3[("S3: resumes<br/>KMS · private")]
+    SM["Secrets Manager"]
+    EB["EventBridge schedules"]
+    CW["CloudWatch logs · alarms<br/>SNS email · Budgets"]
+    DeepSeek["DeepSeek API<br/>(outside AWS)"]
 
-    Ext -- "HTTPS + admin token<br/>one job at a time, as captured" --> Admin
-    Claude -- "blocklist lookup" --> Admin
-    Admin --> Enrich --> PG
-    Enrich --> LLM
-    Enrich -- "new job" --> Screen
-    Screen --> PG
-    App -- "login" --> IdP
-    IdP -- "JWT" --> App
-    App -- "Bearer JWT" --> UserR
-    App -- "presigned upload" --> S3
-    App --> Pub
-    UserR --> PG
-    UserR -- "new resume / profile → rescore" --> Screen
-    Pub --> PG
+    Ext -- "HTTPS + admin token" --> DNS
+    Web --> DNS
+    DNS --> CF --> SiteS3
+    DNS --> ALB --> API
+    Web -- "sign in" --> Cognito
+    Web -- "Bearer JWT" --> ALB
+    Web -- "presigned POST/GET" --> ResS3
+    API --> RDS
+    API --> ResS3
+    API -- "seniority level" --> DeepSeek
+    API -. "verify JWT keys" .-> Cognito
+    EB --> RescoreL --> RDS
+    EB --> ExpW --> RDS
+    ExpW --> DeepSeek
+    AdminL --> RDS
+    API --> SM
+    API --> CW
 ```
 
-**Rules the design is built around**
+**One request, end to end (a user opening the board):**
+
+1. The browser asks **DNS** (Route 53) for `app.<domain>` → CloudFront's address; CloudFront returns the React app from its edge cache (from S3 on a miss).
+2. The app has a Cognito **JWT** from sign-in. It calls `GET https://api.<domain>/api/v1/jobs` with `Authorization: Bearer <jwt>`.
+3. DNS resolves `api.<domain>` to the **load balancer**, which terminates HTTPS and forwards to a **healthy** API task.
+4. The API **verifies the JWT** signature against Cognito's cached public keys (no call to Cognito per request), finds or creates the user row, and opens a database transaction that sets `app.user_id` for **row-level security**.
+5. One indexed query joins shared jobs with this user's scores and tracking; Postgres returns 100 rows sorted by the user's total score.
+6. The response goes back through the load balancer. The API task keeps nothing about the user in memory.
+
+### 1.5 Components: why each exists, and what it costs us
+
+Each component follows the same template: **what it is · why we need it (which requirement) · how we use it · trade-offs · alternatives we rejected**.
+
+#### 1.5.1 Architecture style: a modular monolith plus workers — Built
+
+**What.** One Python codebase and one Docker image. The same image runs as the API (`gunicorn cloud_api.wsgi:app`), the rescore worker, the expertise worker and the migration step; only the command differs.
+
+**Why.** One developer (N7). A monolith has one place to deploy, test and debug, and its modules call each other as functions, not over a network that can fail. The pieces that genuinely behave differently (slow LLM work, fan-out scoring) are already split out as **workers**, which is the "monolith with a few satellites" most real companies run.
+
+**Inside the monolith, boundaries still matter:** `cloud_api/user_data.py` is the only module allowed to touch per-user tables (an AST test enforces it), admin routes and user routes use different database roles, and scoring lives in `analysis/`, independent of Flask.
+
+**Trade-offs.** One bad deploy can break every route at once (mitigated by tests in CI, health checks and automatic rollback, §1.5.4). All routes scale together: if the board needs 10 tasks, admin routes get 10 too (cheap at our size).
+
+**Rejected: microservices** (separate upload, board, scoring, auth services). They pay off with independent scaling needs and many teams. We have neither; we would buy network calls, distributed debugging and several deploy pipelines for no user-visible gain.
+
+**Trigger to split something out:** one part needs a different scaling shape or runtime (e.g. resume parsing needing much more memory, or a public read API with 100× the traffic of the rest).
+
+#### 1.5.2 DNS and certificates: Route 53 + ACM — Built
+
+**What.** Route 53 hosts the domain; `api.<domain>` points at the load balancer and `app.<domain>` at CloudFront (alias records, free queries). AWS Certificate Manager issues and auto-renews the TLS certificates.
+
+**Why.** Users type names, not IP addresses, and the load balancer's addresses change; an alias record follows them automatically. HTTPS (N8) needs a certificate for a name we own: resumes and sign-in tokens must never travel as readable text.
+
+**Trade-offs.** ~$0.50/month per hosted zone plus the domain (~$14/year). DNS changes can take minutes to propagate. Certificates for CloudFront must be issued in us-east-1 (we run there anyway).
+
+**Rejected:** buying the domain elsewhere and managing DNS by hand (works; Terraform supports it with manual records, but every change becomes a manual step).
+
+#### 1.5.3 Web app delivery: S3 + CloudFront (CDN) — Built
+
+**What.** The React build (HTML, JS, CSS, images) sits in a **private** S3 bucket. CloudFront serves it from edge locations near the user, over HTTPS, with origin access control so the bucket is never public. Unknown paths return `index.html` (single-page app routing).
+
+**Why.** The app's files are identical for everyone and change only on deploy: the perfect thing to cache at the edge (N3). CloudFront also absorbs traffic spikes for free-tier-level cost and adds security headers.
+
+**How it stays fresh.** Every deploy uploads the new build and invalidates the CloudFront cache; Vite puts a content hash in asset file names, so browsers never mix old and new files.
+
+**Trade-offs.** Invalidations take a minute or two to reach every edge. Caching is only for the **static app**: API responses and resumes are never cached at the CDN (they're per user and private).
+
+**Rejected:** serving the React files from the API containers (wastes API capacity on static files, slower for distant users), S3 static website hosting without CloudFront (HTTP only, public bucket).
+
+#### 1.5.4 Load balancer: Application Load Balancer — Built
+
+**What.** An internet-facing ALB across two Availability Zones. It terminates HTTPS, redirects HTTP → HTTPS, and forwards requests to API tasks registered in a target group.
+
+**Why.**
+- **Horizontal scaling needs a traffic officer.** With 2+ API tasks, something must decide which task answers each request.
+- **Health checks** (N4). Every 30 s the ALB calls `GET /healthz` on each task; a task that stops answering stops receiving traffic within seconds, so users don't see its errors. During a deploy, the new task only receives traffic once healthy; if it never becomes healthy, ECS rolls back.
+- **One stable HTTPS endpoint** while tasks come and go.
+- **Security.** The API tasks accept connections **only** from the ALB's security group; the ALB drops malformed headers.
+
+**Settings that matter.**
+- Idle timeout **180 s**, because an expertise draft can take ~100 s.
+- Routing algorithm: round robin today. **Least outstanding requests** is a one-line change once we run several tasks and long requests (drafts) start to pile up on one of them.
+- Deregistration delay 30 s so in-flight requests finish during deploys.
+
+**Trade-offs.** ~$16–20/month even when idle, the single largest fixed cost. The ALB itself is managed and multi-AZ, so it is not our single point of failure.
+
+**Rejected:**
+- **API Gateway + Lambda for the API.** Cheaper when idle, but its ~30 s request limit breaks expertise drafts, and a Lambda in the VPC needs a NAT gateway (~$32/month) to reach DeepSeek and Cognito (§1.6).
+- **App Runner.** Simplest, but its VPC egress also requires NAT to reach the internet.
+- **NGINX on EC2.** A server to patch (N7).
+
+#### 1.5.5 API compute: ECS on Fargate, stateless — Built
+
+**What.** The Flask app in gunicorn (2 processes × 4 threads) in a Fargate task (0.5 vCPU, 1 GB, arm64/Graviton). ECS keeps the desired number of tasks running, replaces crashed ones, and does rolling deploys with a circuit breaker that rolls back automatically.
+
+**Why Fargate.**
+- No servers to patch (N7), unlike EC2.
+- **No request time limit** (expertise drafts, resume processing), unlike Lambda behind API Gateway.
+- **Long-lived database connections** (a small pool per task) instead of a connection per invocation, so no RDS Proxy needed.
+- Runs in public subnets with a public IP but **no inbound rules except from the ALB**, which lets tasks call DeepSeek and Cognito **without a NAT gateway**. The price is ~$3.65/month per public IPv4 address.
+
+**Stateless by design** (the rule that makes horizontal scaling work):
+
+| State | Where it lives | Not on the task because… |
+|---|---|---|
+| Who is signed in | The **JWT** the browser sends on every request, signed by Cognito | Any task can verify it with Cognito's public keys; no session store needed |
+| User data, scores, tracking | Postgres | Survives task replacement |
+| Resume files | S3 | Same |
+| Secrets | Secrets Manager, injected at start | Never in the image |
+| Cognito public keys | In-memory cache, refreshed hourly | Safe to lose: re-fetched on demand |
+
+Ask of any data: *"if this task vanished right now, would a user lose something?"* Today the answer is no, so tasks are disposable: ECS can kill, replace or add one at any time.
+
+**Scaling.**
+- **Vertical first:** 0.5 → 1 → 2 vCPU is a one-line Terraform change and no code change.
+- **Horizontal next:** raise `api_desired_count`, or add ECS target-tracking autoscaling on CPU (~60 %) and ALB requests per target.
+- One task comfortably covers the launch estimate (~3 requests/s at peak).
+
+**Trade-offs.**
+- One always-on task costs ~$15/month idle.
+- Starting a new task takes ~30–60 s, so autoscaling reacts in minutes, not milliseconds.
+- One task means a crash is a brief outage until ECS replaces it (~1 min). Running two tasks across AZs (+$15) removes that; do it once real users depend on the board daily.
+
+#### 1.5.6 Authentication: Amazon Cognito — Built
+
+**What.** A Cognito user pool with email sign-up and verification, a hosted sign-in page, and an app client using the authorization-code flow. The React app receives an **ID token (JWT)**; the API verifies its signature, issuer, audience and expiry, and reads `sub` (the only identity input) and the verified email.
+
+**Why.**
+- Password storage, email verification, account recovery and brute-force protection are hard to build safely (N8).
+- Cognito is free up to its monthly-active-user free tier.
+- JWTs keep the API **stateless** (§1.5.5).
+- It plugs into AWS without another vendor.
+
+**Trade-offs.**
+- The hosted UI is plain; a custom UI with the Amplify library takes more work.
+- Cognito's built-in email sender is limited to about **50 emails/day**. Before open sign-up at scale, switch it to **SES** (few cents per thousand emails, needs domain verification).
+- Moving users out of Cognito later is painful: password hashes can't be exported, so users would reset passwords.
+
+**Rejected:**
+- Rolling our own auth (risk).
+- Auth0 / Clerk (nicer UX, another bill and vendor).
+
+#### 1.5.7 Database: Amazon RDS for PostgreSQL — Built
+
+**Why SQL (derived from the access patterns, not from habit).** Our data is **structured** (every job, score and tracking row has the same fields) and **relational**: the most common query joins jobs with the caller's scores and tracking, and filters on company, level and status. We need **transactions** (a capture writes the job, its skills, its seniority level and its queue entry together or not at all) and **constraints** (one score row per user and job; valid seniority levels). Postgres also gives us **row-level security**, which is the strongest isolation layer we have (N1).
+
+**Access patterns and the index that answers each:**
+
+| Access pattern | Frequency | Query shape | Index |
+|---|---|---|---|
+| My board, best matches first | Very high | `user_job_scores WHERE user_id = ? ORDER BY total_score DESC` joined to jobs, tracking | `ix_user_job_scores_user_total (user_id, total_score)` |
+| My score for one job / upsert score | High (worker) | `(user_id, job_id)` | `uq_user_job_scores_user_job` |
+| Have we captured this LinkedIn job? | Every capture | `jobs.job_id = ?` | `ix_jobs_job_id` |
+| Skills of a job | Every scoring | `job_skills.job_id = ?` | `uq_job_skill (job_id, skill_name)` |
+| My tracking / applications | Medium | `(user_id, job_id)`, `user_id` | `uq_job_tracking_user_job`, `ix_application_events_user_job` |
+| Sign-in | Every request | `users.idp_subject = ?` | unique constraint |
+| Next jobs to rescore | Every 5 min | `rescore_queue ORDER BY queued_at LIMIT 200 FOR UPDATE SKIP LOCKED` | primary key (small table) |
+
+Rule we follow: **don't guess indexes.** These exist because the queries exist. When CloudWatch/Performance Insights shows a slow query, add the index that query needs, and remember each index slows every write to that table (the score table takes ~450,000 writes per collection day at 1,000 users).
+
+**How we run it.**
+- `db.t4g.micro`, 20 GB gp3 storage that grows automatically to 100 GB.
+- Encrypted at rest; TLS forced (`rds.force_ssl=1`).
+- In isolated subnets with no internet route; the security group accepts only the API and worker tasks.
+- The owner password is managed by RDS in Secrets Manager.
+
+**Isolation layers inside the database (N1):**
+1. **Access layer:** only `user_data.py` touches per-user tables.
+2. **Row-level security:** every per-user query is filtered by the transaction's `app.user_id`, so a forgotten `WHERE` returns nothing instead of someone else's data.
+3. **Separate database roles:**
+   - `jhi_app` (user requests) can read shared job tables but never write them.
+   - `jhi_admin_api` (captures) can write jobs but can't read any per-user table.
+   - The owner role runs only migrations and workers.
+
+**Durability (N2) — replicas are not backups.**
+- **Automated backups** (7 days) with **point-in-time restore** to within ~5 minutes. This is what saves us from a bad `DELETE`, which a replica would copy within milliseconds.
+- A final snapshot is taken if the instance is ever deleted, and deletion protection is on.
+- **Proposed:** a weekly AWS Backup copy to a second region or account (~$1–2/month). This protects against an account-level mistake.
+
+**Availability (N4).**
+- Single-AZ at launch. If the instance or its AZ fails, RDS recovers it, but that can take minutes, and restoring from backup takes longer.
+- **Later — Multi-AZ** (trigger: users rely on it daily, or we promise uptime). RDS keeps a synchronous standby in another AZ and **fails over automatically in ~1–2 minutes**, with no data loss.
+  - Cost: doubles the instance price (~+$14/month at micro size).
+  - The standby does **not** serve reads.
+
+**Trade-offs of this choice.**
+- A single primary is a single point of failure for writes until Multi-AZ.
+- `t4g` instances run on CPU credits: sustained heavy scoring can exhaust them, and the `db-cpu` alarm warns us. The fix is the next instance size (vertical scaling first).
+- Rejected: **Aurora Serverless v2**, which scales automatically and fails over faster but has a higher minimum cost (~$45+/month) than a micro instance.
+- Rejected: **DynamoDB**. It is excellent at single-key lookups at enormous scale, but our core queries are joins and filters across jobs, scores and tracking. Every new board filter would need a new pre-built index, and we would lose row-level security and transactions across tables.
+
+#### 1.5.8 Object storage: S3 for resumes — Built
+
+**What.** One private bucket, keys `users/<user_id>/…`, encrypted with a customer-managed **KMS** key, TLS-only bucket policy, public access blocked.
+
+**How a resume moves.**
+1. The API issues a **presigned POST** (5 minutes, max 5 MB, KMS encryption required by the upload policy).
+2. The browser uploads straight to S3; the file never passes through the API.
+3. The API then reads it, extracts text, redacts PII, and stores the encrypted text and skills in Postgres.
+4. Downloads use a **presigned GET** that expires after 5 minutes.
+5. Deleting an account deletes the user's prefix.
+
+**Why.**
+- Files don't belong in the database: S3 is built for durable large objects, costs ~$0.023/GB-month, and replicates across AZs automatically (N2).
+- Presigned URLs keep uploads off our servers (N3, N6) and are the industry-standard way to give a browser temporary access to one private object.
+- KMS adds an audit trail and key-level control on top of S3's default encryption.
+
+**Trade-offs.**
+- A presigned link works for anyone who has it until it expires (5 minutes, single object).
+- Account admins can still read files: KMS protects against outsiders, not against the account's own administrators. The CI deploy role is explicitly **denied** access to resume files.
+- Versioning is off on purpose, so a deleted resume is really gone (privacy over undo).
+
+**Rejected:**
+- Storing files in Postgres (bloats backups, slows the database).
+- Serving resumes through CloudFront (a CDN caches copies at the edge; private per-user documents should not be cached).
+
+#### 1.5.9 Background work: queue table + scheduled workers — Built (rescore Lambda Proposed)
+
+**The problem.** A capture must answer the extension quickly, but it creates work for every user (§1.3 Q2). Doing that work inside the request would make captures slower as users grow and would fail the capture if scoring failed.
+
+**The design.**
+1. The capture route saves the job and inserts its id into **`rescore_queue`** in the **same transaction** as the job itself.
+2. A worker runs every 5 minutes. It claims up to 200 queued jobs with `FOR UPDATE SKIP LOCKED` (two workers never take the same job), scores them for every user in code, and deletes them from the queue in the same transaction.
+3. The expertise worker runs every 30 minutes and scores at most 50 jobs per paid member per run, best matches first.
+
+**Why a Postgres table instead of SQS (for now).** The queue entry and the job commit **atomically**: there is no moment where the job exists but the "score it" message was lost, or the message exists for a job that rolled back. With SQS we would need a second write after commit (and a retry path when it fails), or an outbox table anyway. At ~450 messages a day, Postgres handles this trivially.
+
+**Trade-offs.**
+- Polling every 5 minutes means a new job can take up to ~5 minutes to show up with scores (acceptable per Q4).
+- A queue table doesn't give dead-letter queues or per-message retries for free. A job that fails scoring stays queued and is retried next run; alarm if the queue keeps growing.
+
+**Trigger for SQS (Later):** several independent consumers of the same event (e.g. notifications + scoring + analytics), or event volume where polling becomes wasteful.
+
+**Proposed: rescore worker on Lambda.**
+- The rescore worker needs only the database (no internet), runs for seconds every 5 minutes, and suffers Fargate's 30–60 s cold start on every run. A **Lambda inside the VPC** fits exactly.
+- It connects with **IAM database authentication** (a short-lived token signed by its role), so it needs neither Secrets Manager network access nor a NAT gateway.
+- The expertise worker stays on Fargate because it must call DeepSeek on the internet.
+
+**Scaling the fan-out (the part that will actually grow).**
+- `user_job_scores` grows as **users × jobs**. At 1,000 users and ~180,000 jobs a year, that is ~180 M rows (~90 GB with the stored matched/missing skill lists), which is far larger than everything else combined.
+- **Proposed** plan, in order of cost:
+  1. Score only **active** jobs (not expired, seen in the last ~60 days): ~27 M rows, ~13 GB at 1,000 users.
+  2. Store only the numbers per row; compute matched/missing skill lists **on demand** for the one job a user opens.
+  3. **Later:** Postgres **partitioning** of `user_job_scores` by `user_id` hash, so vacuuming and index maintenance stay per partition.
+  4. Only after all of that: sharding (§1.7).
+- **Proposed:** move a user's **full-board rescore** (onboarding, resume or level change: ~14 s) off the request into the same queue, and show "scoring your board…" in the app. Today it runs inside the request, which is acceptable for a handful of users but blocks one gunicorn thread per rescore.
+
+#### 1.5.10 Scheduling: EventBridge — Built
+
+**What.** EventBridge rules (`rate(5 minutes)`, `rate(30 minutes)`) start the worker tasks.
+
+**Why.** Managed cron with IAM permissions and no always-on scheduler process (N7).
+
+**Trade-offs.** At-least-once delivery: a run may occasionally start twice, which is why workers claim rows with `SKIP LOCKED` and upserts are idempotent. **Proposed:** EventBridge **Scheduler** (the newer service) for time-zone-aware schedules if we need them.
+
+#### 1.5.11 LLM calls: DeepSeek, outside AWS — Built
+
+**Where LLM calls happen and who pays:**
+
+| Call | When | Volume | Path |
+|---|---|---|---|
+| Seniority level | Once per new job, during capture | ~450/collection day | Capture request (the extension doesn't wait for it) |
+| Expertise draft (paid) | Member clicks "draft" | ≤ 3/member/day | API request, up to ~100 s |
+| Expertise match (paid) | Worker | ≤ 50/member/run | Background |
+
+**Why these boundaries.**
+- **Free-tier users never trigger an LLM call** (rule 5 below), so cost scales with collection, not with users.
+- The paid calls are capped per member.
+- A failed seniority call never fails the capture: the job is saved and classified later.
+
+**Trade-offs.**
+- A third-party dependency outside AWS: an outage means new jobs arrive without a level (scored "unknown" until reclassified).
+- Spend limits must be set in DeepSeek's console, because AWS Budgets can't see that bill.
+- **Later:** Amazon Bedrock would keep calls and billing inside AWS, but needs a re-evaluation against the tuned gold sets before switching.
+
+#### 1.5.12 Secrets: Secrets Manager + IAM roles — Built
+
+**Why.**
+- The repository is public (N8).
+- Nothing secret may live in code, images, Terraform state or environment files.
+- ECS injects secrets into containers at start.
+- Generated passwords are written with Terraform's **write-only** attributes, so they never appear in state or plans.
+
+**Trade-offs.**
+- ~$0.40/secret/month (5 secrets).
+- Rotating the API logins' passwords is manual today. RDS rotates only the owner password it manages.
+
+**Rejected:** SSM Parameter Store SecureString. It's cheaper (free standard tier) and would work, but it lacks the RDS-managed-secret integration.
+
+#### 1.5.13 Networking: VPC without NAT — Built
+
+**Layout.**
+- Two public subnets (ALB, API, expertise worker) and two isolated subnets (RDS, proposed Lambdas), across two Availability Zones.
+- A free S3 **gateway endpoint** lets private components reach S3 without the internet.
+
+**Why no NAT gateway.**
+- NAT would cost ~$32/month plus data per AZ, which is a third of the launch budget.
+- Tasks that need the internet get public IPs with **no inbound rules**, which is equally closed to the internet.
+- Components that don't need the internet sit in isolated subnets.
+
+**Trade-offs.**
+- Anything placed in an isolated subnet can reach only the database and S3, unless we add interface endpoints (~$7/month each) or NAT. That shapes where each future component may run (§1.6).
+- Public IPv4 addresses cost ~$3.65/month each.
+
+#### 1.5.14 Admin access to the private database — Proposed
+
+The admin role can **manage** RDS through the AWS API (snapshots, sizing) but can't **connect** to port 5432 from a laptop. That is intended: the database has no public address. Two approved ways in:
+
+- **Admin Lambda** (Proposed): a fixed list of named commands (copy the SQLite export from S3, seed the owner, count the queue), invoked with `aws lambda invoke`. It runs in the isolated subnet, and IAM decides who may call it.
+- **Session Manager port forwarding through an API task** (Proposed): `psql` on the Mac connects to `localhost:15432`, tunneled via ECS Exec. Nothing opens to the internet, access is IAM-controlled and logged, and there's no bastion server to patch.
+
+#### 1.5.15 Observability and cost guardrails — Built
+
+**What we have.**
+- CloudWatch Logs (30 days) per component.
+- Alarms by SNS email: API 5xx, unhealthy tasks, database CPU, low database storage.
+- An AWS Budget at $75/month (80 % actual, 100 % forecast).
+
+**Proposed next.**
+- An alarm on `rescore_queue` depth (a custom metric emitted by the worker), so "scores stopped updating" is noticed.
+- RDS **Performance Insights** (free 7-day tier) to find slow queries before users do.
+- A p95 latency alarm on the ALB's `TargetResponseTime` (N3).
+
+**Trade-off.** No distributed tracing (X-Ray/OpenTelemetry) yet. With a monolith and one database, request logs are enough; add tracing if we split services.
+
+#### 1.5.16 Deploys: GitHub Actions + Terraform — Built
+
+**How a change ships.**
+1. A push to `main` runs the tests (API against Postgres 18, Terraform rules).
+2. It builds the arm64 image, tagged with the commit (immutable in ECR).
+3. `terraform apply` rolls the API.
+4. The migration container runs first; the API starts only if it succeeds.
+5. The ALB health check and the ECS circuit breaker roll back a bad version.
+
+AWS access is keyless (OIDC) and limited to this repository's `production` environment.
+
+**Trade-offs.**
+- Migrations must stay **backward compatible for one release** (old tasks keep running during the rollout): add columns before using them, drop them a release later.
+- A Terraform apply on every push also applies infrastructure changes, so reviewers must read the plan in the PR.
+- Rejected: separate app and infra pipelines. That's more moving parts for one developer.
+
+### 1.6 Lambda or Fargate: where each belongs
+
+A recurring decision, so the rule is written down once.
+
+| | Lambda | Fargate |
+|---|---|---|
+| Billing | Per invocation; **$0 when idle** | Per second while running |
+| Start-up | ~0.1–3 s | ~30–60 s |
+| Max duration | 15 min; ~30 s behind API Gateway | Unlimited |
+| Reaching the internet from inside the VPC | Needs NAT (~$32/month) | Public IP in public subnet, no NAT |
+| Database connections | One per concurrent invocation; busy APIs need RDS Proxy (~$22/month) | Small long-lived pool per task |
+| Best for | Short, bursty, event-driven, **no internet needed** | Steady services, long requests, internet access |
+
+| Component | Choice | Why |
+|---|---|---|
+| API | **Fargate** | Internet access (DeepSeek, Cognito keys), ~100 s requests, steady connections |
+| Expertise worker | **Fargate** | Calls DeepSeek; runs minutes |
+| Rescore worker | **Lambda (Proposed)** | Database only, seconds every 5 min, IAM DB auth, no cold-start penalty |
+| Admin tasks (data copy, seed, checks) | **Lambda (Proposed)** | Rare, short, private, IAM-invoked |
+| Migrations | Fargate (inside the API task) | Must run before the new API version starts |
+| Resume parsing on upload | Later: Lambda on S3 event | Would need a KMS interface endpoint (~$7/month); not worth it until uploads are frequent |
+
+### 1.7 Left out on purpose, and what would bring each in
+
+| Component | Why not now | Trigger to add | What we'd use |
+|---|---|---|---|
+| **Cache** (Redis/Valkey) | Boards are **per user**, so two users rarely ask for the same answer: low cache hit rate. Postgres with the right index answers in milliseconds. A cache adds a second copy that can be **stale**, the classic source of wrong-data bugs | Board p95 > 500 ms after indexing and query fixes, or repeated identical reads (public stats, landing page) dominate | **ElastiCache Serverless (Valkey)**, ~$6+/month. Cache-aside with short TTLs (public stats 60 s). **Never cache** plans, permissions or privacy-relevant data; use active invalidation there |
+| **Shared session store** | JWTs make the API stateless; nothing to share | Server-side sessions (e.g. instant revocation needs) | ElastiCache |
+| **Read replica** | ~3 req/s peak is nothing for one Postgres. Replicas add **replication lag** (a user may not see their own just-saved tracking change) | Primary CPU consistently > 60 % from reads after vertical scaling | RDS read replica. Route the board's reads there, but "my own recent writes" (tracking, profile) keep reading the primary for read-your-writes consistency |
+| **Multi-AZ database** | 99.5 % target tolerates a rare multi-minute recovery; doubles DB cost | Daily active users depend on it, or we promise uptime | RDS Multi-AZ (automatic failover ~1–2 min) |
+| **Sharding** | 13–90 GB fits one Postgres instance easily. Sharding makes joins across users/jobs and every migration much harder, and is the hardest step to undo | A single instance (even large) can't hold `user_job_scores` after pruning + partitioning, far beyond 10,000 users | Shard key `user_id` with consistent hashing (Citus, or Aurora Limitless) |
+| **NoSQL** | No unstructured, high-volume data yet | Clickstream/analytics events, per-user UI preferences at high write volume | DynamoDB (on-demand) or S3 + Athena for analytics |
+| **SQS** | Queue table is transactional with the capture | Multiple consumers per event, or very high volume | SQS with dead-letter queue |
+| **NAT gateway** | Public-subnet tasks + isolated subnets cover every need | A component needs the internet but must not have a public IP (e.g. compliance), or internet-bound Lambdas | NAT gateway (or a NAT instance to save cost) |
+| **WAF** | Low traffic; Cognito handles auth abuse | Scraping of the public stats/landing endpoints, bot sign-ups | AWS WAF on the ALB and CloudFront (rate-based rules), ~$6+/month |
+| **Second region** | Personal-scale product | Real SLA or regulatory need | Cross-region backups first, then warm standby |
+
+### 1.8 What it costs (us-east-1, launch shape, approximate)
+
+| Component | Monthly |
+|---|---|
+| RDS `db.t4g.micro` single-AZ + 20 GB gp3 + backups | ~$15 |
+| Application Load Balancer | ~$17 |
+| API: one Fargate task (0.5 vCPU, 1 GB, arm64) | ~$15 |
+| Public IPv4 addresses (ALB + tasks) | ~$7–11 |
+| Workers (scheduled Fargate; ~$0 if rescore moves to Lambda) | ~$1–3 |
+| S3, CloudFront, KMS, Secrets Manager, ECR, CloudWatch, Route 53 | ~$6–9 |
+| Cognito (free tier), EventBridge | ~$0 |
+| **Total** | **~$60–70** + DeepSeek (~$1.50 per collection day) |
+
+**What each growth step adds:** second API task +$15 · Multi-AZ +$15 · next DB size (`t4g.small`) +$12 · read replica +$15 · ElastiCache Serverless +$6 and up · NAT gateway +$32 · WAF +$6 and up.
+
+### 1.9 How the design changes as usage grows
+
+| Stage | Users | What breaks first | Fix (cheapest first) |
+|---|---|---|---|
+| Launch | < 50 | Nothing; the risk is a single task or DB outage | Alarms, backups, fast rollback |
+| Early | ~1,000 | Full-board rescores inside requests; score table growth | Queue full rescores (§1.5.9); prune scores to active jobs; second API task; Multi-AZ |
+| Growing | ~10,000 | Fan-out writes (~4.5 M score rows per collection day); DB CPU and storage | Bigger DB instance; partition `user_job_scores`; compute skill lists on demand; autoscale API; SES for email |
+| Large | 100,000+ | Single primary for writes; per-user scoring model itself | Read replicas; reconsider scoring on read for inactive users (score only users active in the last N days); only then sharding |
+
+### 1.10 Rules the design is built around
 
 1. **A job posting is the same for everyone; a score is per person.** Jobs, companies and `job_skills` are shared and written only by the admin token. Skill extraction, dedup and agency checks run **once per job**.
 2. **Everything about a user is private.** Resume, profile, scores, tracking and application history are keyed by `user_id`. A user can only read or write their own rows.
