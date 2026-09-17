@@ -1,4 +1,5 @@
 import { Brand } from "../components/Brand";
+import { Onboarding as OnboardingWizard } from "./Onboarding";
 import { signIn } from "../auth";
 import { useMe } from "../useMe";
 import type { Onboarding } from "../api";
@@ -55,6 +56,7 @@ export function Home() {
   }
 
   const { onboarding } = me;
+  if (!onboarding.complete) return <OnboardingWizard me={me} onDone={() => window.location.assign("/")} />;
   const nextStep = STEPS.find((step) => !onboarding[step.key]);
 
   return (

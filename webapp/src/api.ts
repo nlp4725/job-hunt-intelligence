@@ -53,3 +53,55 @@ export type Me = {
 };
 
 export const getMe = () => api<Me>("/api/v1/me");
+
+// --- resume ---------------------------------------------------------------
+
+export type Resume = {
+  id: number;
+  version: number;
+  filename: string | null;
+  skills_extracted: string[] | null;
+  skills_confirmed: string[] | null;
+  uploaded_at: string | null;
+};
+
+type UploadTicket = { resume_id: number; version: number; upload: { url: string; fields: Record<string, string>; expires_in: number } };
+
+/** Three steps: ask for a ticket, send the file straight to storage, then let
+ *  the API read it. The file never passes through the API. */
+export async function uploadResume(file: File, fetchImpl = fetch): Promise<Resume> {
+  const ticket = await api<UploadTicket>("/api/v1/me/resume", { method: "POST", body: JSON.stringify({ filename: file.name }) }, fetchImpl);
+  const form = new FormData();
+  for (const [key, value] of Object.entries(ticket.upload.fields)) form.append(key, value);
+  form.append("file", file);
+  const stored = await fetchImpl(ticket.upload.url, { method: "POST", body: form });
+  if (!stored.ok) throw new ApiError(stored.status, "the upload did not reach storage");
+  return api<Resume>(`/api/v1/me/resume/${ticket.version}/complete`, { method: "POST" }, fetchImpl);
+}
+
+export const confirmSkills = (resumeId: number, skills: string[]) =>
+  api<Resume>(`/api/v1/me/resume/${resumeId}/skills`, { method: "PUT", body: JSON.stringify({ skills }) });
+
+export const listResumes = () => api<{ versions: Resume[]; active_resume_id: number | null }>("/api/v1/me/resume");
+
+// --- profile --------------------------------------------------------------
+
+export const SENIORITY_LEVELS = ["intern", "entry", "mid_senior", "senior", "staff_principal"] as const;
+export type SeniorityLevel = (typeof SENIORITY_LEVELS)[number];
+export type ScoreTable = Record<SeniorityLevel | "not_a_fit" | "unknown", number>;
+
+export type Profile = {
+  version: number;
+  seniority_target: SeniorityLevel;
+  seniority_scores: ScoreTable | null;
+  proposed_scores: ScoreTable;
+  target_roles: string[] | null;
+  note: string | null;
+  resume_id: number | null;
+};
+
+export const getProfile = () => api<{ profile: Profile | null }>("/api/v1/me/profile");
+export const pickLevel = (level: SeniorityLevel) =>
+  api<Profile>("/api/v1/me/profile/level", { method: "PUT", body: JSON.stringify({ level }) });
+export const confirmScores = (scores: ScoreTable) =>
+  api<Profile>("/api/v1/me/profile/scores", { method: "PUT", body: JSON.stringify({ scores }) });
