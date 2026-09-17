@@ -105,3 +105,52 @@ export const pickLevel = (level: SeniorityLevel) =>
   api<Profile>("/api/v1/me/profile/level", { method: "PUT", body: JSON.stringify({ level }) });
 export const confirmScores = (scores: ScoreTable) =>
   api<Profile>("/api/v1/me/profile/scores", { method: "PUT", body: JSON.stringify({ scores }) });
+
+// --- board -----------------------------------------------------------------
+
+export type Tracking = {
+  applied: boolean;
+  applied_at: string | null;
+  applied_resume_version: string | null;
+  not_interested: boolean;
+  not_interested_note: string | null;
+  note: string | null;
+};
+
+export type BoardJob = {
+  id: number;
+  job_id: string;
+  title: string;
+  company: string | null;
+  location: string | null;
+  workplace_type: string | null;
+  posted_date: string | null;
+  url: string;
+  first_seen_at: string | null;
+  level: SeniorityLevel | null;
+  is_contract: boolean;
+  scores: {
+    skill_score: number | null;
+    seniority_fit: number | null;
+    total_score: number | null;
+    skill_matched: string[] | null;
+    skill_group_matched: string[] | null;
+    skill_missing: string[] | null;
+  } | null;
+  expertise: {
+    expertise_score: number;
+    domain: number;
+    capability: number;
+    dream: number;
+    evidence: Record<string, string | null> | null;
+    stale: boolean;
+  } | null;
+  tracking: Tracking | null;
+  company_applied_count: number;
+};
+
+export const listJobs = (limit = 200, offset = 0) =>
+  api<{ jobs: BoardJob[]; limit: number; offset: number }>(`/api/v1/jobs?limit=${limit}&offset=${offset}`);
+
+export const saveTracking = (jobId: number, changes: Partial<Tracking>) =>
+  api<Tracking>(`/api/v1/me/tracking/${jobId}`, { method: "PUT", body: JSON.stringify(changes) });

@@ -33,8 +33,8 @@ export default function Sidebar({ view, onView, pipelineCount, appliedCount, hea
   return (
     <aside className="sidebar">
       <div className="logo">
-        <div className="logo-mark">R</div>
-        <span className="logo-name">RoleIQ</span>
+        <div className="logo-mark">J</div>
+        <span className="logo-name">JoblyGo</span>
         <span className="logo-beta">β</span>
       </div>
 
