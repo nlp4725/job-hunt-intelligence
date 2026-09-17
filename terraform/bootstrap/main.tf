@@ -141,10 +141,25 @@ resource "aws_iam_role_policy" "deploy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "StateAndFrontendBuckets"
+        # Bucket settings for every project bucket (Terraform manages them),
+        # but object reads and writes only in the state and web app buckets:
+        # CI can never read or change resume files.
+        Sid      = "ProjectBucketSettings"
         Effect   = "Allow"
-        Action   = "s3:*"
-        Resource = ["arn:aws:s3:::jhi-*", "arn:aws:s3:::jhi-*/*"]
+        Action   = ["s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket", "s3:ListBucketVersions", "s3:Get*", "s3:PutBucket*", "s3:DeleteBucket*", "s3:PutEncryptionConfiguration", "s3:PutLifecycleConfiguration", "s3:PutAccelerateConfiguration", "s3:PutReplicationConfiguration", "s3:PutIntelligentTieringConfiguration", "s3:PutAnalyticsConfiguration", "s3:PutInventoryConfiguration", "s3:PutMetricsConfiguration"]
+        Resource = "arn:aws:s3:::jhi-*"
+      },
+      {
+        Sid      = "DenyResumeFileAccess"
+        Effect   = "Deny"
+        Action   = ["s3:GetObject*", "s3:PutObject*", "s3:DeleteObject*", "s3:RestoreObject"]
+        Resource = "arn:aws:s3:::jhi-resumes-*/*"
+      },
+      {
+        Sid      = "StateAndSiteObjects"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = ["${aws_s3_bucket.state.arn}/*", "arn:aws:s3:::jhi-site-*/*"]
       },
       {
         Sid    = "ImageRegistry"

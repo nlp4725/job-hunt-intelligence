@@ -132,6 +132,12 @@ def test_the_account_is_protected_and_personal_details_stay_out_of_the_repo():
     assert "@" not in re.sub(r"#.*", "", text).replace("you+jobhunt@example.com", ""), "emails belong in a gitignored .tfvars"
 
 
+def test_the_deploy_role_can_never_touch_resume_files(bootstrap):
+    policy = bootstrap["aws_iam_role_policy.deploy"]["policy"]
+    assert '"s3:*"' not in policy.replace(" ", "")
+    assert "DenyResumeFileAccess" in policy and "jhi-resumes-*/*" in policy
+
+
 def test_deploy_role_trusts_only_the_production_environment_of_one_repo(bootstrap):
     trust = bootstrap["aws_iam_role.deploy"]["assume_role_policy"]
     assert ":environment:production" in trust and "StringEquals" in trust
