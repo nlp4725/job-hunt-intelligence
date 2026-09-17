@@ -1,8 +1,10 @@
 # Cloud infrastructure (Terraform)
 
+Live since 2026-09-17: `api.joblygo.com` (API) and `app.joblygo.com` (web app), account `job-hunt`.
+
 ```
 Internet ─► load balancer (HTTPS, api.<domain>) ─► API on Fargate ─► RDS Postgres (private, TLS only)
-        ─► CloudFront (app.<domain>) ─► private S3 bucket (React build)
+        ─► CloudFront (app.<domain>) ─► private S3 bucket (React build from webapp/)
 SQS jhi-rescore (+ DLQ) → Lambda jhi-rescore (isolated subnets, IAM DB auth); hourly reconcile; jhi-admin-task on demand
 Scheduled Fargate task: expertise worker every 30 min
 Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, monthly budget. Region us-east-1.
@@ -52,7 +54,7 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
    - Environments → create `production`. Optionally add yourself as a required reviewer, so each deploy waits for your approval.
    - Repository variables → `AWS_ACCOUNT_ID`, `DOMAIN`, `HOSTED_ZONE_ID` (empty if not in Route 53). Deploys stay off until `AWS_ACCOUNT_ID` and `DOMAIN` are both set.
    - `production` environment secrets → `ALERT_EMAIL`, `OWNER_EMAIL` (the email you will sign in with). Secrets rather than variables, so they stay out of the public repository's logs.
-5. **Push to `main`.** The first deploy takes ~20–30 min, mostly RDS, certificates and CloudFront. Then confirm the SNS email subscription.
+5. **Push to `main`.** Every push to `main` after that deploys: tests → arm64 image → `terraform apply` → `webapp` build uploaded to S3 and CloudFront invalidated. The first deploy takes ~20–30 min, mostly RDS, certificates and CloudFront. Then confirm the SNS email subscription.
 6. **DeepSeek key**, once. It starts as a placeholder, so captures are saved without a seniority level and expertise drafts fail. Terraform never overwrites the value you set.
    ```bash
    aws secretsmanager put-secret-value --secret-id "$(terraform output -raw deepseek_secret_arn)" --secret-string '<key>'

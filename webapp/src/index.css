@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
 
 /* Tokens and components from the Figma Make file "Job Hunting Board
    Productization", shared with the local dashboard (frontend/src/index.css).
@@ -42,7 +42,8 @@ html, body, #root { height: 100%; margin: 0; }
 body {
   background: var(--canvas);
   color: var(--text-primary);
-  font-family: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: 'cv05' 1, 'ss01' 1;   /* Inter: single-storey l, contextual alternates */
   font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
