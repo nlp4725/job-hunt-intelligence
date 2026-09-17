@@ -164,19 +164,22 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
 
     @app.get("/api/public/recent-jobs")
     def public_recent_jobs():
-        """A sample of the real board for the landing page: recent postings,
-        public facts only. Agency, duplicate and expired jobs are left out."""
-        cached = app.config.get("PUBLIC_RECENT")
-        now = time.monotonic()
+        """The public board: recently collected postings, public facts only.
+        Agency, duplicate and expired jobs are left out, and no scores appear
+        (a score exists only against someone's resume)."""
+        days = min(max(request.args.get("days", admin_data.RECENT_DAYS, type=int), 1), 90)
+        limit = min(max(request.args.get("limit", admin_data.RECENT_LIMIT, type=int), 1), 200)
+        key, now = (days, limit), time.monotonic()
+        cached = app.config.get("PUBLIC_RECENT", {}).get(key)
         if cached and now - cached[0] < admin_data.PUBLIC_STATS_TTL:
-            return jsonify({"jobs": cached[1]})
+            return jsonify({"jobs": cached[1], "days": days})
         db = current_app.config["ADMIN_SESSION"]()
         try:
-            jobs = admin_data.public_recent_jobs(db)
+            jobs = admin_data.public_recent_jobs(db, days=days, limit=limit)
         finally:
             db.close()
-        app.config["PUBLIC_RECENT"] = (now, jobs)
-        return jsonify({"jobs": jobs})
+        app.config.setdefault("PUBLIC_RECENT", {})[key] = (now, jobs)
+        return jsonify({"jobs": jobs, "days": days})
 
     @app.get("/api/v1/me")
     @require_user
@@ -248,6 +251,13 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
             return error(404, "resume not found")
         return jsonify({"url": url, "expires_in": URL_EXPIRES_SECONDS})
 
+    @app.get("/api/v1/skills")
+    @require_user
+    def skills_vocabulary():
+        """The canonical skill names the Skills step accepts, for its type-ahead.
+        The same for every caller and cheap to build, so it is not cached here."""
+        return jsonify(user_data.skills_vocabulary())
+
     @app.get("/api/v1/me/profile")
     @require_user
     def get_profile():
@@ -256,8 +266,11 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     @app.put("/api/v1/me/profile/level")
     @require_user
     def pick_level():
+        """{"levels": ["mid_senior", "senior"]}: one to three levels, all equal
+        targets. Validated by analysis/seniority_fit.validate_targets, whose
+        message is what the 400 carries."""
         try:
-            profile = user_data.pick_level(g.db, g.user, (request.get_json(silent=True) or {}).get("level"))
+            profile = user_data.pick_level(g.db, g.user, (request.get_json(silent=True) or {}).get("levels"))
             queue_after_commit(user_message(g.user.id))
             return jsonify(profile)
         except ValueError as exc:

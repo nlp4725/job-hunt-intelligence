@@ -402,6 +402,22 @@ td.center { text-align: center; }
 .chip:hover { background: #bbf7d0; }
 .chip-x { color: var(--text-tertiary); font-size: 15px; line-height: 1; }
 
+/* The skill box suggests from the matcher's vocabulary as you type; the list
+   floats over what follows so the step doesn't jump as it opens and closes. */
+.typeahead { position: relative; flex: 1; min-width: 0; }
+.typeahead-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  list-style: none; margin: 0; padding: 4px; max-height: 232px; overflow-y: auto;
+  background: var(--surface-1); border: 1px solid var(--border-hi); border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(30, 77, 53, 0.12);
+}
+.typeahead-option {
+  display: block; width: 100%; text-align: left; padding: 7px 10px; border: none; border-radius: 5px;
+  background: transparent; color: var(--text-primary); font-family: inherit; font-size: 12.5px; cursor: pointer;
+}
+.typeahead-option.highlighted { background: var(--surface-3); }
+.action-note.left { text-align: left; margin-top: 5px; }
+
 .choices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
 .choice {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left;
@@ -412,7 +428,22 @@ td.center { text-align: center; }
 .choice.chosen { border-color: #15803d; background: #dcfce7; }
 .choice.chosen .choice-label { color: #15803d; }
 .choice-label { font-weight: 500; }
-.choice-note { font-size: 12px; color: var(--text-tertiary); }
+.choice-note { font-size: 12px; color: var(--text-tertiary); margin-left: auto; }
+/* A tick box, because the levels are a multiple choice (up to three) and a row
+   of plain buttons reads as "pick one". */
+.choice-box {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 17px; height: 17px; border-radius: 5px; font-size: 11px; line-height: 1;
+  background: var(--surface-1); border: 1.5px solid var(--border-hi); color: transparent;
+}
+.choice.chosen .choice-box { background: #15803d; border-color: #15803d; color: #fff; }
+.choice.muted { opacity: 0.45; cursor: not-allowed; }
+.choice.muted:hover { border-color: var(--border); }
+
+.score-legend {
+  display: flex; justify-content: space-between; margin: -16px 0 24px;
+  font-size: 11px; color: var(--text-tertiary);
+}
 
 .score-table { width: 100%; min-width: 0; margin-bottom: 24px; }
 .score-table td { padding: 7px 0; font-size: 13px; }
@@ -497,6 +528,31 @@ td.center { text-align: center; }
 .demo-dots span { width: 3px; height: 3px; border-radius: 50%; background: #15803d; display: inline-block; animation: pulse 0.8s ease infinite; }
 
 .demo-caption { margin: 10px 2px 0; font-size: 11px; color: var(--text-tertiary); }
+.demo-badge {
+  margin-left: auto; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); padding: 2px 8px; border-radius: 4px;
+}
+.hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.hero-secondary { font-size: 13.5px; color: var(--text-secondary); text-decoration: none; }
+.hero-secondary:hover { color: var(--text-primary); }
+a.hero-brand, a.logo { text-decoration: none; color: inherit; cursor: pointer; }
+a.hero-brand:hover .hero-name, a.logo:hover .logo-name { color: var(--accent); }
+a.hero-link { text-decoration: none; display: inline-flex; align-items: center; }
+
+/* ── Public board (/jobs) ── */
+.public-board { max-width: 1280px; width: 100%; margin: 0 auto; padding: 40px 48px 64px; }
+.public-head h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.6px; margin-bottom: 6px; }
+.freshness { font-size: 11.5px; color: var(--text-tertiary); margin: 0 0 14px; }
+.public-head .page-sub { display: block; max-width: 70ch; margin-bottom: 18px; font-size: 13px; }
+.filter-bar.plain { background: transparent; border: none; padding: 0 0 14px; }
+.demo-table.public { min-width: 940px; }
+.demo-table.public td { padding: 10px 8px; }
+.score-locked {
+  font-family: inherit; font-size: 11px; padding: 3px 9px; border-radius: 99px; cursor: pointer;
+  background: var(--surface-3); border: 1px solid var(--border-hi); color: var(--text-tertiary);
+}
+.score-locked:hover { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.public-foot { display: flex; justify-content: center; padding: 28px 0 0; }
 .hero-ticker-wrap { max-width: 1280px; width: 100%; margin: 0 auto; padding: 0 48px 60px; }
 .hero-ticker { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); overflow: hidden; height: 36px; display: flex; align-items: center; }
 .hero-ticker-track { display: inline-flex; animation: ticker 50s linear infinite; }
@@ -510,6 +566,31 @@ td.center { text-align: center; }
 
 @media (max-width: 860px) {
   .hero-nav-inner, .hero, .hero-demo, .demo-caption { margin: 10px 2px 0; font-size: 11px; color: var(--text-tertiary); }
+.demo-badge {
+  margin-left: auto; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); padding: 2px 8px; border-radius: 4px;
+}
+.hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.hero-secondary { font-size: 13.5px; color: var(--text-secondary); text-decoration: none; }
+.hero-secondary:hover { color: var(--text-primary); }
+a.hero-brand, a.logo { text-decoration: none; color: inherit; cursor: pointer; }
+a.hero-brand:hover .hero-name, a.logo:hover .logo-name { color: var(--accent); }
+a.hero-link { text-decoration: none; display: inline-flex; align-items: center; }
+
+/* ── Public board (/jobs) ── */
+.public-board { max-width: 1280px; width: 100%; margin: 0 auto; padding: 40px 48px 64px; }
+.public-head h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.6px; margin-bottom: 6px; }
+.freshness { font-size: 11.5px; color: var(--text-tertiary); margin: 0 0 14px; }
+.public-head .page-sub { display: block; max-width: 70ch; margin-bottom: 18px; font-size: 13px; }
+.filter-bar.plain { background: transparent; border: none; padding: 0 0 14px; }
+.demo-table.public { min-width: 940px; }
+.demo-table.public td { padding: 10px 8px; }
+.score-locked {
+  font-family: inherit; font-size: 11px; padding: 3px 9px; border-radius: 99px; cursor: pointer;
+  background: var(--surface-3); border: 1px solid var(--border-hi); color: var(--text-tertiary);
+}
+.score-locked:hover { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.public-foot { display: flex; justify-content: center; padding: 28px 0 0; }
 .hero-ticker-wrap { padding-left: 20px; padding-right: 20px; }
   .hero { padding-top: 48px; }
   .hero-headline { white-space: normal; letter-spacing: -1.2px; }

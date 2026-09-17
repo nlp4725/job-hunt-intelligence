@@ -40,6 +40,13 @@ resource "aws_cognito_user_pool_domain" "users" {
   user_pool_id = aws_cognito_user_pool.users.id
 }
 
+# The web app signs people in on its own pages: email and password go to this
+# client over SRP (ALLOW_USER_SRP_AUTH below), which is why there is no need for
+# ALLOW_USER_PASSWORD_AUTH — the password itself never crosses the wire. Sign-up,
+# the emailed confirmation code and forgot-password are unauthenticated user-pool
+# APIs and need no flow enabled at all. The OAuth settings stay because a
+# federated provider (Google, Apple) can only be reached through
+# /oauth2/authorize, and that comes back to /auth/callback.
 resource "aws_cognito_user_pool_client" "web" {
   name                                 = "jhi-web"
   user_pool_id                         = aws_cognito_user_pool.users.id

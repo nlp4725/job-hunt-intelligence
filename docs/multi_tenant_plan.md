@@ -46,7 +46,7 @@ merge_skills(taxonomy: list[str], llm: LlmSkillExtraction) -> list[ResumeSkill]
 # profile/build.py               — this is the function that replaces the hardcoded prompt block
 build_profile(resume_text: str, user_input: ProfileInput) -> UserProfile
     # ONE LLM call -> domains (D), capabilities (C), weaknesses (W), years_experience,
-    # seniority_target. user_input carries what the user typed: target level, target roles,
+    # seniority_targets. user_input carries what the user typed: up to 3 target levels, target roles,
     # domains they want to move into. User input WINS over inference on conflict.
 render_seniority_block(profile: UserProfile) -> str
 render_expertise_block(profile: UserProfile) -> str

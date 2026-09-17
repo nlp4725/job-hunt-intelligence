@@ -85,7 +85,7 @@ def seeded(pg_engine, app_url):  # noqa: F811
             db.flush()
             db.add_all([
                 UserResume(user_id=user.id, version=1, skills_extracted=["Python"], skills_confirmed=["Python"]),
-                UserProfile(user_id=user.id, version=1, seniority_target="entry"),
+                UserProfile(user_id=user.id, version=1, seniority_targets=["entry"]),
                 UserJobScore(user_id=user.id, job_id=job.id, profile_version=1, skill_score=3),
                 JobTracking(user_id=user.id, job_id=job.id, note=f"{name}'s private note"),
                 ApplicationEvent(user_id=user.id, job_id=job.id, stage="applied", occurred_at=datetime(2026, 9, 1)),

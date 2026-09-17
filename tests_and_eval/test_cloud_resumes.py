@@ -95,7 +95,8 @@ def _job_skills(db, job: Job) -> set[str]:
 def _profile(db, user_id: int, version: int = 1, **kw):
     from db.cloud_models import UserProfile
 
-    profile = UserProfile(user_id=user_id, version=version, seniority_target=kw.pop("seniority_target", "entry"), **kw)
+    profile = UserProfile(user_id=user_id, version=version,
+                          seniority_targets=kw.pop("seniority_targets", ["entry"]), **kw)
     db.add(profile)
     db.flush()
     return profile
@@ -165,7 +166,7 @@ class TestConfirmSkills:
 
         assert resume.skills_confirmed == ["Python", "SQL"]
         profile = _latest_profile(db, user.id)
-        assert (profile.version, profile.resume_id, profile.seniority_target) == (2, resume.id, "entry")
+        assert (profile.version, profile.resume_id, profile.seniority_targets) == (2, resume.id, ["entry"])
         scores = _scores(db, user.id)
         assert set(scores) == {"1", "2"}   # the repost is not scored
         for linkedin_id, score in scores.items():

@@ -78,20 +78,23 @@ class UserProfile(CloudBase):
     score stays attributable to the profile that produced it."""
 
     __tablename__ = "user_profiles"
-    __table_args__ = (
-        UniqueConstraint("user_id", "version", name="uq_user_profiles_user_version"),
-        _one_of("ck_user_profiles_seniority_target", "seniority_target", SENIORITY_LEVELS),
-    )
+    # seniority_targets carries no CHECK constraint: a JSON list cannot be
+    # constrained cleanly in one, so analysis/seniority_fit.validate_targets is
+    # the single gate every write goes through instead.
+    __table_args__ = (UniqueConstraint("user_id", "version", name="uq_user_profiles_user_version"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     version: Mapped[int]
     resume_id: Mapped[int | None] = mapped_column(ForeignKey("resumes.id", ondelete="SET NULL"))
-    seniority_target: Mapped[str]                                      # the level the user picked; proposes seniority_scores
+    # The 1-3 levels the user picked, all equal targets, in SENIORITY_LEVELS
+    # order; they propose seniority_scores. Validated by
+    # analysis/seniority_fit.validate_targets, never by the database.
+    seniority_targets: Mapped[list] = mapped_column(JSON)
     # The user's confirmed 0-5 score per job level, plus "not_a_fit" (agency /
     # contract) and "unknown" (level unclear). Seniority Fit is a lookup
     # here (analysis/seniority_fit.py). NULL = not confirmed yet: the proposal for
-    # seniority_target is used. Locked per version: an edit writes a new version.
+    # seniority_targets is used. Locked per version: an edit writes a new version.
     seniority_scores: Mapped[dict | None] = mapped_column(JSON)
     target_roles: Mapped[list | None] = mapped_column(JSON)
     note: Mapped[str | None] = mapped_column(Text)

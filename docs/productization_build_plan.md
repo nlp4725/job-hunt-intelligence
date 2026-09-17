@@ -869,13 +869,13 @@ process_resume(filename, data, identity) -> ProcessedResume  # text (encrypted a
 ```python
 # user_profile/model.py
 class ProfileInput(BaseModel):        # what the user typed; always wins
-    seniority_target: SeniorityLevel  # intern | entry | mid_senior | senior | staff_principal (§3.3)
+    seniority_targets: list[SeniorityLevel]  # 1-3 of intern | entry | mid_senior | senior | staff_principal (§3.3)
     target_roles: list[str]
     note: str | None                  # free text; not used in scoring yet
 
 class UserProfile(BaseModel):
     version: int
-    seniority_target: str             # from ProfileInput, never overridden
+    seniority_targets: list[str]      # from ProfileInput, never overridden
     years_experience: int | None      # inferred from the resume, shown to the user as a hint only
     skills: list[str]                 # confirmed resume skills
 
@@ -943,7 +943,7 @@ The agency rule, contract rule, evidence format and `judge/structured_retry.py` 
 |---|---|---|---|
 | User finishes onboarding | All jobs | All jobs | None |
 | Resume re-upload / skills edited | All of that user's jobs | — | None |
-| Level picked or changed (`set_seniority_target`) | — | All jobs, from the proposal (new profile version) | None |
+| Levels picked or changed (`set_seniority_targets`) | — | All jobs, from the proposal (new profile version) | None |
 | Score table confirmed (`set_seniority_scores`) | — | All jobs, from the table (new profile version) | None |
 | Nasi captures a new job | Every user | Every user | 1 level classification, shared |
 | Level prompt version bumped | — | Every user, after the gate passes and jobs are re-classified | 1 per re-classified job |
@@ -1035,7 +1035,7 @@ erDiagram
         int user_id FK
         int version
         int resume_id FK
-        string seniority_target "user input: entry … principal"
+        json seniority_targets "user input: 1-3 levels, intern … principal"
         json target_roles
         text note
         int years_experience "inferred hint"

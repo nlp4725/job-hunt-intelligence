@@ -14,7 +14,7 @@ from collections import defaultdict
 from sqlalchemy import or_
 from sqlalchemy.dialects.postgresql import insert
 
-from analysis.seniority_fit import proposed_scores, seniority_fit, validate_scores
+from analysis.seniority_fit import proposed_scores, seniority_fit, validate_scores, validate_targets
 from analysis.skill_match import skill_match_from_skills
 from analysis.taxonomy_version import taxonomy_version
 from db.cloud_models import JobSeniority, UserJobScore, UserProfile, UserResume
@@ -47,7 +47,7 @@ def score_user(db, user_id: int, job_ids: list[int] | None = None) -> int:
     levels = {job_id: (level, contract) for job_id, level, contract
               in db.query(JobSeniority.job_id, JobSeniority.level, JobSeniority.is_contract)}
 
-    table = profile.seniority_scores or proposed_scores(profile.seniority_target)
+    table = profile.seniority_scores or proposed_scores(profile.seniority_targets)
     now, version = utcnow(), taxonomy_version()
     rows = []
     for (job_id,) in db.query(Job.id).filter(*scorable):
@@ -77,17 +77,19 @@ def score_user(db, user_id: int, job_ids: list[int] | None = None) -> int:
     return len(rows)
 
 
-def set_seniority_scores(db, user_id: int, scores: dict, target: str | None = None, rescore: bool = True) -> UserProfile:
+def set_seniority_scores(db, user_id: int, scores: dict, targets: list[str] | None = None,
+                         rescore: bool = True) -> UserProfile:
     """Confirm a user's seniority score table: write it on a new profile version
-    (the level they picked, if given, and everything else carried over) and
+    (the levels they picked, if given, and everything else carried over) and
     rescore. Earlier versions keep their tables. No LLM call: job levels are
     already stored. Validates everything before writing anything."""
     scores = validate_scores(scores)
     current = active_profile(db, user_id)
-    target = target or (current.seniority_target if current else None)
-    proposed_scores(target)   # raises for an unknown level
+    # `targets` given means the user changed their picks on this screen; None
+    # means carry over the ones the active profile already holds.
+    targets = validate_targets(targets if targets is not None else (current.seniority_targets if current else None))
     profile = UserProfile(
-        user_id=user_id, version=(current.version + 1) if current else 1, seniority_target=target,
+        user_id=user_id, version=(current.version + 1) if current else 1, seniority_targets=targets,
         seniority_scores=scores,
         resume_id=current.resume_id if current else None, target_roles=current.target_roles if current else None,
         note=current.note if current else None, years_experience=current.years_experience if current else None,
@@ -99,16 +101,16 @@ def set_seniority_scores(db, user_id: int, scores: dict, target: str | None = No
     return profile
 
 
-def set_seniority_target(db, user_id: int, target: str, rescore: bool = True) -> UserProfile:
-    """Save the level the user picked (onboarding, or later in Settings) on a
-    new profile version, then rescore. Its score table starts unconfirmed
-    (NULL), so scoring uses the proposal for this level until the next screen
-    confirms one with set_seniority_scores. A table confirmed for an earlier
-    level is not carried over. Validates before writing anything."""
-    proposed_scores(target)   # raises for an unknown level
+def set_seniority_targets(db, user_id: int, targets: list[str], rescore: bool = True) -> UserProfile:
+    """Save the 1-3 levels the user picked (onboarding, or later in Settings) on
+    a new profile version, then rescore. Their score table starts unconfirmed
+    (NULL), so scoring uses the proposal for these levels until the next screen
+    confirms one with set_seniority_scores. A table confirmed for earlier levels
+    is not carried over. Validates before writing anything."""
+    targets = validate_targets(targets)
     current = active_profile(db, user_id)
     profile = UserProfile(
-        user_id=user_id, version=(current.version + 1) if current else 1, seniority_target=target,
+        user_id=user_id, version=(current.version + 1) if current else 1, seniority_targets=targets,
         seniority_scores=None,
         resume_id=current.resume_id if current else None, target_roles=current.target_roles if current else None,
         note=current.note if current else None, years_experience=current.years_experience if current else None,

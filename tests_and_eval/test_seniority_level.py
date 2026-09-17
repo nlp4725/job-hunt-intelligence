@@ -2,25 +2,81 @@
 
 The LLM classifies each job's level once. Each user confirms their own score
 table: one 0-5 score per level, plus a "not a fit" row (internship / contract /
-agency) and a "level unclear" row. Onboarding proposes the table from the level
-the user picks; the user adjusts it and confirms. Seniority Fit is then a lookup
-in that table. These tests need no LLM call: classification is checked with a
-fake model.
+agency) and a "level unclear" row. Onboarding proposes the table from the one to
+three levels the user picks (decided 2026-09-17); the user adjusts it and
+confirms. Seniority Fit is then a lookup in that table. These tests need no LLM
+call: classification is checked with a fake model.
 """
 
 import pytest
 
-from analysis.seniority_fit import proposed_scores, seniority_fit, validate_scores
+from analysis.seniority_fit import MAX_TARGETS, proposed_scores, seniority_fit, validate_scores, validate_targets
 from db.cloud_models import SENIORITY_LEVELS
 
 
-@pytest.mark.parametrize("target, expected", [
-    ("entry", {"intern": 4, "entry": 5, "mid_senior": 4, "senior": 3, "staff_principal": 2, "not_a_fit": 0, "unknown": 3}),
-    ("mid_senior", {"intern": 3, "entry": 4, "mid_senior": 5, "senior": 4, "staff_principal": 3, "not_a_fit": 0, "unknown": 3}),
-    ("staff_principal", {"intern": 1, "entry": 2, "mid_senior": 3, "senior": 4, "staff_principal": 5, "not_a_fit": 0, "unknown": 3}),
+@pytest.mark.parametrize("targets, expected", [
+    (["entry"], {"intern": 4, "entry": 5, "mid_senior": 4, "senior": 3, "staff_principal": 2, "not_a_fit": 0, "unknown": 3}),
+    (["mid_senior"], {"intern": 3, "entry": 4, "mid_senior": 5, "senior": 4, "staff_principal": 3, "not_a_fit": 0, "unknown": 3}),
+    (["staff_principal"], {"intern": 1, "entry": 2, "mid_senior": 3, "senior": 4, "staff_principal": 5, "not_a_fit": 0, "unknown": 3}),
 ])
-def test_the_proposal_is_five_minus_the_distance_from_the_chosen_level(target, expected):
-    assert proposed_scores(target) == expected
+def test_the_proposal_for_one_pick_is_five_minus_the_distance_from_it(targets, expected):
+    assert proposed_scores(targets) == expected
+
+
+@pytest.mark.parametrize("targets, expected", [
+    # Two adjacent picks: the pair scores five and the slope starts outside them.
+    (["entry", "mid_senior"],
+     {"intern": 4, "entry": 5, "mid_senior": 5, "senior": 4, "staff_principal": 3, "not_a_fit": 0, "unknown": 3}),
+    # Two picks with a gap: the level between them is two away from each.
+    (["mid_senior", "staff_principal"],
+     {"intern": 3, "entry": 4, "mid_senior": 5, "senior": 4, "staff_principal": 5, "not_a_fit": 0, "unknown": 3}),
+    # The two ends of the ladder: the middle is as far as anything gets.
+    (["intern", "staff_principal"],
+     {"intern": 5, "entry": 4, "mid_senior": 3, "senior": 4, "staff_principal": 5, "not_a_fit": 0, "unknown": 3}),
+    # Three picks, none adjacent.
+    (["intern", "mid_senior", "staff_principal"],
+     {"intern": 5, "entry": 4, "mid_senior": 5, "senior": 4, "staff_principal": 5, "not_a_fit": 0, "unknown": 3}),
+    # Three adjacent picks: a flat plateau with one step on each side.
+    (["entry", "mid_senior", "senior"],
+     {"intern": 4, "entry": 5, "mid_senior": 5, "senior": 5, "staff_principal": 4, "not_a_fit": 0, "unknown": 3}),
+])
+def test_every_pick_scores_five_and_the_rest_measure_from_the_nearest_one(targets, expected):
+    assert proposed_scores(targets) == expected
+
+
+def test_the_proposal_does_not_depend_on_the_order_the_user_picked_in():
+    assert proposed_scores(["senior", "mid_senior"]) == proposed_scores(["mid_senior", "senior"])
+
+
+def test_targets_come_back_in_level_order_however_they_arrive():
+    assert validate_targets(["senior", "intern", "mid_senior"]) == ["intern", "mid_senior", "senior"]
+    assert validate_targets(("staff_principal", "entry")) == ["entry", "staff_principal"]
+
+
+@pytest.mark.parametrize("targets", [
+    [],                                                       # no pick at all
+    ["intern", "entry", "mid_senior", "senior"],               # one too many
+    list(SENIORITY_LEVELS),                                    # all five
+    ["mid_senior", "mid_senior"],                              # the same level twice
+    ["entry", "senior", "entry"],
+    ["junior"],                                                # not a level
+    ["entry", "principal"],                                    # one good pick does not excuse a bad one
+    "entry",                                                   # a bare string is not a list of picks
+    None,
+    "",
+    {"entry": True},
+])
+def test_no_pick_too_many_picks_and_repeated_picks_are_all_rejected(targets):
+    with pytest.raises(ValueError):
+        validate_targets(targets)
+    with pytest.raises(ValueError):
+        proposed_scores(targets)
+
+
+def test_three_is_the_most_anyone_can_pick():
+    """Nasi's call: three levels is as wide as a target usefully gets."""
+    assert MAX_TARGETS == 3
+    assert validate_targets(list(SENIORITY_LEVELS[:MAX_TARGETS])) == list(SENIORITY_LEVELS[:MAX_TARGETS])
 
 
 def test_the_five_levels():
@@ -41,11 +97,11 @@ def test_old_local_scores_map_onto_the_new_levels():
 
 def test_an_unknown_level_to_propose_from_is_rejected():
     with pytest.raises(ValueError):
-        proposed_scores("junior")
+        proposed_scores(["junior"])
 
 
 def test_fit_is_a_lookup_in_the_users_own_table():
-    table = {**proposed_scores("mid_senior"), "entry": 5, "not_a_fit": 2, "unknown": 1}
+    table = {**proposed_scores(["mid_senior"]), "entry": 5, "not_a_fit": 2, "unknown": 1}
     assert seniority_fit("entry", False, table) == 5
     assert seniority_fit("staff_principal", False, table) == 3
     assert seniority_fit(None, False, table) == 1
@@ -54,7 +110,7 @@ def test_fit_is_a_lookup_in_the_users_own_table():
 
 
 def test_a_complete_table_of_whole_scores_is_valid():
-    table = {**proposed_scores("senior"), "staff_principal": 0}
+    table = {**proposed_scores(["senior"]), "staff_principal": 0}
     assert validate_scores(table) == table
 
 
@@ -68,7 +124,7 @@ def test_a_complete_table_of_whole_scores_is_valid():
     lambda t: t.update({"mid_senior": True}),
 ])
 def test_an_incomplete_or_out_of_range_table_is_rejected(change):
-    table = proposed_scores("mid_senior")
+    table = proposed_scores(["mid_senior"])
     change(table)
     with pytest.raises(ValueError):
         validate_scores(table)

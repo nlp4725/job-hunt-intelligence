@@ -1,5 +1,6 @@
 """Phase 4 in the cloud: job levels and each user's confirmed score table feed
-their Seniority Fit and total.
+their Seniority Fit and total. A user picks one to three levels (decided
+2026-09-17), so the stored target is always a list.
 
 Postgres tests need JHI_TEST_POSTGRES_URL (see test_cloud_db.py).
 """
@@ -21,12 +22,12 @@ def _level(level=None, is_contract=False) -> JobSeniorityLevel:
                              note=None, is_contract=is_contract, level=level)
 
 
-def _scored_user(db, store, cipher, target="entry", **profile):
-    """A user with a confirmed resume (Python, SQL) and a profile at `target`."""
+def _scored_user(db, store, cipher, targets=("entry",), **profile):
+    """A user with a confirmed resume (Python, SQL) and a profile targeting `targets`."""
     from resume.ingest import add_resume, confirm_skills
 
     user = _user(db)
-    _profile(db, user.id, seniority_target=target, **profile)
+    _profile(db, user.id, seniority_targets=list(targets), **profile)
     resume = add_resume(db, user, "cv.txt", RESUME_TEXT.encode(), store, cipher)
     confirm_skills(db, user.id, resume.id, ["Python", "SQL"])
     return user
@@ -40,7 +41,7 @@ class TestScoresUseJobLevels:
         jobs = _jobs(db)
         db.add_all([JobSeniority(job_id=jobs["1"].id, level="mid_senior"),
                     JobSeniority(job_id=jobs["2"].id, level="senior", is_contract=True)])
-        table = {**proposed_scores("entry"), "mid_senior": 5, "not_a_fit": 2}
+        table = {**proposed_scores(["entry"]), "mid_senior": 5, "not_a_fit": 2}
         user = _scored_user(db, store, cipher, seniority_scores=table)
 
         scores = _scores(db, user.id)
@@ -52,7 +53,7 @@ class TestScoresUseJobLevels:
 
         jobs = _jobs(db)
         db.add(JobSeniority(job_id=jobs["1"].id, level="mid_senior"))
-        user = _scored_user(db, store, cipher, target="entry")
+        user = _scored_user(db, store, cipher, targets=["entry"])
         assert _scores(db, user.id)["1"].seniority_fit == 4
 
     def test_a_job_without_a_level_has_no_fit_or_total_yet(self, db, store, cipher):
@@ -73,25 +74,25 @@ class TestConfirmSeniorityScores:
         db.add(JobSeniority(job_id=jobs["1"].id, level="mid_senior"))
         user = _scored_user(db, store, cipher)
         before = _latest_profile(db, user.id)
-        table = {**proposed_scores("entry"), "mid_senior": 5}
+        table = {**proposed_scores(["entry"]), "mid_senior": 5}
 
         set_seniority_scores(db, user.id, table)
 
         after = _latest_profile(db, user.id)
-        assert (after.version, after.seniority_scores, after.seniority_target, after.resume_id) == (
-            before.version + 1, table, "entry", before.resume_id)
+        assert (after.version, after.seniority_scores, after.seniority_targets, after.resume_id) == (
+            before.version + 1, table, ["entry"], before.resume_id)
         assert _scores(db, user.id)["1"].seniority_fit == 5
 
     def test_a_confirmed_table_is_never_edited_in_place(self, db, store, cipher):
         from analysis.user_scoring import set_seniority_scores
 
         user = _scored_user(db, store, cipher)
-        first = set_seniority_scores(db, user.id, proposed_scores("entry"))
-        set_seniority_scores(db, user.id, proposed_scores("mid_senior"), target="mid_senior")
+        first = set_seniority_scores(db, user.id, proposed_scores(["entry"]))
+        set_seniority_scores(db, user.id, proposed_scores(["mid_senior"]), targets=["mid_senior", "senior"])
 
         db.refresh(first)
-        assert first.seniority_scores == proposed_scores("entry") and first.seniority_target == "entry"
-        assert _latest_profile(db, user.id).seniority_target == "mid_senior"
+        assert first.seniority_scores == proposed_scores(["entry"]) and first.seniority_targets == ["entry"]
+        assert _latest_profile(db, user.id).seniority_targets == ["mid_senior", "senior"]
 
     def test_an_invalid_table_writes_nothing(self, db, store, cipher):
         from analysis.user_scoring import set_seniority_scores
@@ -99,19 +100,21 @@ class TestConfirmSeniorityScores:
         user = _scored_user(db, store, cipher)
         version = _latest_profile(db, user.id).version
         with pytest.raises(ValueError):
-            set_seniority_scores(db, user.id, {**proposed_scores("entry"), "mid_senior": 9})
+            set_seniority_scores(db, user.id, {**proposed_scores(["entry"]), "mid_senior": 9})
         with pytest.raises(ValueError):
-            set_seniority_scores(db, user.id, proposed_scores("entry"), target="junior")
+            set_seniority_scores(db, user.id, proposed_scores(["entry"]), targets=["junior"])
+        with pytest.raises(ValueError):
+            set_seniority_scores(db, user.id, proposed_scores(["entry"]), targets=["entry", "entry"])
         assert _latest_profile(db, user.id).version == version
 
 
 @needs_pg
 class TestPickLevelThenConfirmScores:
-    """Onboarding step 3 saves the level; step 4 shows the proposed table for
-    that level and the user agrees or adjusts it."""
+    """Onboarding step 3 saves the one to three levels the user picked; step 4
+    shows the proposed table for them and the user agrees or adjusts it."""
 
-    def test_saving_the_level_alone_scores_with_its_proposal_until_confirmed(self, db, store, cipher):
-        from analysis.user_scoring import set_seniority_scores, set_seniority_target
+    def test_saving_the_levels_alone_scores_with_their_proposal_until_confirmed(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_scores, set_seniority_targets
         from db.cloud_models import JobSeniority
 
         jobs = _jobs(db)
@@ -119,33 +122,51 @@ class TestPickLevelThenConfirmScores:
         user = _scored_user(db, store, cipher)
         before = _latest_profile(db, user.id)
 
-        set_seniority_target(db, user.id, "mid_senior")
+        set_seniority_targets(db, user.id, ["mid_senior"])
 
         picked = _latest_profile(db, user.id)
-        assert (picked.version, picked.seniority_target, picked.seniority_scores, picked.resume_id) == (
-            before.version + 1, "mid_senior", None, before.resume_id)
+        assert (picked.version, picked.seniority_targets, picked.seniority_scores, picked.resume_id) == (
+            before.version + 1, ["mid_senior"], None, before.resume_id)
         assert _scores(db, user.id)["1"].seniority_fit == 4          # the mid proposal
 
-        set_seniority_scores(db, user.id, {**proposed_scores("mid_senior"), "senior": 5})
+        set_seniority_scores(db, user.id, {**proposed_scores(["mid_senior"]), "senior": 5})
         assert _scores(db, user.id)["1"].seniority_fit == 5          # the confirmed table
 
-    def test_changing_the_level_later_clears_the_table_until_it_is_confirmed_again(self, db, store, cipher):
-        from analysis.user_scoring import set_seniority_scores, set_seniority_target
+    def test_changing_the_levels_later_clears_the_table_until_it_is_confirmed_again(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_scores, set_seniority_targets
 
         user = _scored_user(db, store, cipher)
-        set_seniority_scores(db, user.id, {**proposed_scores("entry"), "mid_senior": 5})
+        set_seniority_scores(db, user.id, {**proposed_scores(["entry"]), "mid_senior": 5})
 
-        set_seniority_target(db, user.id, "staff_principal")
+        set_seniority_targets(db, user.id, ["senior", "staff_principal"])
 
         assert _latest_profile(db, user.id).seniority_scores is None
 
-    def test_an_unknown_level_writes_nothing(self, db, store, cipher):
-        from analysis.user_scoring import set_seniority_target
+    def test_two_picks_score_every_level_between_them_at_five(self, db, store, cipher):
+        """The point of picking more than one level: a senior posting and a
+        mid_senior posting are equally good for someone open to both."""
+        from analysis.user_scoring import set_seniority_targets
+        from db.cloud_models import JobSeniority
+
+        jobs = _jobs(db)
+        db.add_all([JobSeniority(job_id=jobs["1"].id, level="mid_senior"),
+                    JobSeniority(job_id=jobs["2"].id, level="senior")])
+        user = _scored_user(db, store, cipher)
+
+        set_seniority_targets(db, user.id, ["senior", "mid_senior"])
+
+        assert _latest_profile(db, user.id).seniority_targets == ["mid_senior", "senior"]   # stored in level order
+        scores = _scores(db, user.id)
+        assert (scores["1"].seniority_fit, scores["2"].seniority_fit) == (5, 5)
+
+    def test_an_invalid_list_of_levels_writes_nothing(self, db, store, cipher):
+        from analysis.user_scoring import set_seniority_targets
 
         user = _scored_user(db, store, cipher)
         version = _latest_profile(db, user.id).version
-        with pytest.raises(ValueError):
-            set_seniority_target(db, user.id, "junior")
+        for bad in (["junior"], [], ["entry", "senior", "intern", "mid_senior"], ["entry", "entry"], "entry", None):
+            with pytest.raises(ValueError):
+                set_seniority_targets(db, user.id, bad)
         assert _latest_profile(db, user.id).version == version
 
 

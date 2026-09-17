@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { DetailPanel } from "../components/DetailPanel";
 import { JobTable, type SortKey } from "../components/JobTable";
@@ -79,11 +80,11 @@ export function Board({ me }: { me: Me }) {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="logo">
+        <Link className="logo" to="/" title="Home">
           <div className="logo-mark">J</div>
           <span className="logo-name">JoblyGo</span>
           <span className="logo-beta">β</span>
-        </div>
+        </Link>
         <button className={`nav-item${view === "pipeline" ? " active" : ""}`} onClick={() => setView("pipeline")}>
           <span className="nav-icon">⚡</span>
           <span className="nav-label">Pipeline</span>

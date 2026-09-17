@@ -70,7 +70,7 @@ def confirm_skills(db, user_id: int, resume_id: int, skills: list[str], rescore:
     profile = active_profile(db, user_id)
     if profile is not None:
         db.add(UserProfile(
-            user_id=user_id, version=profile.version + 1, resume_id=resume.id, seniority_target=profile.seniority_target,
+            user_id=user_id, version=profile.version + 1, resume_id=resume.id, seniority_targets=profile.seniority_targets,
             seniority_scores=profile.seniority_scores,
             target_roles=profile.target_roles, note=profile.note, years_experience=profile.years_experience,
         ))

@@ -79,8 +79,8 @@ class TestConstraints:
         from db.cloud_models import UserProfile
 
         user = _user(db)
-        db.add_all([UserProfile(user_id=user.id, version=1, seniority_target="entry"),
-                    UserProfile(user_id=user.id, version=1, seniority_target="mid_senior")])
+        db.add_all([UserProfile(user_id=user.id, version=1, seniority_targets=["entry"]),
+                    UserProfile(user_id=user.id, version=1, seniority_targets=["mid_senior"])])
         with pytest.raises(IntegrityError):
             db.flush()
 
@@ -174,10 +174,10 @@ class TestSeedOwner:
         user = db.query(User).one()
         assert (user.id, user.role, user.email, user.idp_subject) == (1, "admin", "owner@example.com", None)
         profile = db.query(UserProfile).one()
-        assert (profile.user_id, profile.version, profile.seniority_target) == (1, 1, "entry")
+        assert (profile.user_id, profile.version, profile.seniority_targets) == (1, 1, ["entry"])
         from analysis.seniority_fit import proposed_scores
 
-        assert profile.seniority_scores == proposed_scores("entry")   # reproduces today's rubric
+        assert profile.seniority_scores == proposed_scores(["entry"])   # reproduces today's rubric
 
     def test_statuses_move_to_job_tracking(self, seeded):
         from db.cloud_models import JobTracking

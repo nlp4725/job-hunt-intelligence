@@ -25,7 +25,7 @@ from analysis.seniority_fit import proposed_scores, seniority_fit
 from judge.seniority_level import SENIORITY_LEVEL_PROMPT, classify_job_seniority
 
 GOLD = Path(__file__).resolve().parent / "fixtures" / "seniority_gold"
-ENTRY = proposed_scores("entry")
+ENTRY = proposed_scores(["entry"])
 TARGET_ALL_CORRECT = 0.90
 
 

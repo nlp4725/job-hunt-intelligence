@@ -1,0 +1,181 @@
+/* ── Auth pages (/signin, /signup, /forgot) ──
+   Our own full-bleed white page, so signing in feels like part of JoblyGo
+   rather than the bordered box the Cognito hosted UI drew. The tokens come from
+   index.css; only the surface changes, because a white sheet is what makes the
+   page read as the app's own front door. Everything is centred in one column
+   that simply gets narrower on a phone — there is no card to break. */
+
+.auth-page {
+  min-height: 100%;
+  background: #ffffff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 72px 24px 56px;
+}
+
+.auth-shell {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  align-self: center;
+  margin-bottom: 40px;
+  text-decoration: none;
+  color: var(--text-primary);
+}
+.auth-mark {
+  width: 30px; height: 30px; border-radius: 7px;
+  background: var(--text-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700;
+}
+.auth-name { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+
+.auth-heading {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.9px;
+  line-height: 1.15;
+  text-align: center;
+  margin: 0 0 10px;
+}
+.auth-lede {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0 0 32px;
+}
+
+/* ── Social block ──
+   Rendered only for providers the user pool actually has; with none configured
+   the block and its divider are absent and the form starts straight away. */
+.auth-social { display: flex; flex-direction: column; gap: 10px; }
+.auth-social-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px 16px;
+  background: #fff; border: 1.5px solid var(--border-hi); border-radius: 10px;
+  font-family: inherit; font-size: 14.5px; font-weight: 500; color: var(--text-primary);
+  cursor: pointer; transition: background 0.12s, border-color 0.12s;
+}
+.auth-social-btn:hover { background: var(--surface-2); border-color: var(--accent-border); }
+.auth-social-mark {
+  width: 18px; height: 18px; flex-shrink: 0;
+  background: currentColor;
+  /* The provider glyphs are masks so one rule colours and sizes them all. */
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+}
+.auth-social-mark.google {
+  background: #4285f4;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 11v3.2h5.4c-.2 1.4-1.6 4.1-5.4 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.6 14.6 2.7 12 2.7 6.9 2.7 2.8 6.9 2.8 12S6.9 21.3 12 21.3c5.4 0 8.9-3.8 8.9-9.1 0-.8-.1-1.4-.2-2H12z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 11v3.2h5.4c-.2 1.4-1.6 4.1-5.4 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.6 14.6 2.7 12 2.7 6.9 2.7 2.8 6.9 2.8 12S6.9 21.3 12 21.3c5.4 0 8.9-3.8 8.9-9.1 0-.8-.1-1.4-.2-2H12z'/%3E%3C/svg%3E");
+}
+.auth-social-mark.apple {
+  background: var(--text-primary);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.9-1.5-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.8-2.2.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.6-1-2.6-3.7zM14.3 5.6c.6-.8 1-1.8.9-2.9-.9 0-2 .6-2.7 1.4-.6.7-1 1.8-.9 2.8 1 .1 2.1-.5 2.7-1.3z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.9-1.5-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.8-2.2.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.6-1-2.6-3.7zM14.3 5.6c.6-.8 1-1.8.9-2.9-.9 0-2 .6-2.7 1.4-.6.7-1 1.8-.9 2.8 1 .1 2.1-.5 2.7-1.3z'/%3E%3C/svg%3E");
+}
+.auth-social-mark.facebook { background: #1877f2; border-radius: 50%; }
+
+.auth-divider {
+  display: flex; align-items: center; gap: 14px;
+  margin: 22px 0;
+  font-size: 12.5px; color: var(--text-tertiary);
+}
+.auth-divider::before, .auth-divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── The form ── */
+.auth-form { display: flex; flex-direction: column; gap: 18px; }
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+.auth-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.auth-input-wrap { position: relative; display: flex; }
+.auth-input {
+  width: 100%;
+  background: #fff;
+  border: 1.5px solid var(--border-hi);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 15px;
+  padding: 13px 44px 13px 14px;
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.auth-input::placeholder { color: var(--text-tertiary); }
+.auth-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+.auth-eye {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  background: transparent; border: none; border-radius: 8px;
+  color: var(--text-tertiary); cursor: pointer;
+}
+.auth-eye:hover { color: var(--text-primary); background: var(--surface-2); }
+.auth-hint { font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.auth-hint-warn { color: var(--accent); }
+
+.auth-submit {
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 18px;
+  background: var(--text-primary);
+  border: none; border-radius: 10px;
+  color: #fff;
+  font-family: inherit; font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+}
+.auth-submit:hover:not(:disabled) { background: #2c1c10; }
+.auth-submit:disabled { opacity: 0.4; cursor: default; }
+
+.auth-links { margin: 2px 0 0; text-align: center; font-size: 13.5px; color: var(--text-secondary); }
+.auth-link {
+  background: transparent; border: none; padding: 0;
+  font-family: inherit; font-size: inherit; font-weight: 600;
+  color: var(--accent); cursor: pointer; text-decoration: none;
+}
+.auth-link:hover { text-decoration: underline; }
+
+.auth-footer {
+  margin: 32px 0 0;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.auth-error, .auth-note {
+  padding: 11px 13px; border-radius: 9px; font-size: 13px; line-height: 1.5;
+}
+.auth-error {
+  background: color-mix(in srgb, var(--red) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 28%, transparent);
+  color: var(--text-primary);
+}
+.auth-note {
+  background: var(--surface-3);
+  border: 1px solid var(--border-hi);
+  color: var(--text-secondary);
+}
+
+/* Down to phone width the column just stops being generous at the top; the
+   16px gutter keeps the inputs off the screen edge. */
+@media (max-width: 520px) {
+  .auth-page { padding: 36px 16px 40px; align-items: stretch; }
+  .auth-brand { margin-bottom: 28px; }
+  .auth-heading { font-size: 25px; letter-spacing: -0.6px; }
+  .auth-lede { margin-bottom: 26px; }
+}

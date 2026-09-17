@@ -41,6 +41,11 @@ class TestRecentJobs:
                                 "posted_date", "first_seen_at", "level", "is_contract"} for job in jobs)
         assert "posting text" not in json.dumps(jobs).lower()   # never the job description
 
+    def test_days_and_limit_are_bounded(self, client, board):  # noqa: F811
+        assert len(client.get("/api/public/recent-jobs?limit=2").get_json()["jobs"]) == 2
+        assert client.get("/api/public/recent-jobs?days=9999").get_json()["days"] == 90
+        assert client.get("/api/public/recent-jobs?days=0").get_json()["days"] == 1
+
 
 @needs_pg
 class TestPublicStats:

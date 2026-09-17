@@ -88,8 +88,11 @@ def _resume(client, headers, skills_text):
     return started
 
 
-def _onboard(client, headers, skills_text, level):
-    client.put("/api/v1/me/profile/level", json={"level": level}, headers=headers)
+def _onboard(client, headers, skills_text, levels):
+    """`levels` is one level name or a list of up to three: the route always
+    takes a list, and most of these tests only care about one."""
+    client.put("/api/v1/me/profile/level",
+               json={"levels": [levels] if isinstance(levels, str) else list(levels)}, headers=headers)
     _resume(client, headers, skills_text)
 
 
@@ -142,20 +145,64 @@ class TestRoles:
 
 
 @needs_pg
+class TestSkillsVocabulary:
+    """The Skills step only accepts canonical taxonomy names, so the client has
+    to know them; this is where its type-ahead gets them."""
+
+    def test_every_canonical_name_is_returned_with_the_taxonomy_fingerprint(self, client):
+        from analysis.skills_extractor import SKILL_TAXONOMY
+        from analysis.taxonomy_version import taxonomy_version
+
+        body = client.get("/api/v1/skills", headers=A).get_json()
+        assert body["skills"] == sorted(SKILL_TAXONOMY) == sorted(body["skills"])
+        assert body["taxonomy_version"] == taxonomy_version()
+
+    def test_the_names_are_exactly_the_ones_the_skills_step_accepts(self, client):
+        """Whatever the type-ahead offers must survive confirmation."""
+        _resume(client, A, "SKILLS\nPython\n")
+        resume_id = client.get("/api/v1/me/resume", headers=A).get_json()["versions"][0]["id"]
+        offered = client.get("/api/v1/skills", headers=A).get_json()["skills"]
+        response = client.put(f"/api/v1/me/resume/{resume_id}/skills",
+                              json={"skills": offered[:5]}, headers=A)
+        assert response.status_code == 200 and response.get_json()["skills_confirmed"] == sorted(offered[:5])
+
+    def test_it_needs_a_signed_in_caller(self, client):
+        assert client.get("/api/v1/skills").status_code == 401
+
+
+@needs_pg
 class TestProfile:
-    def test_pick_a_level_then_confirm_the_score_table(self, client):
+    def test_pick_levels_then_confirm_the_score_table(self, client):
         assert client.get("/api/v1/me/profile", headers=A).get_json()["profile"] is None
-        picked = client.put("/api/v1/me/profile/level", json={"level": "mid_senior"}, headers=A).get_json()
-        assert picked["seniority_target"] == "mid_senior" and picked["seniority_scores"] is None
-        assert picked["proposed_scores"]["mid_senior"] == 5
+        picked = client.put("/api/v1/me/profile/level", json={"levels": ["senior", "mid_senior"]},
+                            headers=A).get_json()
+        # Stored and returned in level order, whichever order the user clicked in.
+        assert picked["seniority_targets"] == ["mid_senior", "senior"] and picked["seniority_scores"] is None
+        assert picked["proposed_scores"]["mid_senior"] == picked["proposed_scores"]["senior"] == 5
+        assert client.get("/api/v1/me/profile", headers=A).get_json()["profile"]["seniority_targets"] == \
+            ["mid_senior", "senior"]
         table = {**picked["proposed_scores"], "entry": 5}
         confirmed = client.put("/api/v1/me/profile/scores", json={"scores": table}, headers=A).get_json()
         assert confirmed["seniority_scores"] == table
         assert client.get("/api/v1/me", headers=A).get_json()["onboarding"]["scores_confirmed"] is True
 
-    def test_bad_levels_and_tables_are_400(self, client):
-        assert client.put("/api/v1/me/profile/level", json={"level": "junior"}, headers=A).status_code == 400
-        client.put("/api/v1/me/profile/level", json={"level": "entry"}, headers=A)
+    @pytest.mark.parametrize("body", [
+        {"levels": ["junior"]},                                          # not a level
+        {"levels": []},                                                  # no pick at all
+        {"levels": ["intern", "entry", "mid_senior", "senior"]},          # four picks
+        {"levels": ["entry", "entry"]},                                  # the same level twice
+        {"levels": "entry"},                                             # not a list
+        {"level": "entry"},                                              # the old single-level shape
+        {},
+    ])
+    def test_a_bad_list_of_levels_is_400_with_a_readable_message(self, client, body):
+        response = client.put("/api/v1/me/profile/level", json=body, headers=A)
+        assert response.status_code == 400
+        assert response.get_json()["error"] and "Traceback" not in response.get_json()["error"]
+        assert client.get("/api/v1/me/profile", headers=A).get_json()["profile"] is None
+
+    def test_a_bad_score_table_is_400(self, client):
+        client.put("/api/v1/me/profile/level", json={"levels": ["entry"]}, headers=A)
         assert client.put("/api/v1/me/profile/scores", json={"scores": {"entry": 9}}, headers=A).status_code == 400
 
 

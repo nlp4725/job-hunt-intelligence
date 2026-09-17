@@ -2,19 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { uploadResume } from "./api";
 
+/* The token is somebody else's problem here: auth.ts gets it from the Cognito
+   library now, and these tests are about the three-step upload. */
+vi.mock("./auth", () => ({
+  getIdToken: async () => "id-token",
+  signOutLocally: () => undefined,
+}));
+
 describe("resume upload", () => {
   beforeEach(() => {
     sessionStorage.clear();
-    sessionStorage.setItem("refresh_token", "refresh-token");
   });
 
   it("asks for a ticket, sends the file straight to storage, then has the API read it", async () => {
     const calls: { url: string; init?: RequestInit }[] = [];
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
-      if (url.endsWith("/oauth2/token")) {
-        return { ok: true, status: 200, json: async () => ({ id_token: "id-token", expires_in: 3600 }) } as Response;
-      }
       if (url.endsWith("/api/v1/me/resume")) {
         return {
           ok: true,
@@ -28,7 +31,7 @@ describe("resume upload", () => {
 
     const resume = await uploadResume(new File(["hello"], "cv.pdf", { type: "application/pdf" }), fetchMock as unknown as typeof fetch);
 
-    const [, ticket, storage, complete] = calls;
+    const [ticket, storage, complete] = calls;
     expect(ticket.url).toMatch(/\/api\/v1\/me\/resume$/);
     expect(storage.url).toBe("https://bucket.s3.amazonaws.com/");
     const form = storage.init!.body as FormData;
@@ -41,7 +44,6 @@ describe("resume upload", () => {
 
   it("stops if storage refuses the file", async () => {
     const fetchMock = vi.fn(async (url: string) => {
-      if (url.endsWith("/oauth2/token")) return { ok: true, status: 200, json: async () => ({ id_token: "t", expires_in: 3600 }) } as Response;
       if (url.endsWith("/api/v1/me/resume")) {
         return { ok: true, status: 201, json: async () => ({ resume_id: 1, version: 1, upload: { url: "https://bucket.s3.amazonaws.com/", fields: {}, expires_in: 300 } }) } as Response;
       }

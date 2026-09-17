@@ -4,7 +4,11 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import { App } from "./App";
 import { Callback } from "./pages/Callback";
+import { Forgot } from "./pages/Forgot";
 import { Home } from "./pages/Home";
+import { PublicBoard } from "./pages/PublicBoard";
+import { SignIn } from "./pages/SignIn";
+import { SignUp } from "./pages/SignUp";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -13,6 +17,12 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route element={<App />}>
           <Route path="/" element={<Home />} />
+          {/* Our own sign-in pages. /auth/callback stays for a federated
+              (Google/Apple) sign-in, which can only come back through it. */}
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/forgot" element={<Forgot />} />
+          <Route path="/jobs" element={<PublicBoard />} />
           <Route path="/auth/callback" element={<Callback />} />
           <Route path="*" element={<Home />} />
         </Route>

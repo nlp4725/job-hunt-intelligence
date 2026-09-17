@@ -65,3 +65,4 @@ outputs.json
 webapp/node_modules/
 webapp/dist/
 webapp/.env.local
+webapp/tsconfig.tsbuildinfo

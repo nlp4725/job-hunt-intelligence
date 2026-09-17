@@ -84,15 +84,25 @@ export const confirmSkills = (resumeId: number, skills: string[]) =>
 
 export const listResumes = () => api<{ versions: Resume[]; active_resume_id: number | null }>("/api/v1/me/resume");
 
+/** Every skill name the matcher knows. The API rejects anything outside this
+ *  list, so the Skills step suggests from it as you type rather than letting
+ *  you spell a name it will refuse. Small enough (~170 names) to fetch whole
+ *  and filter in the browser. */
+export const listSkillVocabulary = () => api<{ skills: string[]; taxonomy_version: string }>("/api/v1/skills");
+
 // --- profile --------------------------------------------------------------
 
 export const SENIORITY_LEVELS = ["intern", "entry", "mid_senior", "senior", "staff_principal"] as const;
 export type SeniorityLevel = (typeof SENIORITY_LEVELS)[number];
 export type ScoreTable = Record<SeniorityLevel | "not_a_fit" | "unknown", number>;
 
+/** You may aim at up to three levels at once — a senior engineer open to staff
+ *  roles is aiming at both, and both should score full marks. */
+export const MAX_SENIORITY_TARGETS = 3;
+
 export type Profile = {
   version: number;
-  seniority_target: SeniorityLevel;
+  seniority_targets: SeniorityLevel[];
   seniority_scores: ScoreTable | null;
   proposed_scores: ScoreTable;
   target_roles: string[] | null;
@@ -101,8 +111,8 @@ export type Profile = {
 };
 
 export const getProfile = () => api<{ profile: Profile | null }>("/api/v1/me/profile");
-export const pickLevel = (level: SeniorityLevel) =>
-  api<Profile>("/api/v1/me/profile/level", { method: "PUT", body: JSON.stringify({ level }) });
+export const pickLevels = (levels: SeniorityLevel[]) =>
+  api<Profile>("/api/v1/me/profile/level", { method: "PUT", body: JSON.stringify({ levels }) });
 export const confirmScores = (scores: ScoreTable) =>
   api<Profile>("/api/v1/me/profile/scores", { method: "PUT", body: JSON.stringify({ scores }) });
 
@@ -189,8 +199,8 @@ export type PublicJob = {
 };
 
 /** Recent real postings for the landing page. No token: public facts only. */
-export async function getRecentJobs(fetchImpl = fetch): Promise<PublicJob[]> {
-  const response = await fetchImpl(`${BASE}/api/public/recent-jobs`);
+export async function getRecentJobs(days = 14, limit = 8, fetchImpl = fetch): Promise<PublicJob[]> {
+  const response = await fetchImpl(`${BASE}/api/public/recent-jobs?days=${days}&limit=${limit}`);
   if (!response.ok) throw new ApiError(response.status, "could not load recent jobs");
   return (await response.json()).jobs;
 }

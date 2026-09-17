@@ -14,8 +14,10 @@ from datetime import datetime, timedelta
 from sqlalchemy import and_, func, text
 
 from analysis.seniority_fit import proposed_scores
+from analysis.skills_extractor import SKILL_TAXONOMY
+from analysis.taxonomy_version import taxonomy_version
 from analysis.user_expertise_scoring import active_expertise_profile
-from analysis.user_scoring import active_profile, set_seniority_scores, set_seniority_target
+from analysis.user_scoring import active_profile, set_seniority_scores, set_seniority_targets
 from db.board_filters import not_agency
 from db.cloud_models import (
     APPLICATION_STAGES, ApplicationEvent, ExpertiseProfile, JobSeniority, JobTracking, User, UserJobExpertise,
@@ -113,13 +115,27 @@ def resume_download_link(db, user: User, resume_id: int, storage) -> str:
     return storage.presign_download(row.storage_key, row.original_filename or "resume")
 
 
+# --- the skill vocabulary ------------------------------------------------------
+
+def skills_vocabulary() -> dict:
+    """Every canonical skill name the Skills step will accept. The step rejects
+    anything else (resume/ingest.confirm_skills), and until this existed the UI
+    had no way to know the list, so users typed names that came back rejected;
+    now the type-ahead offers them. The whole taxonomy is 167 names and about
+    1.6KB, small enough to send in one response and filter in the client.
+
+    taxonomy_version is the same fingerprint stored next to every extracted
+    skill set, so a client can cache the list until the taxonomy changes."""
+    return {"skills": sorted(SKILL_TAXONOMY), "taxonomy_version": taxonomy_version()}
+
+
 # --- profile -----------------------------------------------------------------
 
 def profile_view(profile: UserProfile | None) -> dict | None:
     if profile is None:
         return None
-    return {"version": profile.version, "seniority_target": profile.seniority_target,
-            "seniority_scores": profile.seniority_scores, "proposed_scores": proposed_scores(profile.seniority_target),
+    return {"version": profile.version, "seniority_targets": profile.seniority_targets,
+            "seniority_scores": profile.seniority_scores, "proposed_scores": proposed_scores(profile.seniority_targets),
             "target_roles": profile.target_roles, "note": profile.note, "resume_id": profile.resume_id}
 
 
@@ -127,9 +143,10 @@ def get_profile(db, user: User) -> dict:
     return {"profile": profile_view(active_profile(db, user.id))}
 
 
-def pick_level(db, user: User, level) -> dict:
-    """Raises ValueError for an unknown level."""
-    return profile_view(set_seniority_target(db, user.id, str(level), rescore=False))   # the route queues the rescore
+def pick_level(db, user: User, levels) -> dict:
+    """The 1-3 levels the user picked, all equal targets. Raises ValueError for
+    anything else, with a message the route hands straight to the caller."""
+    return profile_view(set_seniority_targets(db, user.id, levels, rescore=False))   # the route queues the rescore
 
 
 def confirm_scores(db, user: User, scores) -> dict:

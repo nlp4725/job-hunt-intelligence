@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 import { DemoAnimation } from "../components/DemoAnimation";
 import { getPublicStats, type PublicStats } from "../api";
-import { signIn } from "../auth";
 
 /** The signed-out landing page, ported from the Figma Make file "Job Hunting
  *  Board Productization" (HeroPage): grid-paper canvas, one-line headline,
@@ -29,6 +29,7 @@ function tickerItems(stats: PublicStats | null) {
 }
 
 export function Landing() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<PublicStats | null>(null);
   useEffect(() => {
     getPublicStats()
@@ -41,15 +42,18 @@ export function Landing() {
     <div className="hero-page">
       <nav className="hero-nav">
         <div className="hero-nav-inner">
-          <div className="hero-brand">
+          <Link className="hero-brand" to="/">
             <span className="hero-mark">J</span>
             <span className="hero-name">JoblyGo</span>
-          </div>
+          </Link>
           <div className="hero-nav-actions">
-            <button className="hero-link" onClick={() => signIn()}>
+            <Link className="hero-link" to="/jobs">
+              Recent postings
+            </Link>
+            <button className="hero-link" onClick={() => navigate("/signin")}>
               Sign in
             </button>
-            <button className="hero-cta" onClick={() => signIn("signup")}>
+            <button className="hero-cta" onClick={() => navigate("/signup")}>
               Upload your resume
             </button>
           </div>
@@ -59,19 +63,22 @@ export function Landing() {
       <header className="hero">
         <h1 className="hero-headline">Less browsing. More applying.</h1>
         <p className="hero-sub">
-          {stats ? `${stats.jobs.toLocaleString()} AI engineer jobs, screened and ranked for you.` : "AI engineer jobs, screened and ranked for you."}{" "}
-          Scored against your resume, updated daily.
+          AI engineer jobs scraped, ranked and tracked for you daily. Scored against your resume across three signals.
         </p>
-        <button className="hero-cta large" onClick={() => signIn("signup")}>
-          Upload your resume →
-        </button>
+        <div className="hero-actions">
+          <button className="hero-cta large" onClick={() => navigate("/signup")}>
+            Upload your resume →
+          </button>
+          <Link className="hero-secondary" to="/jobs">
+            Browse recent postings →
+          </Link>
+        </div>
       </header>
 
       <section className="hero-demo">
         <DemoAnimation />
         <p className="demo-caption">
-          Real postings from the last two weeks. Scores unlock when you upload your resume — every score is computed
-          against it.
+          Demo only: example listings and scores, to show how ranking works. <Link to="/jobs">See the real postings →</Link>
         </p>
       </section>
 
