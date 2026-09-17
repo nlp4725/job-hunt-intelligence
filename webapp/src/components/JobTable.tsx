@@ -14,6 +14,14 @@ const LEVEL_LABELS: Record<SeniorityLevel, string> = {
 
 const WORKPLACE: Record<string, string> = { Remote: "#7c3aed", Hybrid: "#2563eb", "On-site": "#059669" };
 
+/** LinkedIn's "posted" text is relative and goes stale in storage; show the
+ *  date we collected the posting. */
+function addedOn(iso: string | null): string {
+  if (!iso) return "—";
+  const when = new Date(iso + (iso.endsWith("Z") ? "" : "Z"));
+  return when.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export const totalColor = (value: number) => (value >= 9 ? "#16a34a" : value >= 7 ? "#65a30d" : value >= 5 ? "#d97706" : "#dc2626");
 const signalColor = (value: number) => (value >= 5 ? "#16a34a" : value >= 4 ? "#65a30d" : value >= 3 ? "#d97706" : "#dc2626");
 
@@ -64,7 +72,7 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
           {header("Level")}
           {header("Location")}
           {header("Workplace")}
-          {header("Posted")}
+          {header("Added")}
           {header("Applied")}
           {header("Status")}
         </tr>
@@ -121,7 +129,7 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
                   <span className="demo-pill neutral">Unknown</span>
                 )}
               </td>
-              <td className="mono cell-muted">{job.posted_date ?? "—"}</td>
+              <td className="mono cell-muted">{addedOn(job.first_seen_at)}</td>
               <td className="center" onClick={(event) => event.stopPropagation()}>
                 <input type="checkbox" checked={job.tracking?.applied ?? false} onChange={() => onApplied(job)} />
               </td>

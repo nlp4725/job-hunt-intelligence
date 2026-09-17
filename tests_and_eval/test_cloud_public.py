@@ -37,8 +37,9 @@ class TestRecentJobs:
         assert "ML Engineer" in titles and "Data Analyst" in titles
         assert "Ancient Role" not in titles and "Expired Role" not in titles   # too old, and expired
         assert "AI Engineer" not in titles or all(job["company"] != "MeeBoss" for job in jobs)   # agency left out
-        assert all(set(job) == {"title", "company", "industry", "size", "workplace_type", "location",
+        assert all(set(job) == {"title", "company", "url", "industry", "size", "workplace_type", "location",
                                 "posted_date", "first_seen_at", "level", "is_contract"} for job in jobs)
+        assert all(job["url"].startswith("u") or "linkedin.com" in job["url"] for job in jobs)   # linkable
         assert "posting text" not in json.dumps(jobs).lower()   # never the job description
 
     def test_days_and_limit_are_bounded(self, client, board):  # noqa: F811

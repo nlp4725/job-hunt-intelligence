@@ -15,6 +15,14 @@ const LEVELS: Record<SeniorityLevel, string> = {
   staff_principal: "Staff",
 };
 const WORKPLACE: Record<string, string> = { Remote: "#7c3aed", Hybrid: "#2563eb", "On-site": "#059669" };
+
+/** LinkedIn's own "posted" text is relative ("2 weeks ago"), which goes stale
+ *  the moment we store it. Show the date we collected the posting instead. */
+function addedOn(iso: string | null): string {
+  if (!iso) return "—";
+  const when = new Date(iso + (iso.endsWith("Z") ? "" : "Z"));
+  return when.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 const WINDOWS = [
   { days: 3, label: "Last 3 days" },
   { days: 7, label: "Last week" },
@@ -115,7 +123,7 @@ export function PublicBoard() {
             <table className="demo-table public">
               <thead>
                 <tr>
-                  {["#", "Job", "Industry", "Size", "Workplace", "Location", "Level", "Posted", "Score"].map((label) => (
+                  {["#", "Job", "Industry", "Size", "Workplace", "Location", "Level", "Added", "Score"].map((label) => (
                     <th key={label}>{label}</th>
                   ))}
                 </tr>
@@ -125,7 +133,9 @@ export function PublicBoard() {
                   <tr key={`${job.title}-${job.company}-${index}`}>
                     <td className="mono demo-index">{index + 1}</td>
                     <td className="demo-job">
-                      <div className="demo-title">{job.title}</div>
+                      <a className="demo-title link" href={job.url} target="_blank" rel="noreferrer">
+                        {job.title} <span className="job-link">↗</span>
+                      </a>
                       <div className="demo-company">{job.company}</div>
                     </td>
                     <td className="demo-industry">{job.industry ?? "—"}</td>
@@ -141,7 +151,7 @@ export function PublicBoard() {
                     </td>
                     <td className="demo-industry">{job.location ?? "—"}</td>
                     <td className="demo-industry">{job.level ? LEVELS[job.level] : "—"}</td>
-                    <td className="mono demo-muted">{job.posted_date ?? "—"}</td>
+                    <td className="mono demo-muted">{addedOn(job.first_seen_at)}</td>
                     <td>
                       <button className="score-locked" onClick={() => navigate("/signup")}>
                         🔒 Score

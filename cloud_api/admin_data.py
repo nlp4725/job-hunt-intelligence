@@ -175,7 +175,8 @@ def public_recent_jobs(db, days: int = RECENT_DAYS, limit: int = RECENT_LIMIT) -
     says); scores are per person and never here."""
     since = utcnow().replace(tzinfo=None) - timedelta(days=days)
     rows = (db.query(Job.title, Job.company_name, Company.industry, Company.size, Job.workplace_type,
-                     Job.location, Job.posted_date, Job.first_seen_at, JobSeniority.level, JobSeniority.is_contract)
+                     Job.location, Job.posted_date, Job.first_seen_at, Job.url, JobSeniority.level,
+                     JobSeniority.is_contract)
             .outerjoin(Company, Company.id == Job.company_id)
             .outerjoin(JobSeniority, JobSeniority.job_id == Job.id)
             .filter(Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None), Job.title.isnot(None),
@@ -184,6 +185,7 @@ def public_recent_jobs(db, days: int = RECENT_DAYS, limit: int = RECENT_LIMIT) -
     return [{
         "title": row.title,
         "company": row.company_name,
+        "url": row.url,
         "industry": row.industry,
         "size": row.size,
         "workplace_type": row.workplace_type,

@@ -188,6 +188,7 @@ export async function getPublicStats(fetchImpl = fetch): Promise<PublicStats> {
 export type PublicJob = {
   title: string;
   company: string | null;
+  url: string;
   industry: string | null;
   size: string | null;
   workplace_type: string | null;

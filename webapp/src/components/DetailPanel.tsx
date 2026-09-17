@@ -84,7 +84,7 @@ export function DetailPanel({
             ["Level", job.level ?? "unknown"],
             ["Location", job.location ?? "—"],
             ["Workplace", job.workplace_type ?? "—"],
-            ["Posted", job.posted_date ?? "—"],
+            ["Added", job.first_seen_at ? new Date(job.first_seen_at + (job.first_seen_at.endsWith("Z") ? "" : "Z")).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—"],
             ["Contract", job.is_contract ? "Yes" : "No"],
           ].map(([key, value]) => (
             <div className="detail-row" key={key}>
