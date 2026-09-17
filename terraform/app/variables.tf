@@ -24,13 +24,15 @@ variable "image_tag" {
 }
 
 variable "alert_email" {
-  type    = string
-  default = ""
+  type      = string
+  default   = ""
+  sensitive = true # hidden in plan output: the repository's CI logs are public
 }
 
 variable "owner_email" {
   type        = string
   default     = ""
+  sensitive   = true
   description = "made admin by the migrate step; claimed at the first verified sign-in with this email"
 }
 

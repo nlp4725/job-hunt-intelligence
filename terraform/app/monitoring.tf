@@ -3,7 +3,7 @@ resource "aws_sns_topic" "alerts" {
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  count     = var.alert_email != "" ? 1 : 0
+  count     = nonsensitive(var.alert_email != "") ? 1 : 0
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
@@ -51,7 +51,7 @@ resource "aws_cloudwatch_metric_alarm" "this" {
 }
 
 resource "aws_budgets_budget" "monthly" {
-  count        = var.alert_email != "" ? 1 : 0
+  count        = nonsensitive(var.alert_email != "") ? 1 : 0
   name         = "jhi-monthly"
   budget_type  = "COST"
   limit_amount = tostring(var.monthly_budget_usd)
