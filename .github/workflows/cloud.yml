@@ -50,6 +50,9 @@ jobs:
         run: python -m pytest -q tests_and_eval/test_cloud_*.py tests_and_eval/test_extension_cloud_sync.py
       - name: Terraform tests (rules, fmt, validate)
         run: python -m pytest -q terraform/tests
+      - name: Web app tests and type check
+        working-directory: webapp
+        run: npm ci && npm test && npm run build
 
   deploy:
     needs: test
@@ -99,9 +102,21 @@ jobs:
             -backend-config="key=app/terraform.tfstate" -backend-config="region=$AWS_REGION"
           terraform apply -input=false -auto-approve
           terraform output -json > ../../outputs.json
-      - name: Upload the web app (once it exists)
-        if: hashFiles('webapp/package.json') != ''
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: Build and upload the web app
+        env:
+          # The app is built against whatever this deploy just created.
+          VITE_API_BASE: https://api.${{ vars.DOMAIN }}
         run: |
+          export VITE_COGNITO_DOMAIN=$(jq -r '.cognito_domain.value' outputs.json)
+          export VITE_COGNITO_CLIENT_ID=$(jq -r '.web_client_id.value' outputs.json)
           cd webapp && npm ci && npm run build && cd ..
-          aws s3 sync webapp/dist "s3://$(jq -r '.frontend_bucket.value' outputs.json)" --delete
+          aws s3 sync webapp/dist "s3://$(jq -r '.frontend_bucket.value' outputs.json)" --delete \
+            --cache-control "public,max-age=31536000,immutable" --exclude index.html
+          aws s3 cp webapp/dist/index.html "s3://$(jq -r '.frontend_bucket.value' outputs.json)/index.html" \
+            --cache-control "no-cache"
           aws cloudfront create-invalidation --distribution-id "$(jq -r '.distribution_id.value' outputs.json)" --paths "/*"

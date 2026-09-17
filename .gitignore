@@ -62,3 +62,6 @@ CONTEXT.md
 !example.tfvars
 outputs.json
 *.tfplan
+webapp/node_modules/
+webapp/dist/
+webapp/.env.local
