@@ -42,7 +42,7 @@ export function ScoresStep({ onConfirmed }: { onConfirmed: () => void }) {
 
   return (
     <>
-      <h1>How much is each level worth to you?</h1>
+      <h2 className="step-title">How much is each level worth?</h2>
       <p className="lede">
         We score seniority 0–5. Here's what we propose from the level you picked — change anything that doesn't match how
         you'd rate a job, then confirm.
@@ -76,7 +76,7 @@ export function ScoresStep({ onConfirmed }: { onConfirmed: () => void }) {
       </table>
       <div className="row-actions">
         <button className="btn btn-primary grow" onClick={save} disabled={busy}>
-          {busy ? "Saving…" : "Confirm and score my board"}
+          {busy ? "Scoring…" : "Launch my board →"}
         </button>
       </div>
       <p className="action-note">Editable later in settings; your board is rescored when you change it.</p>

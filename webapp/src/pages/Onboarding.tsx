@@ -6,7 +6,7 @@ import { ScoresStep } from "../components/ScoresStep";
 import { SkillsStep } from "../components/SkillsStep";
 import { getMe, type Me, type Resume } from "../api";
 
-const STEP_LABELS = ["Resume", "Skills", "Level", "Scores"];
+const STEP_LABELS = ["Resume", "Skills", "Seniority", "Scores"];
 
 /** The four required steps, in order. Which one shows is decided by what the
  *  API says is done, so a reload never loses your place. */
@@ -24,13 +24,13 @@ export function Onboarding({ me: initial, onDone }: { me: Me; onDone: () => void
   const refresh = () => getMe().then(setMe);
 
   return (
-    <div className="centered">
-      <div className="card fadein">
-        <ol className="wizard">
+    <div className="flow">
+      <div className="step-card fadein">
+        <ol className="progress">
           {STEP_LABELS.map((label, index) => (
             <li key={label} className={index === step ? "current" : index < step ? "done" : ""}>
-              <span className="wizard-num">{index < step ? "✓" : index + 1}</span>
-              {label}
+              <span className="progress-dot">{index < step ? "✓" : index + 1}</span>
+              <span className="progress-label">{label}</span>
             </li>
           ))}
         </ol>

@@ -43,7 +43,7 @@ export function SkillsStep({ resume, onConfirmed }: { resume: Resume | null; onC
 
   return (
     <>
-      <h1>Confirm your skills</h1>
+      <h2 className="step-title">Review your skills</h2>
       <p className="lede">
         {skills.length} skill{skills.length === 1 ? "" : "s"} found in {current?.filename ?? "your resume"}. Every job is
         matched against this list, so remove anything you'd rather not be matched on.
@@ -72,7 +72,7 @@ export function SkillsStep({ resume, onConfirmed }: { resume: Resume | null; onC
       </div>
       <div className="row-actions">
         <button className="btn btn-primary grow" onClick={save} disabled={busy || skills.length === 0 || !current}>
-          {busy ? "Saving…" : "Confirm skills"}
+          {busy ? "Saving…" : "Continue →"}
         </button>
       </div>
     </>

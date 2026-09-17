@@ -1,6 +1,5 @@
-import { Brand } from "../components/Brand";
+import { Landing } from "./Landing";
 import { Onboarding as OnboardingWizard } from "./Onboarding";
-import { signIn } from "../auth";
 import { useMe } from "../useMe";
 import type { Onboarding } from "../api";
 
@@ -21,6 +20,7 @@ const EXPERTISE_NOTE: Record<Onboarding["expertise"], string> = {
 export function Home() {
   const { me, error, loading } = useMe();
 
+
   if (loading) {
     return (
       <div className="status-message">
@@ -29,31 +29,7 @@ export function Home() {
     );
   }
 
-  if (!me) {
-    return (
-      <div className="centered">
-        <div className="card fadein">
-          <div className="brand-row">
-            <Brand />
-          </div>
-          <h1>Jobs worth your time, scored against your resume</h1>
-          <p className="lede">
-            Every posting here is collected and screened by hand: agencies and reposts removed, seniority classified
-            once, skills extracted. Add your resume and a seniority target, and each job gets your own score.
-          </p>
-          {error && <div className="banner error">{error}</div>}
-          <div className="row-actions">
-            <button className="btn btn-primary grow" onClick={() => signIn("signup")}>
-              Create an account
-            </button>
-            <button className="btn btn-ghost grow" onClick={() => signIn()}>
-              Sign in
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!me) return <Landing />;
 
   const { onboarding } = me;
   if (!onboarding.complete) return <OnboardingWizard me={me} onDone={() => window.location.assign("/")} />;

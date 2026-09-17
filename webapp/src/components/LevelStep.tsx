@@ -32,8 +32,8 @@ export function LevelStep({ onPicked }: { onPicked: () => void }) {
 
   return (
     <>
-      <h1>Which level are you aiming for?</h1>
-      <p className="lede">Jobs at that level score highest; the further a job sits from it, the lower it scores.</p>
+      <h2 className="step-title">What is your seniority level?</h2>
+      <p className="lede">We weight the seniority signal based on this: jobs at your level score highest.</p>
       {error && <div className="banner error">{error}</div>}
       <div className="choices">
         {LEVELS.map((level) => (
@@ -50,7 +50,7 @@ export function LevelStep({ onPicked }: { onPicked: () => void }) {
       </div>
       <div className="row-actions">
         <button className="btn btn-primary grow" onClick={save} disabled={!chosen || busy}>
-          {busy ? "Saving…" : "Continue"}
+          {busy ? "Saving…" : "Continue →"}
         </button>
       </div>
       <p className="action-note">{SENIORITY_LEVELS.length} levels · you can change this later in settings</p>
