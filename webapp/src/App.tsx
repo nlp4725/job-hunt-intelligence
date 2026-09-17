@@ -1,26 +1,30 @@
 import { Outlet } from "react-router-dom";
 
+import { Brand } from "./components/Brand";
+import { signOut } from "./auth";
 import { useMe } from "./useMe";
-import { signIn, signOut } from "./auth";
 
+/** The shell: the dashboard's sidebar appears once there is a board to show;
+ *  until then the screens sit on the plain canvas. */
 export function App() {
   const { me } = useMe();
   return (
-    <>
-      <header className="topbar">
-        <span className="brand">JoblyGo</span>
-        {me ? (
-          <span className="who">
-            {me.email} · {me.plan}
-            {me.role === "admin" ? " · admin" : ""} <button className="secondary" onClick={signOut}>Sign out</button>
-          </span>
-        ) : (
-          <button onClick={() => signIn()}>Sign in</button>
+    <div className="shell">
+      <div className="main">
+        {me && (
+          <div className="topline">
+            <Brand />
+            <span className="who">
+              {me.email} · {me.plan}
+              {me.role === "admin" ? " · admin" : ""}
+            </span>
+            <button className="btn btn-ghost" onClick={signOut}>
+              Sign out
+            </button>
+          </div>
         )}
-      </header>
-      <main>
         <Outlet />
-      </main>
-    </>
+      </div>
+    </div>
   );
 }

@@ -17,13 +17,22 @@ export function Callback() {
       .catch((err: Error) => setError(err.message));
   }, [params, navigate]);
 
-  return error ? (
-    <div className="panel error">
-      <h2>Sign-in failed</h2>
-      <p>{error}</p>
-      <button onClick={() => navigate("/")}>Back</button>
+  if (!error) {
+    return (
+      <div className="status-message">
+        <span className="pulse">Signing you in…</span>
+      </div>
+    );
+  }
+  return (
+    <div className="centered">
+      <div className="card">
+        <h1>Sign-in failed</h1>
+        <p className="lede">{error}</p>
+        <button className="btn btn-primary" onClick={() => navigate("/")}>
+          Back
+        </button>
+      </div>
     </div>
-  ) : (
-    <p className="muted">Signing you in…</p>
   );
 }

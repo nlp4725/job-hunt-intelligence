@@ -1,70 +1,100 @@
+import { Brand } from "../components/Brand";
 import { signIn } from "../auth";
 import { useMe } from "../useMe";
+import type { Onboarding } from "../api";
 
-const STEPS = [
-  ["resume", "Upload your resume"],
-  ["skills_confirmed", "Confirm the skills we found"],
-  ["level", "Pick your seniority level"],
-  ["scores_confirmed", "Confirm your 0–5 score table"],
-] as const;
+const STEPS: { key: keyof Onboarding; label: string; note: string }[] = [
+  { key: "resume", label: "Upload your resume", note: "PDF, DOCX or plain text. It is encrypted and only you can read it." },
+  { key: "skills_confirmed", label: "Confirm the skills we found", note: "Add or remove any; this is what every job is matched against." },
+  { key: "level", label: "Pick your seniority level", note: "Intern · Entry · Mid–senior · Senior · Staff / principal." },
+  { key: "scores_confirmed", label: "Confirm your 0–5 score table", note: "How much each job level is worth to you. Adjustable later." },
+];
+
+const EXPERTISE_NOTE: Record<Onboarding["expertise"], string> = {
+  locked: "On the paid plan. You can skip it.",
+  pending: "Draft it from your resume, or skip it.",
+  skipped: "Skipped. You can add it in settings.",
+  done: "Ready.",
+};
 
 export function Home() {
   const { me, error, loading } = useMe();
 
-  if (loading) return <p className="muted">Loading…</p>;
+  if (loading) {
+    return (
+      <div className="status-message">
+        <span className="pulse">Loading…</span>
+      </div>
+    );
+  }
 
   if (!me) {
     return (
-      <>
-        <p className="eyebrow">A screened job board</p>
-        <h1>Jobs worth your time, scored against your resume</h1>
-        <div className="panel">
-          <p>
-            Every posting here was collected and screened by hand: agencies and reposts removed, seniority classified
-            once, skills extracted. You add a resume and a seniority target, and every job gets your own score.
+      <div className="centered">
+        <div className="card fadein">
+          <div className="brand-row">
+            <Brand />
+          </div>
+          <h1>Jobs worth your time, scored against your resume</h1>
+          <p className="lede">
+            Every posting here is collected and screened by hand: agencies and reposts removed, seniority classified
+            once, skills extracted. Add your resume and a seniority target, and each job gets your own score.
           </p>
-          <button onClick={() => signIn("signup")}>Create an account</button>{" "}
-          <button className="secondary" onClick={() => signIn()}>Sign in</button>
+          {error && <div className="banner error">{error}</div>}
+          <div className="row-actions">
+            <button className="btn btn-primary grow" onClick={() => signIn("signup")}>
+              Create an account
+            </button>
+            <button className="btn btn-ghost grow" onClick={() => signIn()}>
+              Sign in
+            </button>
+          </div>
         </div>
-      </>
+      </div>
     );
   }
 
   const { onboarding } = me;
+  const nextStep = STEPS.find((step) => !onboarding[step.key]);
+
   return (
-    <>
-      <p className="eyebrow">Signed in as {me.email}</p>
-      <h1>Your setup</h1>
-      {error && <div className="panel error">{error}</div>}
-      <div className="panel">
-        <h2>Onboarding</h2>
-        <ul className="steps">
-          {STEPS.map(([key, label]) => (
-            <li key={key}>
-              <span className={`mark ${onboarding[key] ? "done" : "todo"}`}>{onboarding[key] ? "✓" : "○"}</span>
-              <span>{label}</span>
-            </li>
-          ))}
-          <li>
-            <span className={`mark ${onboarding.expertise === "done" ? "done" : "todo"}`}>
-              {onboarding.expertise === "done" ? "✓" : "○"}
-            </span>
-            <span>
-              Expertise Match <span className="tag">paid</span>{" "}
-              <span className="muted">
-                {onboarding.expertise === "locked" ? "— on the paid plan; skippable" : `— ${onboarding.expertise}`}
-              </span>
-            </span>
-          </li>
-        </ul>
-        <p className="muted">
+    <div className="centered">
+      <div className="card fadein">
+        <h1>{onboarding.complete ? "You're set up" : "Finish setting up"}</h1>
+        <p className="lede">
           {onboarding.complete
             ? onboarding.board_scored
               ? "Your board is scored and ready."
-              : "Scoring your board…"
-            : "The next screens (resume upload, skills, level, score table) are being built."}
+              : "Scoring your board — this takes a few seconds."
+            : "Four short steps, then every job gets your own score."}
         </p>
+        {error && <div className="banner error">{error}</div>}
+
+        <ul className="steps">
+          {STEPS.map((step) => (
+            <li key={step.key}>
+              <span className={`step-mark${onboarding[step.key] ? " done" : ""}`}>{onboarding[step.key] ? "✓" : ""}</span>
+              <span className="step-text">
+                {step.label}
+                <span className="step-note">{step.note}</span>
+              </span>
+            </li>
+          ))}
+          <li>
+            <span className={`step-mark${onboarding.expertise === "done" ? " done" : ""}`}>
+              {onboarding.expertise === "done" ? "✓" : ""}
+            </span>
+            <span className="step-text">
+              Expertise Match <span className="pill neutral">paid</span>
+              <span className="step-note">{EXPERTISE_NOTE[onboarding.expertise]}</span>
+            </span>
+          </li>
+        </ul>
+
+        <div className="banner info" style={{ marginTop: 16, marginBottom: 0 }}>
+          {nextStep ? `Next: ${nextStep.label.toLowerCase()} — that screen is being built.` : "The board screen is being built."}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
