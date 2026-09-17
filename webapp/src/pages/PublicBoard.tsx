@@ -88,7 +88,7 @@ export function PublicBoard() {
           <h1>Recent postings</h1>
           <p className="page-sub">
             Every posting here was collected and screened by hand: agencies and reposts removed, seniority classified.
-            Upload a resume to see each one scored against it.
+            The first three columns are scored against your own resume — upload one to unlock them.
           </p>
           <p className="freshness">{collectedLabel(stats)}</p>
           <div className="filter-bar plain">
@@ -123,7 +123,7 @@ export function PublicBoard() {
             <table className="demo-table public">
               <thead>
                 <tr>
-                  {["#", "Job", "Industry", "Size", "Workplace", "Location", "Level", "Added", "Score"].map((label) => (
+                  {["#", "Score", "Senr.", "Exp.", "Job", "Industry", "Size", "Workplace", "Location", "Level", "Added"].map((label) => (
                     <th key={label}>{label}</th>
                   ))}
                 </tr>
@@ -132,6 +132,13 @@ export function PublicBoard() {
                 {visible.map((job, index) => (
                   <tr key={`${job.title}-${job.company}-${index}`}>
                     <td className="mono demo-index">{index + 1}</td>
+                    {["Total score", "Seniority fit", "Expertise"].map((what) => (
+                      <td key={what}>
+                        <button className="score-locked" onClick={() => navigate("/signup")} title={`${what} is computed against your resume — sign up to see it`}>
+                          🔒
+                        </button>
+                      </td>
+                    ))}
                     <td className="demo-job">
                       <a className="demo-title link" href={job.url} target="_blank" rel="noreferrer">
                         {job.title} <span className="job-link">↗</span>
@@ -152,23 +159,18 @@ export function PublicBoard() {
                     <td className="demo-industry">{job.location ?? "—"}</td>
                     <td className="demo-industry">{job.level ? LEVELS[job.level] : "—"}</td>
                     <td className="mono demo-muted">{addedOn(job.first_seen_at)}</td>
-                    <td>
-                      <button className="score-locked" onClick={() => navigate("/signup")}>
-                        🔒 Score
-                      </button>
-                    </td>
                   </tr>
                 ))}
                 {jobs !== null && visible.length === 0 && (
                   <tr>
-                    <td className="empty" colSpan={9}>
+                    <td className="empty" colSpan={11}>
                       No postings match. Try a longer window.
                     </td>
                   </tr>
                 )}
                 {jobs === null && (
                   <tr>
-                    <td className="empty" colSpan={9}>
+                    <td className="empty" colSpan={11}>
                       <span className="pulse">Loading the board…</span>
                     </td>
                   </tr>

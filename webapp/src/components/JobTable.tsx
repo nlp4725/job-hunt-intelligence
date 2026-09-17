@@ -103,7 +103,16 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
               <td>
                 <div className="job-title-row">
                   <div style={{ minWidth: 0 }}>
-                    <div className="job-title">{job.title}</div>
+                    <a
+                      className="job-title link"
+                      href={job.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                      title="Open the posting on LinkedIn"
+                    >
+                      {job.title}
+                    </a>
                     <div className="job-company">
                       {job.company}
                       {job.company_applied_count > 0 && (
@@ -113,7 +122,7 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
                       )}
                     </div>
                   </div>
-                  <a className="job-link" href={job.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
+                  <a className="job-link" href={job.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} aria-label="Open on LinkedIn">
                     ↗
                   </a>
                 </div>
