@@ -1,21 +1,42 @@
+import { useEffect, useState } from "react";
+
 import { DemoAnimation } from "../components/DemoAnimation";
+import { getPublicStats, type PublicStats } from "../api";
 import { signIn } from "../auth";
 
 /** The signed-out landing page, ported from the Figma Make file "Job Hunting
  *  Board Productization" (HeroPage): grid-paper canvas, one-line headline,
  *  dark CTA, the scoring demo, and the stats ticker. */
-const TICKER = [
-  { label: "Scraped today", value: "2,717", accent: true },
-  { label: "Scraped at", value: "2:00 PM" },
-  { label: "Total scraped", value: "15,782" },
-  { label: "Roles scored", value: "15,782" },
-  { label: "With seniority", value: "11,189" },
-  { label: "Avg. score", value: "8.4 / 15" },
-  { label: "Top match", value: "14 / 15" },
-  { label: "Remote roles", value: "1,104" },
-];
+function agoLabel(iso: string | null): string {
+  if (!iso) return "—";
+  const hours = (Date.now() - new Date(iso + (iso.endsWith("Z") ? "" : "Z")).getTime()) / 3_600_000;
+  if (hours < 1) return "under an hour ago";
+  if (hours < 48) return `${Math.round(hours)}h ago`;
+  return `${Math.round(hours / 24)} days ago`;
+}
+
+function tickerItems(stats: PublicStats | null) {
+  if (!stats) return [{ label: "Loading", value: "…" }];
+  const number = (value: number) => value.toLocaleString();
+  return [
+    { label: "Collected today", value: number(stats.collected_today), accent: stats.collected_today > 0 },
+    { label: "Jobs on the board", value: number(stats.jobs) },
+    { label: "Seniority classified", value: number(stats.jobs_with_level) },
+    { label: "Remote roles", value: number(stats.remote_jobs) },
+    { label: "Companies", value: number(stats.companies) },
+    { label: "Last collected", value: agoLabel(stats.last_collected_at) },
+  ];
+}
 
 export function Landing() {
+  const [stats, setStats] = useState<PublicStats | null>(null);
+  useEffect(() => {
+    getPublicStats()
+      .then(setStats)
+      .catch(() => setStats(null));
+  }, []);
+  const items = tickerItems(stats);
+
   return (
     <div className="hero-page">
       <nav className="hero-nav">
@@ -38,7 +59,8 @@ export function Landing() {
       <header className="hero">
         <h1 className="hero-headline">Less browsing. More applying.</h1>
         <p className="hero-sub">
-          AI engineer jobs scraped, ranked and tracked for you daily. Scored against your resume across three signals.
+          {stats ? `${stats.jobs.toLocaleString()} AI engineer jobs, screened and ranked for you.` : "AI engineer jobs, screened and ranked for you."}{" "}
+          Scored against your resume, updated daily.
         </p>
         <button className="hero-cta large" onClick={() => signIn("signup")}>
           Upload your resume →
@@ -47,6 +69,7 @@ export function Landing() {
 
       <section className="hero-demo">
         <DemoAnimation />
+        <p className="demo-caption">An example of how scoring looks. Your board is scored against your own resume.</p>
       </section>
 
       <section className="hero-ticker-wrap">
@@ -54,10 +77,10 @@ export function Landing() {
           <div className="hero-ticker-track">
             {[0, 1].map((copy) => (
               <span className="hero-ticker-copy" key={copy}>
-                {TICKER.map((item) => (
+                {items.map((item) => (
                   <span className="hero-ticker-item" key={`${copy}-${item.label}`}>
                     <span className="mono hero-ticker-label">{item.label}</span>
-                    <span className={`mono hero-ticker-value${item.accent ? " accent" : ""}`}>{item.value}</span>
+                    <span className={`mono hero-ticker-value${"accent" in item && item.accent ? " accent" : ""}`}>{item.value}</span>
                   </span>
                 ))}
               </span>

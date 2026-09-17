@@ -131,3 +131,32 @@ def set_plan(db, email, plan) -> dict:
     if user_id is None:
         raise LookupError("no such user")
     return {"email": email.strip().lower(), "plan": plan}
+
+
+# --- public stats (no sign-in) --------------------------------------------------
+
+PUBLIC_STATS_TTL = 300   # seconds; the landing page is cached at the edge anyway
+
+
+def public_stats(db) -> dict:
+    """Aggregates for the landing page: counts and freshness only, never a
+    user's scores or tracking. Shared tables only, so any role may read it."""
+    totals = db.execute(text("""
+        SELECT count(*) FILTER (WHERE duplicate_of_job_id IS NULL AND raw_text IS NOT NULL) AS jobs,
+               count(*) FILTER (WHERE duplicate_of_job_id IS NULL AND raw_text IS NOT NULL
+                                AND workplace_type = 'Remote') AS remote,
+               count(*) FILTER (WHERE duplicate_of_job_id IS NULL AND raw_text IS NOT NULL
+                                AND first_seen_at > (now() AT TIME ZONE 'utc') - interval '1 day') AS today,
+               max(first_seen_at) AS last_collected
+        FROM jobs
+    """)).mappings().one()
+    levels = db.execute(text("SELECT count(*) FROM job_seniority")).scalar()
+    companies = db.execute(text("SELECT count(*) FROM companies")).scalar()
+    return {
+        "jobs": totals["jobs"],
+        "remote_jobs": totals["remote"],
+        "collected_today": totals["today"],
+        "jobs_with_level": levels,
+        "companies": companies,
+        "last_collected_at": totals["last_collected"].isoformat() if totals["last_collected"] else None,
+    }

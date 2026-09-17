@@ -15,7 +15,7 @@ import time
 import traceback
 import uuid
 
-from flask import Flask, g, jsonify, request
+from flask import Flask, current_app, g, jsonify, request
 from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.exc import DBAPIError
@@ -145,6 +145,22 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
         """Load balancer health check. Public and deliberately free of the
         database, so a database blip doesn't make ECS replace healthy tasks."""
         return jsonify({"ok": True})
+
+    @app.get("/api/public/stats")
+    def public_stats():
+        """The landing page's numbers. No sign-in, aggregates only, cached in
+        the task for a few minutes so a burst of visitors can't load the database."""
+        cached = app.config.get("PUBLIC_STATS")
+        now = time.monotonic()
+        if cached and now - cached[0] < admin_data.PUBLIC_STATS_TTL:
+            return jsonify(cached[1])
+        db = current_app.config["ADMIN_SESSION"]()
+        try:
+            stats = admin_data.public_stats(db)
+        finally:
+            db.close()
+        app.config["PUBLIC_STATS"] = (now, stats)
+        return jsonify(stats)
 
     @app.get("/api/v1/me")
     @require_user

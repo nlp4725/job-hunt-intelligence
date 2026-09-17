@@ -154,3 +154,21 @@ export const listJobs = (limit = 200, offset = 0) =>
 
 export const saveTracking = (jobId: number, changes: Partial<Tracking>) =>
   api<Tracking>(`/api/v1/me/tracking/${jobId}`, { method: "PUT", body: JSON.stringify(changes) });
+
+// --- public (no sign-in) ----------------------------------------------------
+
+export type PublicStats = {
+  jobs: number;
+  remote_jobs: number;
+  collected_today: number;
+  jobs_with_level: number;
+  companies: number;
+  last_collected_at: string | null;
+};
+
+/** The landing page's numbers. No token: this endpoint is public. */
+export async function getPublicStats(fetchImpl = fetch): Promise<PublicStats> {
+  const response = await fetchImpl(`${BASE}/api/public/stats`);
+  if (!response.ok) throw new ApiError(response.status, "could not load the numbers");
+  return response.json();
+}

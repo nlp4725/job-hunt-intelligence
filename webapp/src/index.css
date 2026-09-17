@@ -495,6 +495,7 @@ td.center { text-align: center; }
 .demo-dots { display: inline-flex; gap: 3px; align-items: center; }
 .demo-dots span { width: 3px; height: 3px; border-radius: 50%; background: #15803d; display: inline-block; animation: pulse 0.8s ease infinite; }
 
+.demo-caption { margin: 10px 2px 0; font-size: 11px; color: var(--text-tertiary); }
 .hero-ticker-wrap { max-width: 1280px; width: 100%; margin: 0 auto; padding: 0 48px 60px; }
 .hero-ticker { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); overflow: hidden; height: 36px; display: flex; align-items: center; }
 .hero-ticker-track { display: inline-flex; animation: ticker 50s linear infinite; }
@@ -507,7 +508,8 @@ td.center { text-align: center; }
 @keyframes slidein { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 @media (max-width: 860px) {
-  .hero-nav-inner, .hero, .hero-demo, .hero-ticker-wrap { padding-left: 20px; padding-right: 20px; }
+  .hero-nav-inner, .hero, .hero-demo, .demo-caption { margin: 10px 2px 0; font-size: 11px; color: var(--text-tertiary); }
+.hero-ticker-wrap { padding-left: 20px; padding-right: 20px; }
   .hero { padding-top: 48px; }
   .hero-headline { white-space: normal; letter-spacing: -1.2px; }
 }

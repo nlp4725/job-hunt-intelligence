@@ -14,7 +14,8 @@ import pytest
 from tests_and_eval.test_cloud_db import PG_URL, _upgrade, needs_pg, pg_engine  # noqa: F401  (fixture)
 
 REPO = Path(__file__).resolve().parent.parent
-PUBLIC_PREFIXES = ("/static", "/dev-storage", "/healthz")   # dev-storage exists only in dev mode and checks its own signatures; healthz returns {"ok": true} only
+PUBLIC_PREFIXES = ("/static", "/dev-storage", "/healthz", "/api/public")   # dev-storage exists only in dev mode and checks its own signatures; healthz returns {"ok": true} only;
+# /api/public returns aggregate counts only (tested in test_cloud_public.py)
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 
 
