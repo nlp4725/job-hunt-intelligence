@@ -61,3 +61,4 @@ CONTEXT.md
 *.tfvars
 !example.tfvars
 outputs.json
+*.tfplan
