@@ -197,10 +197,12 @@ resource "aws_iam_role_policy" "deploy" {
         Resource = "arn:aws:sqs:${var.region}:${local.account_id}:jhi-*"
       },
       {
-        Sid      = "LambdaEventSources"
-        Effect   = "Allow"
-        Action   = ["lambda:CreateEventSourceMapping", "lambda:GetEventSourceMapping", "lambda:UpdateEventSourceMapping", "lambda:DeleteEventSourceMapping", "lambda:ListEventSourceMappings"]
-        Resource = "*" # event source mappings have no function-scoped ARN at creation
+        Sid    = "LambdaEventSources"
+        Effect = "Allow"
+        Action = ["lambda:CreateEventSourceMapping", "lambda:GetEventSourceMapping", "lambda:UpdateEventSourceMapping",
+          "lambda:DeleteEventSourceMapping", "lambda:ListEventSourceMappings",
+        "lambda:TagResource", "lambda:UntagResource", "lambda:ListTags"] # default tags are applied to the mapping
+        Resource = "*"                                                   # event source mappings have no function-scoped ARN at creation
       },
       {
         Sid    = "ProjectSecrets"
