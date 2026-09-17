@@ -47,7 +47,10 @@ We build the design the way it should be reasoned about:
 
 Status markers used below: **Built** = code and Terraform exist (`terraform/`, `cloud_api/`); **Proposed** = recommended, not built yet; **Later** = only when the stated trigger happens.
 
-**Where Lambda is used (and where it isn't).** Two Lambda functions do the work that needs only the database: `jhi-rescore` scores newly captured jobs every 5 minutes, and `jhi-admin-task` runs admin commands against the private database. Everything that must reach the internet (DeepSeek, Cognito) or run long requests stays on Fargate: the API and the expertise worker. The reasoning is in §1.6.
+**Where each kind of compute is used.**
+- **Fargate:** the API and the expertise worker. They must reach the internet (DeepSeek, Cognito) or run long requests.
+- **Lambda:** the work that needs only the database. `jhi-rescore` scores boards from **SQS** messages plus an hourly reconciliation; `jhi-admin-task` runs admin commands.
+- The reasoning is in §1.6, and the queue design is in §1.5.9.
 
 ### 1.1 Functional requirements (what the product does)
 
@@ -77,7 +80,9 @@ Nobody sees these in a demo, but every user feels them. Every component in §1.5
 | N5 | **Capture reliability** | No capture lost when the cloud is down; local collection never slowed by the cloud | The extension's offline queue (§2) |
 | N6 | **Cost** | Under **~$100/month** of AWS at launch, plus DeepSeek | Nasi pays; no revenue yet |
 | N7 | **Operability** | One person can run it: no servers to patch, deploys from `git push`, alarms by email | No ops team |
-| N8 | **Security** | HTTPS everywhere, least-privilege roles, no secrets in code or state, database not reachable from the internet | Public repository, PII |
+| N8 | **Security** | HTTPS everywhere, least-privilege roles and token scopes, no secrets in code or state, database not reachable from the internet | Public repository, PII |
+| N9 | **Observability** | Any user-visible failure (errors, slow board, scores not updating, uploads failing, LLM failing, isolation violations) raises an email alarm within ~15 minutes, and one request id leads from the alarm to the log line | One person operates it; problems must find the operator, not the other way round |
+| N10 | **Freshness** | A captured job shows up scored on every user's board within ~1 minute (at most ~1 hour if a message is lost); a profile change rescores the board within ~1 minute | Users act on the board daily |
 
 These requirements fight each other, and the design picks sides deliberately: we accept a 1–2 minute database failover (N4) to stay inside the cost target (N6), and we accept slower background scoring to keep per-user LLM cost at zero on the free tier.
 
@@ -113,12 +118,15 @@ Every box below has a monthly price in §1.8. The rule: the right design meets Q
 
 ### 1.4 The whole picture
 
+#### Diagram A — components and where they run
+
 ```mermaid
 flowchart TB
-    subgraph Nasi["Nasi's Mac (only collector)"]
+    subgraph Mac["Nasi's Mac (the only collector)"]
         Skill["Claude in Chrome<br/>linkedin-manual-screen skill"]
         Ext["Chrome extension<br/>offline queue"]
         Local["Local Flask + SQLite<br/>(unchanged)"]
+        Term["Terminal<br/>aws lambda invoke"]
         Skill --> Ext --> Local
     end
 
@@ -126,61 +134,140 @@ flowchart TB
         Web["React app"]
     end
 
-    DNS["Route 53<br/>app.domain · api.domain"]
-    Cognito["Cognito<br/>sign-up · sign-in · JWT"]
-    CF["CloudFront (CDN)<br/>TLS, caches static files"]
-    SiteS3[("S3: web app build")]
+    subgraph Edge["AWS edge and global services"]
+        R53["Route 53<br/>app. / api. domain"]
+        CF["CloudFront<br/>static app, TLS"]
+        Cognito["Cognito<br/>sign-up · sign-in · JWT"]
+    end
 
     subgraph VPC["VPC · us-east-1 · 2 Availability Zones"]
-        subgraph Public["Public subnets (internet access; no inbound except the ALB)"]
+        subgraph Public["Public subnets · internet access · nothing inbound except via the ALB"]
             ALB["Application Load Balancer<br/>HTTPS · health checks"]
-            API["API on ECS Fargate<br/>Flask + gunicorn · stateless<br/>1..N tasks"]
-            ExpW["Expertise worker<br/>scheduled Fargate task<br/>(calls DeepSeek)"]
+            API["API · ECS Fargate<br/>Flask + gunicorn · stateless"]
+            Exp["Expertise worker · Fargate<br/>every 30 min · calls DeepSeek"]
         end
-        subgraph Isolated["Isolated subnets (no internet route)"]
-            RDS[("RDS Postgres 18<br/>primary · backups · PITR<br/>rescore_queue table")]
-            RescoreL["λ jhi-rescore (Lambda)<br/>every 5 min · IAM DB auth"]
-            AdminL["λ jhi-admin-task (Lambda)<br/>status · SQLite import"]
+        subgraph Isolated["Isolated subnets · no internet route"]
+            RDS[("RDS Postgres 18<br/>RLS · backups · PITR")]
+            LR["λ jhi-rescore<br/>SQS batches + hourly reconcile"]
+            LA["λ jhi-admin-task<br/>status · import"]
         end
     end
 
-    ResS3[("S3: resumes<br/>KMS · private")]
-    ImpS3[("S3: imports<br/>one-time SQLite upload")]
-    Laptop["Nasi's terminal<br/>aws lambda invoke"]
-    SM["Secrets Manager"]
-    EB["EventBridge schedules"]
-    CW["CloudWatch logs · alarms<br/>SNS email · Budgets"]
-    DeepSeek["DeepSeek API<br/>(outside AWS)"]
+    subgraph Regional["AWS regional services"]
+        SQS[["SQS jhi-rescore"]]
+        DLQ[["SQS jhi-rescore-dlq"]]
+        SiteS3[("S3 · web app")]
+        ResS3[("S3 · resumes · KMS")]
+        ImpS3[("S3 · imports")]
+        SM["Secrets Manager"]
+        EB["EventBridge schedules"]
+        CW["CloudWatch<br/>logs · EMF metrics · dashboard · alarms"]
+        SNS["SNS → email"]
+    end
 
-    Ext -- "HTTPS + admin token" --> DNS
-    Web --> DNS
-    DNS --> CF --> SiteS3
-    DNS --> ALB --> API
+    DeepSeek["DeepSeek API"]
+
+    Web --> R53
+    Ext -- "collector token" --> R53
+    R53 --> CF --> SiteS3
+    R53 --> ALB --> API
     Web -- "sign in" --> Cognito
-    Web -- "Bearer JWT" --> ALB
-    Web -- "presigned POST/GET" --> ResS3
+    Web -- "presigned upload / download" --> ResS3
     API --> RDS
     API --> ResS3
+    API -- "after commit" --> SQS
     API -- "seniority level" --> DeepSeek
-    API -. "verify JWT keys" .-> Cognito
-    API -- "capture: save job +<br/>queue it (one transaction)" --> RDS
-    EB -- "every 5 min" --> RescoreL -- "claim queued jobs,<br/>write scores" --> RDS
-    EB --> ExpW --> RDS
-    ExpW --> DeepSeek
-    Laptop --> AdminL --> RDS
-    AdminL --> ImpS3
+    API -. "JWT keys, cached" .-> Cognito
+    SQS -- "event source mapping" --> LR --> RDS
+    SQS -- "5 failed receives" --> DLQ
+    EB -- "hourly reconcile" --> LR
+    EB -- "every 30 min" --> Exp
+    Exp --> RDS
+    Exp --> DeepSeek
+    Term --> LA --> RDS
+    LA --> ImpS3
     API --> SM
     API --> CW
+    LR --> CW
+    Exp --> CW
+    CW --> SNS
 ```
 
-**One request, end to end (a user opening the board):**
+#### Diagram B — a user opens their board
 
-1. The browser asks **DNS** (Route 53) for `app.<domain>` → CloudFront's address; CloudFront returns the React app from its edge cache (from S3 on a miss).
-2. The app has a Cognito **JWT** from sign-in. It calls `GET https://api.<domain>/api/v1/jobs` with `Authorization: Bearer <jwt>`.
-3. DNS resolves `api.<domain>` to the **load balancer**, which terminates HTTPS and forwards to a **healthy** API task.
-4. The API **verifies the JWT** signature against Cognito's cached public keys (no call to Cognito per request), finds or creates the user row, and opens a database transaction that sets `app.user_id` for **row-level security**.
-5. One indexed query joins shared jobs with this user's scores and tracking; Postgres returns 100 rows sorted by the user's total score.
-6. The response goes back through the load balancer. The API task keeps nothing about the user in memory.
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant DNS as Route 53
+    participant CF as CloudFront
+    participant ALB as Load balancer
+    participant API as API task
+    participant DB as Postgres
+    B->>DNS: app.domain?
+    DNS-->>B: CloudFront
+    B->>CF: GET / (React app, cached at the edge)
+    B->>DNS: api.domain?
+    DNS-->>B: load balancer
+    B->>ALB: GET /api/v1/jobs · Bearer JWT (HTTPS)
+    ALB->>API: forward to a healthy task
+    API->>API: verify JWT with cached Cognito keys (no network call)
+    API->>DB: BEGIN · set app.user_id (RLS) · one indexed query · COMMIT
+    DB-->>API: 100 rows, this user's scores and tracking only
+    API-->>B: JSON · X-Request-Id
+    API->>API: log one JSON line: request id, route, status, duration, user id
+```
+
+#### Diagram C — a capture becomes scores on every board
+
+```mermaid
+sequenceDiagram
+    participant X as Chrome extension
+    participant API as API task
+    participant DB as Postgres
+    participant DS as DeepSeek
+    participant Q as SQS jhi-rescore
+    participant L as λ jhi-rescore
+    participant D as DLQ
+    X->>API: POST /admin/captures · collector token
+    API->>DB: save job + skills, agency and duplicate checks
+    API->>DS: classify seniority level (once per job)
+    API->>DB: save level · COMMIT
+    API-->>X: saved / scored
+    API->>Q: after commit: {"type": "job", "job_id": 123}
+    Q->>L: batch of up to 10 messages (max 2 in parallel)
+    L->>DB: for each ready user: upsert user_job_scores (idempotent)
+    L-->>Q: batchItemFailures = only the failed messages
+    Q->>D: a message that failed 5 times
+    Note over L,DB: Hourly: reconcile scores recent jobs with no score,<br/>and boards from an older profile or scoring version
+```
+
+#### Diagram D — security boundaries
+
+```mermaid
+flowchart LR
+    Internet(("Internet"))
+    subgraph PublicSG["Reachable from the internet"]
+        ALBs["ALB :443 / :80→443"]
+        CFs["CloudFront :443"]
+    end
+    subgraph TasksSG["tasks security group"]
+        APIs["API :8000<br/>only from ALB"]
+        Exps["Expertise worker<br/>no inbound"]
+    end
+    subgraph LambdaSG["lambda security group"]
+        Ls["λ rescore · λ admin<br/>no inbound · out: Postgres + S3 only"]
+    end
+    subgraph DbSG["db security group"]
+        DBs[("Postgres :5432<br/>only from tasks and lambdas<br/>TLS forced")]
+    end
+    Internet --> ALBs --> APIs
+    Internet --> CFs
+    APIs --> DBs
+    Exps --> DBs
+    Ls --> DBs
+```
+
+Inside the database, a second set of boundaries: each login has a role that can touch only its own tables (§1.5.7). Inside the API, a third: user routes see only the caller's rows (row-level security), and API tokens are limited by scope (§1.5.6).
 
 ### 1.5 Components: why each exists, and what it costs us
 
@@ -295,9 +382,22 @@ Ask of any data: *"if this task vanished right now, would a user lose something?
 - Rolling our own auth (risk).
 - Auth0 / Clerk (nicer UX, another bill and vendor).
 
+**Machine access: scoped API tokens.** The Chrome extension can't do a browser sign-in in the middle of a collection run, so it sends a long-lived API token.
+- **Storage:** tokens are random, shown once, stored only as a SHA-256 hash, revocable, and valid only while their owner is an admin.
+- **Scopes limit what a token can do:**
+
+| Scope | Allowed routes | Used by |
+|---|---|---|
+| `collector` | send captures, cached lookup, agency list, collection stats, expire a job | The extension and the skill |
+| `admin` | the above, plus member plans | Scripts, if ever needed |
+| *(no token)* | create or revoke tokens | Only a signed-in admin person |
+
+- **Why:** a token lives in the browser extension on one laptop. If it leaks, the damage is limited to adding jobs, not changing plans or minting more tokens.
+- **Monitoring:** every denied use is counted (`TokenScopeDenied`) and alarmed.
+
 #### 1.5.7 Database: Amazon RDS for PostgreSQL — Built
 
-**Why SQL (derived from the access patterns, not from habit).** Our data is **structured** (every job, score and tracking row has the same fields) and **relational**: the most common query joins jobs with the caller's scores and tracking, and filters on company, level and status. We need **transactions** (a capture writes the job, its skills, its seniority level and its queue entry together or not at all) and **constraints** (one score row per user and job; valid seniority levels). Postgres also gives us **row-level security**, which is the strongest isolation layer we have (N1).
+**Why SQL (derived from the access patterns, not from habit).** Our data is **structured** (every job, score and tracking row has the same fields) and **relational**: the most common query joins jobs with the caller's scores and tracking, and filters on company, level and status. We need **transactions** (a profile change writes a new profile version and its score table together or not at all; account deletion removes every per-user row at once) and **constraints** (one score row per user and job; valid seniority levels). Postgres also gives us **row-level security**, which is the strongest isolation layer we have (N1).
 
 **Access patterns and the index that answers each:**
 
@@ -309,7 +409,8 @@ Ask of any data: *"if this task vanished right now, would a user lose something?
 | Skills of a job | Every scoring | `job_skills.job_id = ?` | `uq_job_skill (job_id, skill_name)` |
 | My tracking / applications | Medium | `(user_id, job_id)`, `user_id` | `uq_job_tracking_user_job`, `ix_application_events_user_job` |
 | Sign-in | Every request | `users.idp_subject = ?` | unique constraint |
-| Next jobs to rescore | Every 5 min | `rescore_queue ORDER BY queued_at LIMIT 200 FOR UPDATE SKIP LOCKED` | primary key (small table) |
+| Ready users (to score a new job for) | Every rescore message | latest `user_profiles` version per user joined to confirmed `resumes` | `uq_user_profiles_user_version (user_id, version)` |
+| Is this board stale? (reconciliation) | Hourly, per user | `user_job_scores WHERE user_id = ? AND (profile_version <> ? OR scoring_version <> ?) LIMIT 1` | `uq_user_job_scores_user_job` (leading `user_id`) |
 
 Rule we follow: **don't guess indexes.** These exist because the queries exist. When CloudWatch/Performance Insights shows a slow query, add the index that query needs, and remember each index slows every write to that table (the score table takes ~450,000 writes per collection day at 1,000 users).
 
@@ -365,65 +466,87 @@ Rule we follow: **don't guess indexes.** These exist because the queries exist. 
 - Account admins can still read files: KMS protects against outsiders, not against the account's own administrators. The CI deploy role is explicitly **denied** access to resume files.
 - Versioning is off on purpose, so a deleted resume is really gone (privacy over undo).
 
+**Account deletion (F9).**
+- `DELETE /api/v1/me` removes the user's S3 prefix, then the users row. Postgres removes every per-user row with it (`ON DELETE CASCADE`): resumes and their encrypted text, profiles, scores, tracking, application history, expertise profiles and scores, tokens.
+- A test walks every table that has a `user_id` column, so a per-user table added later can't be forgotten.
+- Logs never contain resume text or emails, only ids.
+- **Stated retention:** automated database backups keep deleted data for up to **7 days**, until they expire. Messages already in SQS for a deleted user are dropped as "target missing".
+
 **Rejected:**
 - Storing files in Postgres (bloats backups, slows the database).
 - Serving resumes through CloudFront (a CDN caches copies at the edge; private per-user documents should not be cached).
 
-#### 1.5.9 Background work: queue table + scheduled workers — Built
+#### 1.5.9 Background work: SQS + Lambda, with an hourly reconciliation — Built
 
-**The problem.** A capture must answer the extension quickly, but it creates work for every user (§1.3 Q2). Doing that work inside the request would make captures slower as users grow and would fail the capture if scoring failed.
+**The problem.** A capture must answer the extension quickly, but it creates work for every user (§1.3 Q2): one job × 1,000 users = 1,000 score rows. A profile change rewrites a user's whole board (~15,000 rows, ~14 s). Doing either inside the request makes requests slow, and makes them fail when scoring fails.
 
-**The design.**
-1. The capture route saves the job and inserts its id into **`rescore_queue`** in the **same transaction** as the job itself.
-2. The **`jhi-rescore` Lambda** runs every 5 minutes (EventBridge). It claims up to 200 queued jobs with `FOR UPDATE SKIP LOCKED` (two runs never take the same job), scores them for every user in code (Skill Match + Seniority Fit, no LLM), writes `user_job_scores`, and deletes those jobs from the queue **in the same transaction**. If anything fails, nothing is deleted and the next run retries. It repeats batches until the queue is empty or a minute before its 5-minute timeout.
-3. The **expertise worker** (Fargate, because it calls DeepSeek) runs every 30 minutes and scores at most 50 jobs per paid member per run, best matches first.
+**The design (Diagram C).**
+1. **Publish after commit.** The API route does its database work. Once the transaction **commits**, the API sends one message to the **SQS queue `jhi-rescore`**:
+   - `{"type": "job", "job_id": …}` after a capture
+   - `{"type": "user", "user_id": …}` after a level, score-table or skills change
 
-```mermaid
-sequenceDiagram
-    participant Ext as Chrome extension
-    participant API as API (Fargate)
-    participant DB as Postgres
-    participant EB as EventBridge
-    participant L as λ jhi-rescore
-    Ext->>API: POST /admin/captures (job)
-    API->>DB: BEGIN · insert job, skills, level · insert job id into rescore_queue · COMMIT
-    API-->>Ext: saved
-    EB->>L: every 5 minutes
-    L->>DB: BEGIN · SELECT job ids FROM rescore_queue FOR UPDATE SKIP LOCKED LIMIT 200
-    L->>DB: for each user: compute and upsert user_job_scores
-    L->>DB: DELETE those ids FROM rescore_queue · COMMIT
-```
+   A request that rolls back publishes nothing, so no message ever refers to unsaved work.
+2. **Consume in batches.** SQS triggers the **`jhi-rescore` Lambda** with up to 10 messages at a time, at most 2 runs in parallel (this caps database connections). Each message is scored in its own transaction:
+   - a job message scores that job for every user with a confirmed resume
+   - a user message rescores that user's whole board
+3. **Retry only what failed.** The Lambda returns the ids of failed messages (`ReportBatchItemFailures`). Only those become visible again (after 12 minutes) and retry.
+4. **Dead-letter queue.** A message that fails **5 times** moves to `jhi-rescore-dlq` (kept 14 days), and an alarm fires. After fixing the cause, redrive it back to the main queue from the console.
+5. **Hourly reconciliation (the safety net).** EventBridge invokes the same Lambda with `{"type": "reconcile"}`. For every ready user it:
+   - rescores the whole board if their scores come from an older **profile version** or an older **scoring logic version**
+   - scores any job from the last 3 days that has no score for them, and reports how old the oldest such job was (`UnscoredJobAgeMinutes`)
+6. **The app knows when scoring has caught up.** `GET /api/v1/me` returns `onboarding.board_scored`. The app shows "scoring your board…" until the current profile version has scores.
 
-**Why a Postgres table instead of SQS (for now).** The queue entry and the job commit **atomically**: there is no moment where the job exists but the "score it" message was lost, or the message exists for a job that rolled back. With SQS we would need a second write after commit (and a retry path when it fails), or an outbox table anyway. At ~450 messages a day, Postgres handles this trivially.
+**Why this is safe with an at-least-once queue.**
+- **Duplicates:** SQS may deliver a message twice. Scoring is an **upsert** keyed by `(user, job)`, so a second run rewrites the same row with the same values. No FIFO queue or deduplication table is needed.
+- **Publish failures:** if SQS is unreachable right after a commit, the request still succeeds. The failure is logged and counted (`RescorePublishFailed`, alarmed), and the hourly reconciliation scores the work.
+- **Stale data:** every score row records the profile version and `scoring_version` that produced it. Changing the scoring code means bumping one constant, and reconciliation recomputes every board.
+- **Deleted targets:** a message for a job or user that no longer exists is acknowledged and logged, not retried.
+
+**Why SQS rather than a Postgres queue table** (the first version used one):
+- Retries with backoff, per-message failure handling and a dead-letter queue come built in.
+- Queue depth and age of the oldest message are free CloudWatch metrics.
+- Scoring starts within seconds instead of waiting for a 5-minute poll.
+- The Lambda scales with the queue, capped by maximum concurrency.
+- Cost stays under ~$1/month at this volume.
+
+**Why Lambda for the consumer.**
+- It needs only the database.
+- The Lambda service polls SQS on the function's behalf, so the function stays in the isolated subnets with no internet access.
+- It signs in with IAM database authentication as the narrow `jhi_scorer` role: reads jobs, profiles and confirmed resume skills; writes scores; nothing else.
 
 **Trade-offs.**
-- Polling every 5 minutes means a new job can take up to ~5 minutes to show up with scores (acceptable per Q4).
-- A queue table doesn't give dead-letter queues or per-message retries for free. A job that fails scoring stays queued and is retried next run; alarm if the queue keeps growing.
+- Two paths to understand: the queue normally, and reconciliation after a failure. Worst-case freshness after a lost message is about an hour.
+- `save_new_job` (shared with the local app) commits on its own, so a capture is not one single transaction. Publishing after the final commit handles this: a job saved before a later failure is picked up by reconciliation.
+- Messages expire after 4 days (DLQ: 14). An ignored DLQ alarm eventually loses those messages, but reconciliation still recovers the scores.
+- A Lambda run is capped at 2 minutes. A single user's full rescore takes ~14 s today; at much larger boards, a user message would need splitting into pages.
 
-**Trigger for SQS (Later):** several independent consumers of the same event (e.g. notifications + scoring + analytics), or event volume where polling becomes wasteful.
-
-**Why the rescore worker is a Lambda.**
-- It needs only the database (no internet), runs for seconds every 5 minutes, and would pay Fargate's 30–60 s start-up on every run. A **Lambda inside the VPC's isolated subnets** fits exactly, and costs ~$0 at this volume.
-- It signs in with **IAM database authentication**: its AWS role signs a 15-minute token locally, so there is no password to store and no call to Secrets Manager (which would need internet or a paid endpoint).
-- It uses its own narrow database role, `jhi_scorer`: read jobs, profiles and confirmed resume skills; write scores; drain the queue. It can't read tracking, application history, expertise data or tokens.
-- Trade-offs: a Lambda can run at most 15 minutes (we stop at 5 and continue next run), and a burst of parallel runs would each open a database connection. EventBridge starts one run every 5 minutes, and `SKIP LOCKED` keeps any overlap safe.
+**Rejected:**
+- Scoring inside requests: slow, and fails with the request.
+- A Postgres queue table: works, but we would rebuild retries, a DLQ and metrics by hand.
+- A transactional outbox with a relay process: stronger delivery guarantees, but one more moving part. Reconciliation gives the same end result for a workload whose messages are idempotent.
 
 **Scaling the fan-out (the part that will actually grow).**
-- `user_job_scores` grows as **users × jobs**. At 1,000 users and ~180,000 jobs a year, that is ~180 M rows (~90 GB with the stored matched/missing skill lists), which is far larger than everything else combined.
-- **Proposed** plan, in order of cost:
+- `user_job_scores` grows as **users × jobs**. At 1,000 users and ~180,000 jobs a year that is ~180 M rows (~90 GB with the stored matched/missing skill lists), far larger than everything else combined.
+- **Proposed** plan, cheapest first:
   1. Score only **active** jobs (not expired, seen in the last ~60 days): ~27 M rows, ~13 GB at 1,000 users.
   2. Store only the numbers per row; compute matched/missing skill lists **on demand** for the one job a user opens.
-  3. **Later:** Postgres **partitioning** of `user_job_scores` by `user_id` hash, so vacuuming and index maintenance stay per partition.
-  4. Only after all of that: sharding (§1.7).
-- **Proposed:** move a user's **full-board rescore** (onboarding, resume or level change: ~14 s) off the request into the same queue, and show "scoring your board…" in the app. Today it runs inside the request, which is acceptable for a handful of users but blocks one gunicorn thread per rescore.
+  3. **Later:** partition `user_job_scores` by `user_id` hash.
+  4. **Later:** score **on read** for users inactive for N days, instead of on every capture.
+  5. Only after all of that: sharding (§1.7).
 
 #### 1.5.10 Scheduling: EventBridge — Built
 
-**What.** EventBridge rules start the background work: `rate(5 minutes)` invokes the `jhi-rescore` Lambda, and `rate(30 minutes)` starts the expertise worker's Fargate task.
+**What.** EventBridge rules:
+- **every hour**, invoke the `jhi-rescore` Lambda with `{"type": "reconcile"}`
+- **every 30 minutes**, start the expertise worker's Fargate task
+
+New captures and profile changes don't wait for a schedule: they arrive through SQS (§1.5.9).
 
 **Why.** Managed cron with IAM permissions and no always-on scheduler process (N7).
 
-**Trade-offs.** At-least-once delivery: a run may occasionally start twice, which is why workers claim rows with `SKIP LOCKED` and upserts are idempotent. **Proposed:** EventBridge **Scheduler** (the newer service) for time-zone-aware schedules if we need them.
+**Trade-offs.**
+- At-least-once invocation: a run may occasionally start twice. Reconciliation and expertise scoring both skip work that is already done, and score writes are upserts.
+- **Later:** EventBridge **Scheduler** (the newer service) if we need time zones or one-off schedules.
 
 #### 1.5.11 LLM calls: DeepSeek, outside AWS — Built
 
@@ -464,6 +587,7 @@ sequenceDiagram
 **Layout.**
 - Two public subnets (ALB, API, expertise worker) and two isolated subnets (RDS and both Lambda functions), across two Availability Zones.
 - The Lambdas' security group allows no inbound traffic and only two ways out: Postgres (port 5432) and S3 (through the gateway endpoint). A test fails if either Lambda ever gets a route to the internet.
+- SQS doesn't need a network path from the rescore Lambda: the Lambda service reads the queue and passes messages to the function. The API publishes to SQS over its public IP.
 - A free S3 **gateway endpoint** lets private components reach S3 without the internet.
 
 **Why no NAT gateway.**
@@ -474,29 +598,78 @@ sequenceDiagram
 **Trade-offs.**
 - Anything placed in an isolated subnet can reach only the database and S3, unless we add interface endpoints (~$7/month each) or NAT. That shapes where each future component may run (§1.6).
 - Public IPv4 addresses cost ~$3.65/month each.
+- **Considered: API and worker tasks in private subnets** (design review, 2026-09-17). It would add defense in depth if a security-group rule were ever misconfigured, but needs a NAT gateway (~$32+/month) for DeepSeek and Cognito. Inbound exposure today is the same (nothing but the ALB can reach a task), and the Terraform tests guard the rules. Revisit when revenue or compliance justifies the NAT cost (§1.7).
 
 #### 1.5.14 Admin access to the private database — Built (Lambda) / Proposed (port forwarding)
 
 The admin role can **manage** RDS through the AWS API (snapshots, sizing) but can't **connect** to port 5432 from a laptop. That is intended: the database has no public address. Two approved ways in:
 
 - **`jhi-admin-task` Lambda** (Built): a fixed list of named commands, never arbitrary SQL, invoked from a terminal with `aws lambda invoke`. IAM decides who may call it, and it signs in as the narrow `jhi_importer` role (shared job tables only, no per-user tables).
-  - `status`: job count, jobs in the last 24 h, jobs with a seniority level, queue depth.
+  - `status`: job count, jobs in the last 24 h, jobs with a seniority level. Queue depth is on the dashboard (SQS metrics).
   - `import_sqlite`: the one-time seed. Upload a copy of the local SQLite file to the private imports bucket (`imports/…`, auto-deleted after a day), invoke the command. It copies the shared tables into the empty cloud database, **leaves out Nasi's private tables** (`resume`, `career_goals`, `chat_messages`) and deletes the upload.
 - **Session Manager port forwarding through an API task** (Proposed): `psql` on the Mac connects to `localhost:15432`, tunneled via ECS Exec. Nothing opens to the internet, access is IAM-controlled and logged, and there's no bastion server to patch.
 
-#### 1.5.15 Observability and cost guardrails — Built
+#### 1.5.15 Observability — Built
 
-**What we have.**
-- CloudWatch Logs (30 days) per component.
-- Alarms by SNS email: API 5xx, unhealthy tasks, database CPU, low database storage, and errors in either Lambda function.
-- An AWS Budget at $75/month (80 % actual, 100 % forecast).
+**Goal (N9).** Problems find the operator: any user-visible failure raises an email alarm within ~15 minutes, and a request id leads from the alarm to the exact log line. All of it stays inside CloudWatch: no agent, no extra vendor, ~$5–10/month.
 
-**Proposed next.**
-- An alarm on `rescore_queue` depth (a custom metric emitted by the worker), so "scores stopped updating" is noticed.
-- RDS **Performance Insights** (free 7-day tier) to find slow queries before users do.
-- A p95 latency alarm on the ALB's `TargetResponseTime` (N3).
+**1. Structured logs.** Every component writes one JSON object per line to stdout; ECS and Lambda ship it to CloudWatch Logs (30 days).
+- **API:** one `request` line per request, with `request_id` (also returned as the `X-Request-Id` header), method, route pattern, status, `duration_ms`, `user_id` and token scope.
+- **Unhandled errors:** an `unhandled_error` line with the request id and stack trace. The request's transaction is rolled back, and the user sees `{"error": "internal error", "request_id": …}`.
+- **Workers and Lambdas:** one summary line per run (`reconcile`, `expertise_run`) and one line per failed message.
+- **Never logged:** emails, resume text, posting text, tokens. A field filter drops those keys even if code passes them by mistake.
 
-**Trade-off.** No distributed tracing (X-Ray/OpenTelemetry) yet. With a monolith and one database, request logs are enough; add tracing if we split services.
+**2. Metrics without an agent: Embedded Metric Format.** A metric is a specially shaped log line; CloudWatch turns it into a metric in the `JHI` namespace. This works from the isolated-subnet Lambdas too, since they have no network path to the CloudWatch API.
+
+| Area | Metrics | Question it answers |
+|---|---|---|
+| Collection | `CaptureOutcome` by outcome (scored, saved, blocked, duplicate, needs_track, invalid) | Are captures arriving, and how many are agencies or reposts? |
+| LLM | `SeniorityClassifyMs`, `SeniorityClassifyFailed`, `ExpertiseDraftMs`, `ExpertiseDraftFailed`, `ExpertiseScored`, `ExpertiseFailed` | Is DeepSeek slow or failing? |
+| Resumes | `ResumeProcessed`, `ResumeProcessingMs`, `ResumeParseFailed` | Are uploads working? |
+| Scoring pipeline | `RescorePublished`, `RescorePublishFailed`, `RescoreMessages` by type, `ScoresWritten`, `RescoreMessageFailed`, `ReconcileStaleUsers`, `ReconcileMissingScores`, `UnscoredJobAgeMinutes` | Are boards fresh (N10)? Are messages being lost? |
+| Isolation | `TokenScopeDenied`, `DbPermissionDenied` | Is any code or token reaching for data it shouldn't? |
+| Errors | `ApiUnhandledError` | Is the API throwing? |
+
+AWS supplies the rest: load balancer latency and 5xx, SQS depth and **age of the oldest message**, dead-letter count, Lambda errors, RDS CPU, storage and connections.
+
+**3. One dashboard** (`jhi`, Terraform-managed):
+- API latency p50/p95 and errors
+- captures by outcome
+- rescore queue depth, age and DLQ
+- scores written and failures
+- resumes and LLM failures
+- database and Lambda errors
+
+**4. Alarms → SNS email.**
+
+| Alarm | Fires when | Meaning |
+|---|---|---|
+| `jhi-api-p95-latency` | p95 > 500 ms for 15 min | N3 missed |
+| `jhi-api-5xx`, `jhi-api-unhandled-errors` | ≥ 5 target 5xx, or ≥ 3 unhandled errors, in 5 min | API failing |
+| `jhi-api-unhealthy` | an unhealthy task for 5 min | A task isn't serving |
+| `jhi-rescore-queue-age` | oldest message > 15 min | Scoring stuck |
+| `jhi-rescore-dlq` | any message in the DLQ | A message failed 5 times |
+| `jhi-rescore-publish-failed` | any publish failure | SQS unreachable from the API |
+| `jhi-unscored-job-age` | reconciliation found a job unscored ≥ 90 min | Messages being lost |
+| `jhi-db-permission-denied` | any | Possible isolation bug |
+| `jhi-token-scope-denied` | ≥ 5 in an hour | Misconfigured or misused token |
+| `jhi-resume-parse-failures` | ≥ 5 in an hour | Uploads broken |
+| `jhi-seniority-classify-failures`, `jhi-expertise-failures` | ≥ 10 in an hour | DeepSeek failing |
+| `jhi-rescore-errors`, `jhi-admin-task-errors` | any Lambda error | Function crashing |
+| `jhi-db-cpu`, `jhi-db-free-storage` | CPU > 80 % for 15 min, free storage < 2 GB | Database capacity |
+| Budget | 80 % actual, 100 % forecast of $75 | Cost (N6) |
+
+**5. From alarm to cause.**
+1. The email names the alarm.
+2. The dashboard shows when it started and what else moved.
+3. CloudWatch Logs Insights, e.g. `fields @timestamp, route, status, duration_ms | filter event = "request" and status >= 500`, gives the request ids.
+4. Filter on `request_id` to see that request's error and stack trace.
+
+**Trade-offs.**
+- Custom metrics cost ~$0.30 each per month (~20 metrics), and log ingestion $0.50/GB. Both are small at this volume.
+- **No distributed tracing yet.** With one API, one database and one queue, a request id is enough. **Later:** AWS X-Ray or OpenTelemetry when a request crosses several services.
+- **Not measurable directly:** row-level security never raises an error when it hides another user's row; the query just returns fewer rows. Isolation is proven by tests (§5.4), and the metrics catch role-level violations.
+- **Later:** RDS Performance Insights (free 7-day tier) to find slow queries; the extension reporting its offline-queue size.
 
 #### 1.5.16 Deploys: GitHub Actions + Terraform — Built
 
@@ -531,7 +704,7 @@ A recurring decision, so the rule is written down once.
 |---|---|---|
 | API | **Fargate** | Internet access (DeepSeek, Cognito keys), ~100 s requests, steady connections |
 | Expertise worker | **Fargate** | Calls DeepSeek; runs minutes |
-| Rescore worker | **Lambda — Built** (`jhi-rescore`) | Database only, seconds every 5 min, IAM DB auth, no Fargate start-up delay |
+| Rescore consumer | **Lambda — Built** (`jhi-rescore`) | Triggered by SQS within seconds; database only; IAM DB auth; scales with the queue, capped at 2 concurrent runs |
 | Admin tasks (status, data import) | **Lambda — Built** (`jhi-admin-task`) | Rare, short, private, IAM-invoked |
 | Migrations | Fargate (inside the API task) | Must run before the new API version starts |
 | Resume parsing on upload | Later: Lambda on S3 event | Would need a KMS interface endpoint (~$7/month); not worth it until uploads are frequent |
@@ -546,7 +719,9 @@ A recurring decision, so the rule is written down once.
 | **Multi-AZ database** | 99.5 % target tolerates a rare multi-minute recovery; doubles DB cost | Daily active users depend on it, or we promise uptime | RDS Multi-AZ (automatic failover ~1–2 min) |
 | **Sharding** | 13–90 GB fits one Postgres instance easily. Sharding makes joins across users/jobs and every migration much harder, and is the hardest step to undo | A single instance (even large) can't hold `user_job_scores` after pruning + partitioning, far beyond 10,000 users | Shard key `user_id` with consistent hashing (Citus, or Aurora Limitless) |
 | **NoSQL** | No unstructured, high-volume data yet | Clickstream/analytics events, per-user UI preferences at high write volume | DynamoDB (on-demand) or S3 + Athena for analytics |
-| **SQS** | The `rescore_queue` table commits in the same transaction as the capture, and the rescore Lambda reads it every 5 minutes (§1.5.9) | Multiple consumers per event (e.g. notifications + scoring), or volume where polling wastes runs | SQS with a dead-letter queue, triggering the same Lambda directly |
+| **SNS fan-out / EventBridge bus** | One consumer per event today (scoring) | A second consumer of the same event (e.g. notify users about new matches) | Publish to an SNS topic or event bus, with one SQS queue per consumer |
+| **Private subnets for tasks** | Needs NAT (~$32+/month); inbound exposure is already ALB-only (§1.5.13) | Revenue or a compliance requirement | Move tasks to private subnets + NAT gateway |
+| **Malware scanning of uploads** | Uploads are only parsed and shown back to their owner, never to other users | Files shared with others, or suspicious uploads seen | GuardDuty Malware Protection for S3 |
 | **NAT gateway** | Public-subnet tasks + isolated subnets cover every need | A component needs the internet but must not have a public IP (e.g. compliance), or internet-bound Lambdas | NAT gateway (or a NAT instance to save cost) |
 | **WAF** | Low traffic; Cognito handles auth abuse | Scraping of the public stats/landing endpoints, bot sign-ups | AWS WAF on the ALB and CloudFront (rate-based rules), ~$6+/month |
 | **Second region** | Personal-scale product | Real SLA or regulatory need | Cross-region backups first, then warm standby |
@@ -560,10 +735,11 @@ A recurring decision, so the rule is written down once.
 | API: one Fargate task (0.5 vCPU, 1 GB, arm64) | ~$15 |
 | Public IPv4 addresses (ALB + tasks) | ~$7–11 |
 | Expertise worker (scheduled Fargate) | ~$1–2 |
-| Lambda: rescore every 5 min + admin tasks (within the free tier at this volume) | ~$0 |
+| Lambda (rescore messages + hourly reconcile + admin tasks) and SQS (within free tiers at this volume) | ~$0–1 |
+| CloudWatch custom metrics (~20), dashboard, extra alarms, log ingestion | ~$5–10 |
 | S3, CloudFront, KMS, Secrets Manager, ECR, CloudWatch, Route 53 | ~$6–9 |
 | Cognito (free tier), EventBridge | ~$0 |
-| **Total** | **~$60–70** + DeepSeek (~$1.50 per collection day) |
+| **Total** | **~$65–80** + DeepSeek (~$1.50 per collection day) |
 
 **What each growth step adds:** second API task +$15 · Multi-AZ +$15 · next DB size (`t4g.small`) +$12 · read replica +$15 · ElastiCache Serverless +$6 and up · NAT gateway +$32 · WAF +$6 and up.
 
@@ -572,8 +748,8 @@ A recurring decision, so the rule is written down once.
 | Stage | Users | What breaks first | Fix (cheapest first) |
 |---|---|---|---|
 | Launch | < 50 | Nothing; the risk is a single task or DB outage | Alarms, backups, fast rollback |
-| Early | ~1,000 | Full-board rescores inside requests; score table growth | Queue full rescores (§1.5.9); prune scores to active jobs; second API task; Multi-AZ |
-| Growing | ~10,000 | Fan-out writes (~4.5 M score rows per collection day); DB CPU and storage | Bigger DB instance; partition `user_job_scores`; compute skill lists on demand; autoscale API; SES for email |
+| Early | ~1,000 | Score table growth; single API task and single-AZ database | Prune scores to active jobs; compute skill lists on demand; second API task; Multi-AZ |
+| Growing | ~10,000 | Fan-out writes (~4.5 M score rows per collection day) hit database CPU and storage; rescore queue age grows | Bigger DB instance; raise the Lambda's maximum concurrency with the DB size; partition `user_job_scores`; score on read for inactive users; autoscale API; SES for email |
 | Large | 100,000+ | Single primary for writes; per-user scoring model itself | Read replicas; reconsider scoring on read for inactive users (score only users active in the last N days); only then sharding |
 
 ### 1.10 Rules the design is built around
@@ -984,7 +1160,7 @@ Walking the route map means a newly added route is covered automatically.
 | Route | Auth | Purpose |
 |---|---|---|
 | `GET /api/public/stats` | none | Landing page numbers: collected today, total scored, remote count, last collection time. Aggregates only |
-| `GET /api/v1/me` | user | Account, role, plan and onboarding state (`complete`, plus the optional `expertise` step); creates the user on first login |
+| `GET /api/v1/me` | user | Account, role, plan and onboarding state (`complete`, the optional `expertise` step, and `board_scored`: whether scoring has caught up with the current profile); creates the user on first login |
 | `DELETE /api/v1/me` | user | Delete account and all the user's data |
 | `POST /api/v1/me/resume` | user | Returns a presigned upload URL; on completion, `process_resume` → extracted skills for confirmation |
 | `GET /api/v1/me/resume` | user | Current resume version, extracted and confirmed skills |
@@ -1006,7 +1182,7 @@ Walking the route map means a newly added route is covered automatically.
 | `POST /api/v1/admin/collection-pages` | admin | Per-page collection stats |
 | `PATCH /api/v1/admin/jobs/{id}` | admin | Shared fields: `expired` |
 | `GET /api/v1/admin/health` | admin | Full health (last run, failing fields, incomplete run, daily LLM spend) |
-| `POST/DELETE /api/v1/admin/tokens` | admin | Create/revoke extension tokens |
+| `POST/DELETE /api/v1/admin/tokens` | admin person (no token) | Create (`scope`: `collector` default, or `admin`) / revoke API tokens |
 | `PUT /api/v1/admin/plans` | admin | Set a member's plan by email (`free` / `paid`) until payments exist |
 
 The old unauthenticated routes (`/api/jobs`, `/api/extension/*`, the old `PATCH /api/jobs/<id>`) are removed once the extension and React app have moved over.
@@ -1057,7 +1233,7 @@ Phases 1–5 are all local. Phase 4's prompt-parity eval and phase 5's isolation
 
 **Status (2026-09-16): phase 6 built** on `feat/phase5-auth`. 6A: `POST /api/v1/admin/captures` takes the extension's existing body, filters agencies, classifies the level once and queues the job; `cloud_api/rescore_worker.py` (owner) scores queued jobs for every user. 6B: `extension/cloud_sync.js` sends each capture to the cloud without waiting on it, queues it in `chrome.storage.local` when the cloud is unreachable or the token is rejected (401/403), retries in order on the next capture and every 5 minutes, and stays off until a URL and token are saved on the options page. **Paid expertise (backend):** migration `f1b3d5e7a924`, `/api/v1/me/expertise*`, `PUT /api/v1/admin/plans`, `cloud_api/expertise_worker.py` (§3.5). The worker and draft route call `judge/user_expertise_match.py` and `judge/expertise_profile.py`, which merge from the expertise work.
 
-**Status (2026-09-16): phase 9 infrastructure code written** on `feat/infra` (not deployed). Terraform (`terraform/`, see its README): API on Fargate behind an HTTPS load balancer, RDS Postgres 18 in isolated subnets, the rescore worker and admin tasks as Lambda functions in the isolated subnets (IAM database authentication), the expertise worker as a scheduled Fargate task, S3 + KMS resumes, Cognito, CloudFront for the web app, Secrets Manager (generated passwords never enter Terraform state), alarms and a monthly budget. No SQS or NAT gateway, and no Lambda with internet access, enforced by `terraform/tests`. CI/CD in GitHub Actions (`.github/workflows/cloud.yml`): tests on every push; on `main` it builds the arm64 image, pushes it to ECR and runs `terraform apply` through keyless OIDC, once `AWS_ACCOUNT_ID` is set. Every API task runs migrations first. Needs before the first deploy: an AWS account (not the root user), a domain, and the one-time bootstrap in `terraform/README.md`.
+**Status (2026-09-16): phase 9 infrastructure code written** on `feat/infra` (not deployed). Terraform (`terraform/`, see its README): API on Fargate behind an HTTPS load balancer, RDS Postgres 18 in isolated subnets, rescoring through SQS (dead-letter queue, hourly reconciliation) consumed by a Lambda in the isolated subnets, an admin-task Lambda (both with IAM database authentication), the expertise worker as a scheduled Fargate task, S3 + KMS resumes, Cognito, CloudFront for the web app, Secrets Manager (generated passwords never enter Terraform state), structured logs, EMF metrics, a CloudWatch dashboard, alarms and a monthly budget. No NAT gateway and no Lambda with internet access, enforced by `terraform/tests`. CI/CD in GitHub Actions (`.github/workflows/cloud.yml`): tests on every push; on `main` it builds the arm64 image, pushes it to ECR and runs `terraform apply` through keyless OIDC, once `AWS_ACCOUNT_ID` is set. Every API task runs migrations first. Needs before the first deploy: an AWS account (not the root user), a domain, and the one-time bootstrap in `terraform/README.md`.
 
 **Cost at this shape** (Nasi pays for all of it for now)
 
@@ -1162,7 +1338,7 @@ Only Skill Match is affected. Seniority and Expertise come from LLM calls and ne
 - **Seniority is per job.** The LLM classifies the level once; each user's fit is computed in code (§3.3).
 - **Nasi pays for LLM calls for now.** Free members trigger none. Paid members' expertise calls are capped (3 drafts a day, `--limit` jobs per worker run).
 - **Expertise Match is a paid-member feature** (2026-09-16), an optional onboarding step anyone can skip; shown beside the total, not added to it (§3.5).
-- **Host: AWS** (Cognito, RDS Postgres, S3, the API on Fargate behind an HTTPS load balancer, scheduled Fargate tasks for workers, Secrets Manager). **Lambda for database-only work (rescore worker, admin tasks) in isolated subnets; no SQS; no NAT gateway** (decided 2026-09-16, Lambda added 2026-09-17). This replaces the Lambda + SQS layout in `multi_tenant_plan.md`.
+- **Host: AWS** (Cognito, RDS Postgres, S3, the API on Fargate behind an HTTPS load balancer, scheduled Fargate tasks for workers, Secrets Manager). **Lambda for database-only work (rescore consumer, admin tasks) in isolated subnets; SQS for rescoring with a dead-letter queue and hourly reconciliation; no NAT gateway** (decided 2026-09-16; Lambda, SQS, scoped tokens and observability added 2026-09-17 after a design review). This replaces the Lambda + SQS layout in `multi_tenant_plan.md`.
 - **Infrastructure as code: Terraform, deployed by GitHub Actions** (decided 2026-09-16; replaces the CDK in `multi_tenant_plan.md`).
 - **LinkedIn terms of service: OK to go.** A terms-of-use page and a privacy policy covering resumes still ship before launch.
 - **Open sign-up** at launch.

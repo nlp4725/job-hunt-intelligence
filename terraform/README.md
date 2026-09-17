@@ -3,7 +3,7 @@
 ```
 Internet ─► load balancer (HTTPS, api.<domain>) ─► API on Fargate ─► RDS Postgres (private, TLS only)
         ─► CloudFront (app.<domain>) ─► private S3 bucket (React build)
-Lambda (isolated subnets, IAM DB auth): jhi-rescore every 5 min, jhi-admin-task on demand
+SQS jhi-rescore (+ DLQ) → Lambda jhi-rescore (isolated subnets, IAM DB auth); hourly reconcile; jhi-admin-task on demand
 Scheduled Fargate task: expertise worker every 30 min
 Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, monthly budget. Region us-east-1.
 ```
@@ -14,9 +14,9 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
 | `bootstrap/` | Terraform state bucket, `jhi-cloud` image registry, GitHub OIDC deploy role | You, once, from your machine. Its state file stays local |
 | `app/` | Everything else | GitHub Actions on every push to `main` (`.github/workflows/cloud.yml`) |
 
-**Lambda for database-only work; no SQS, no NAT gateway.** `tests/test_terraform.py` fails if SQS or NAT is added, or if a Lambda gets a route to the internet.
-- **Queue:** the `rescore_queue` table, written in the same transaction as each capture.
-- **Rescore worker:** the `jhi-rescore` Lambda, every 5 minutes, isolated subnets, IAM database authentication.
+**Lambda for database-only work; no NAT gateway.** `tests/test_terraform.py` fails if NAT is added, or if a Lambda gets a route to the internet.
+- **Rescoring (`sqs.tf`):** the API publishes job and user messages to SQS `jhi-rescore` after each commit. The `jhi-rescore` Lambda consumes them (batches of 10, at most 2 in parallel, per-message retries). A message that fails 5 times goes to `jhi-rescore-dlq`. An hourly `{"type": "reconcile"}` run scores anything missed.
+- **Observability (`observability.tf`):** a `jhi` CloudWatch dashboard and alarms over the app's EMF metrics, SQS, the load balancer, Lambda and RDS. Alerts go to `ALERT_EMAIL`.
 - **Admin tasks:** the `jhi-admin-task` Lambda (`status`, `import_sqlite`), invoked by hand.
 - **Expertise worker:** a Fargate task on a 30-minute schedule (it calls DeepSeek, so it needs the internet).
 - **Web app upload:** `aws s3 sync` in CI.
@@ -74,7 +74,13 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
   AWS_PROFILE=jhi-admin terraform init -backend-config="bucket=jhi-tfstate-<ACCOUNT_ID>" -backend-config="key=app/terraform.tfstate" -backend-config="region=us-east-1"
   AWS_PROFILE=jhi-admin terraform plan -var domain=<domain> -var image_tag=<a pushed commit>
   ```
-- **Logs:** CloudWatch `/jhi/api`, `/jhi/migrate`, `/jhi/expertise`, `/aws/lambda/jhi-rescore`, `/aws/lambda/jhi-admin-task` (kept 30 days).
+- **Logs:** CloudWatch `/jhi/api`, `/jhi/migrate`, `/jhi/expertise`, `/aws/lambda/jhi-rescore`, `/aws/lambda/jhi-admin-task` (kept 30 days). Every line is JSON. Find a failing request:
+  ```
+  fields @timestamp, request_id, route, status, duration_ms | filter event = "request" and status >= 500 | sort @timestamp desc
+  ```
+- **Dashboard:** `terraform output dashboard_url`.
+- **Dead-letter queue:** after fixing the cause, redrive `jhi-rescore-dlq` to `jhi-rescore` (SQS console → the DLQ → Start DLQ redrive).
+- **Extension token:** create it signed in as the owner (`POST /api/v1/admin/tokens` with `{"label": "extension"}`, scope `collector` by default).
 - **Admin commands:**
   ```bash
   aws lambda invoke --function-name jhi-admin-task --payload '{"command":"status"}' --cli-binary-format raw-in-base64-out out.json && cat out.json
@@ -98,9 +104,10 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
 | API task (0.5 vCPU, 1 GB, arm64, always on) | ~$15 |
 | Public IPv4 addresses (load balancer + tasks) | ~$7–11 |
 | Expertise worker (short scheduled Fargate runs) | ~$1–2 |
-| Lambda (rescore every 5 min, admin tasks) | ~$0 (free tier) |
+| Lambda + SQS (rescore messages, hourly reconcile, admin tasks) | ~$0–1 |
+| CloudWatch custom metrics, dashboard, alarms | ~$5–10 |
 | S3, CloudFront, KMS, Secrets Manager, ECR, CloudWatch | ~$5–7 |
 | Cognito (under the free tier's monthly active users) | $0 |
-| **Total** | **~$60–70** + DeepSeek |
+| **Total** | **~$65–80** + DeepSeek |
 
 The budget (`monthly_budget_usd`, default 75) emails you at 80% of actual spend and at 100% of forecast. DeepSeek is billed outside AWS, so set a spend limit in its console.
