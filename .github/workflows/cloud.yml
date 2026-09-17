@@ -1,6 +1,6 @@
 # Cloud CI/CD (terraform/README.md). Tests on every push and pull request;
-# deploys to AWS on pushes to main once the repository variable AWS_ACCOUNT_ID
-# is set. AWS access is keyless: GitHub's OIDC token assumes jhi-github-deploy,
+# deploys to AWS on pushes to main once the repository variables AWS_ACCOUNT_ID
+# and DOMAIN are set. AWS access is keyless: GitHub's OIDC token assumes jhi-github-deploy,
 # which only trusts the "production" environment of this repository.
 name: cloud
 
@@ -53,7 +53,7 @@ jobs:
 
   deploy:
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AWS_ACCOUNT_ID != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AWS_ACCOUNT_ID != '' && vars.DOMAIN != ''
     runs-on: ubuntu-24.04-arm          # the image is linux/arm64; build it natively
     environment: production
     concurrency:
@@ -91,8 +91,8 @@ jobs:
           TF_VAR_image_tag: ${{ github.sha }}
           TF_VAR_domain: ${{ vars.DOMAIN }}
           TF_VAR_hosted_zone_id: ${{ vars.HOSTED_ZONE_ID }}
-          TF_VAR_alert_email: ${{ vars.ALERT_EMAIL }}
-          TF_VAR_owner_email: ${{ vars.OWNER_EMAIL }}
+          TF_VAR_alert_email: ${{ secrets.ALERT_EMAIL }}   # environment secrets: kept out of public logs
+          TF_VAR_owner_email: ${{ secrets.OWNER_EMAIL }}
         run: |
           terraform init -input=false \
             -backend-config="bucket=jhi-tfstate-${{ vars.AWS_ACCOUNT_ID }}" \

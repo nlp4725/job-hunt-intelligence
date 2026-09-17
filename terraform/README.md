@@ -47,7 +47,8 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
    Keep `terraform.tfstate` from this folder somewhere safe; it is gitignored.
 4. **GitHub** (repository Settings):
    - Environments → create `production`. Optionally add yourself as a required reviewer, so each deploy waits for your approval.
-   - Variables → `AWS_ACCOUNT_ID`, `DOMAIN`, `HOSTED_ZONE_ID` (empty if not in Route 53), `ALERT_EMAIL`, `OWNER_EMAIL` (the email you will sign in with).
+   - Repository variables → `AWS_ACCOUNT_ID`, `DOMAIN`, `HOSTED_ZONE_ID` (empty if not in Route 53). Deploys stay off until `AWS_ACCOUNT_ID` and `DOMAIN` are both set.
+   - `production` environment secrets → `ALERT_EMAIL`, `OWNER_EMAIL` (the email you will sign in with). Secrets rather than variables, so they stay out of the public repository's logs.
 5. **Push to `main`.** The first deploy takes ~20–30 min, mostly RDS, certificates and CloudFront. Then confirm the SNS email subscription.
 6. **DeepSeek key**, once. It starts as a placeholder, so captures are saved without a seniority level and expertise drafts fail. Terraform never overwrites the value you set.
    ```bash
