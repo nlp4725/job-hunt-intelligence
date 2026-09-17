@@ -176,6 +176,12 @@ def test_the_deploy_role_can_never_touch_resume_files(bootstrap):
     assert "DenyResumeFileAccess" in policy and "jhi-resumes-*/*" in policy
 
 
+def test_deploy_role_can_deploy_lambda_and_sqs(bootstrap):
+    policy = bootstrap["aws_iam_role_policy.deploy"]["policy"]
+    for sid in ("ProjectFunctions", "ProjectQueues", "LambdaEventSources"):
+        assert sid in policy, sid
+
+
 def test_deploy_role_trusts_only_the_production_environment_of_one_repo(bootstrap):
     trust = bootstrap["aws_iam_role.deploy"]["assume_role_policy"]
     assert ":environment:production" in trust and "StringEquals" in trust
