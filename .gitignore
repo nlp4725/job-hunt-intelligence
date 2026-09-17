@@ -59,4 +59,5 @@ CONTEXT.md
 *.tfstate
 *.tfstate.*
 *.tfvars
+!example.tfvars
 outputs.json

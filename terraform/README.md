@@ -9,6 +9,7 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
 
 | Folder | What | Applied by |
 |---|---|---|
+| `account/` | The `job-hunt` member account in your AWS Organization, and a `JobHuntAdmin` SSO permission set assigned to you | You, once, from the management account with an admin SSO role (not root). Its state file stays local |
 | `bootstrap/` | Terraform state bucket, `jhi-cloud` image registry, GitHub OIDC deploy role | You, once, from your machine. Its state file stays local |
 | `app/` | Everything else | GitHub Actions on every push to `main` (`.github/workflows/cloud.yml`) |
 
@@ -23,7 +24,16 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
 
 ## One-time setup
 
-1. **AWS access for yourself.** Don't use the root user. In the AWS console, enable IAM Identity Center and create a user with `AdministratorAccess`, then run `aws configure sso` → profile `jhi-admin`, and `aws sso login --profile jhi-admin`. Turn on MFA for root and put its credentials away.
+1. **A separate AWS account** (`terraform/account/`). Sign in to the management account's CLI with an admin SSO role, not root. Then:
+   ```bash
+   cd terraform/account
+   cp example.tfvars account.tfvars          # your SSO user name and a new root email; gitignored
+   AWS_PROFILE=<management admin> terraform init
+   AWS_PROFILE=<management admin> terraform apply -var-file=account.tfvars
+   aws configure sso --profile jhi-admin     # the new account, role JobHuntAdmin, us-east-1
+   aws sso login --profile jhi-admin
+   ```
+   Keep this folder's `terraform.tfstate`. Turn on MFA for the management account's root user and put its credentials away.
 2. **Domain.** Buy one, ideally in Route 53 (Registered domains). That creates a hosted zone; note its ID. If the domain lives elsewhere, leave `HOSTED_ZONE_ID` empty. During the first deploy you then add, at your registrar:
    - the certificate validation CNAMEs (ACM console, or the `certificate_validation_records` output)
    - `api` → `alb_dns_name`

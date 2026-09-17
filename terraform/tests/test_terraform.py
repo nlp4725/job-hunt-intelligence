@@ -15,7 +15,7 @@ import hcl2
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-FOLDERS = ("bootstrap", "app")
+FOLDERS = ("account", "bootstrap", "app")
 
 
 def _tf_files():
@@ -123,6 +123,13 @@ def test_workers_are_scheduled_fargate_tasks(app):
 
 def test_every_log_group_has_retention(app):
     assert app["aws_cloudwatch_log_group.tasks"]["retention_in_days"] > 0
+
+
+def test_the_account_is_protected_and_personal_details_stay_out_of_the_repo():
+    account = _resources("account")["aws_organizations_account.job_hunt"]
+    assert account["lifecycle"][0]["prevent_destroy"] is True and account["close_on_deletion"] is False
+    text = (ROOT / "account" / "main.tf").read_text()
+    assert "@" not in re.sub(r"#.*", "", text).replace("you+jobhunt@example.com", ""), "emails belong in a gitignored .tfvars"
 
 
 def test_deploy_role_trusts_only_the_production_environment_of_one_repo(bootstrap):
