@@ -9,6 +9,7 @@ to Secrets Manager (which would need internet or a paid endpoint).
              rescore one user's board), and hourly {"type": "reconcile"}
     admin    invoked by hand:  aws lambda invoke --function-name jhi-admin-task \\
                                  --payload '{"command": "status"}' out.json
+             commands: status · import_sqlite (the one-time seed) · import_levels
 """
 
 import json
@@ -83,6 +84,29 @@ def _status(url: str) -> dict:
         engine.dispose()
 
 
+def _s3_download(key, suffix: str, into: str):
+    import boto3
+
+    if not isinstance(key, str) or not key.startswith("imports/") or ".." in key:
+        raise ValueError("s3_key must be under imports/")
+    bucket = required("IMPORT_BUCKET")
+    client = boto3.client("s3", region_name=required("AWS_REGION"))
+    path = Path(into) / f"upload{suffix}"
+    client.download_file(bucket, key, str(path))
+    return client, bucket, path
+
+
+def _import_levels(url: str, key) -> dict:
+    """Seniority levels classified elsewhere (db/level_transfer.py), keyed by LinkedIn job id."""
+    from db.level_transfer import import_levels
+
+    with tempfile.TemporaryDirectory() as tmp:
+        client, bucket, path = _s3_download(key, ".jsonl.gz", tmp)
+        result = import_levels(url, path)
+    client.delete_object(Bucket=bucket, Key=key)
+    return result
+
+
 def _import_sqlite(url: str, key) -> dict:
     """Seed an empty cloud database from a SQLite export uploaded to the import bucket,
     leaving out Nasi's private tables, then delete the upload."""
@@ -103,7 +127,8 @@ def _import_sqlite(url: str, key) -> dict:
 
 
 COMMANDS = {"status": lambda url, event: _status(url),
-            "import_sqlite": lambda url, event: _import_sqlite(url, event.get("s3_key"))}
+            "import_sqlite": lambda url, event: _import_sqlite(url, event.get("s3_key")),
+            "import_levels": lambda url, event: _import_levels(url, event.get("s3_key"))}
 
 
 def admin(event, context) -> dict:

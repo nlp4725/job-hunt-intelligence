@@ -188,6 +188,57 @@ class TestAdminLambda:
             assert conn.execute(text("SELECT count(*) FROM resume")).scalar() == 0
             assert conn.execute(text("SELECT count(*) FROM jobs")).scalar() == 2
 
+    def test_import_levels_carries_classified_levels_by_linkedin_id(self, importer_url, pg_engine, tmp_path, monkeypatch):  # noqa: F811
+        """Levels live in a cloud-only table, so they travel separately from the
+        SQLite seed, keyed by LinkedIn job id (internal ids differ per database)."""
+        import gzip
+        import json
+
+        from cloud_api import lambda_handlers
+        from db.level_transfer import export_levels
+
+        from db.models import Job
+
+        with Session(pg_engine) as db, db.begin():   # two jobs here; the export also holds a level for a job we don't have
+            db.add_all([Job(job_id=linkedin_id, url=f"u{linkedin_id}", keyword_matched="llm", track="ml_ai")
+                        for linkedin_id in ("900", "901")])
+        export = tmp_path / "levels.jsonl.gz"
+        with gzip.open(export, "wt") as out:
+            for linkedin_id, level in (("900", "senior"), ("999", "entry")):
+                out.write(json.dumps({"linkedin_id": linkedin_id, "level": level, "is_contract": False,
+                                      "years_required": 6 if level == "senior" else None, "inferred": True,
+                                      "confidence": "high", "evidence": "e", "note": None,
+                                      "prompt_version": "seniority_level_v4", "classified_at": "2026-09-01T10:00:00"}) + "\n")
+
+        class FakeS3:
+            deleted = []
+
+            def download_file(self, bucket, key, path):
+                open(path, "wb").write(export.read_bytes())
+
+            def delete_object(self, Bucket, Key):
+                self.deleted.append(Key)
+
+        fake = FakeS3()
+        monkeypatch.setattr("boto3.client", lambda *a, **k: fake)
+        monkeypatch.setenv("JHI_DATABASE_URL", importer_url)
+        monkeypatch.setenv("IMPORT_BUCKET", "imports-bucket")
+        monkeypatch.setenv("AWS_REGION", "us-east-1")
+
+        result = lambda_handlers.admin({"command": "import_levels", "s3_key": "imports/levels.jsonl.gz"}, None)
+
+        assert result == {"read": 2, "written": 1, "unknown": 1}
+        with pg_engine.connect() as conn:
+            rows = conn.execute(text("SELECT j.job_id, s.level, s.years_required, s.prompt_version FROM job_seniority s "
+                                     "JOIN jobs j ON j.id = s.job_id")).all()
+        assert rows == [("900", "senior", 6, "seniority_level_v4")]
+        assert fake.deleted == ["imports/levels.jsonl.gz"]
+
+        # exporting from this database gives back what an import would take
+        out = tmp_path / "roundtrip.jsonl.gz"
+        assert export_levels(importer_url, out) == 1
+        assert json.loads(gzip.open(out, "rt").readline())["linkedin_id"] == "900"
+
     def test_import_keys_must_be_under_imports(self, importer_url, monkeypatch):
         from cloud_api import lambda_handlers
 
