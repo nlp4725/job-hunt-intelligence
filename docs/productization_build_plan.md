@@ -121,6 +121,7 @@ Every box below has a monthly price in §1.8. The rule: the right design meets Q
 #### Diagram A — components and where they run
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "IBM Plex Mono, ui-monospace, Menlo, monospace", "fontSize": "13px", "primaryColor": "#1f2c3d", "primaryTextColor": "#eae5d6", "primaryBorderColor": "#a8c5d9", "lineColor": "#6f97b3", "secondaryColor": "#29394f", "tertiaryColor": "#f5f2e8", "clusterBkg": "#161f2c", "clusterBorder": "#6f97b3", "titleColor": "#eae5d6", "edgeLabelBackground": "#161f2c", "textColor": "#eae5d6"}}}%%
 flowchart TB
     subgraph Mac["Nasi's Mac (the only collector)"]
         Skill["Claude in Chrome<br/>linkedin-manual-screen skill"]
@@ -191,11 +192,31 @@ flowchart TB
     LR --> CW
     Exp --> CW
     CW --> SNS
+    classDef navy fill:#1f2c3d,stroke:#8b8577,stroke-width:1.5px,color:#eae5d6
+    classDef core fill:#1f2c3d,stroke:#a8c5d9,stroke-width:2.5px,color:#eae5d6
+    classDef store fill:#f5f2e8,stroke:#cdbb7a,stroke-width:2px,color:#1a2230
+    classDef queue fill:#eae5d6,stroke:#6f97b3,stroke-width:2px,color:#1a2230
+    classDef fail fill:#f5f2e8,stroke:#a14a3d,stroke-width:2px,color:#1a2230
+    classDef ext fill:#29394f,stroke:#8b8577,stroke-width:1.5px,stroke-dasharray:4 3,color:#eae5d6
+    class Skill,Ext,Local,Term,Web,R53,CF,Cognito,SM,EB,CW,SNS navy
+    class ALB,API,Exp,LR,LA core
+    class RDS,SiteS3,ResS3,ImpS3 store
+    class SQS queue
+    class DLQ fail
+    class DeepSeek ext
+    style Mac fill:#29394f,stroke:#8b8577,color:#eae5d6
+    style Browser fill:#29394f,stroke:#8b8577,color:#eae5d6
+    style Edge fill:#161f2c,stroke:#6f97b3,color:#eae5d6
+    style Regional fill:#161f2c,stroke:#6f97b3,color:#eae5d6
+    style VPC fill:#161f2c,stroke:#a8c5d9,stroke-width:2px,color:#eae5d6
+    style Public fill:#1f2c3d,stroke:#6f97b3,color:#eae5d6
+    style Isolated fill:#1f2c3d,stroke:#cdbb7a,color:#eae5d6
 ```
 
 #### Diagram B — a user opens their board
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "IBM Plex Mono, ui-monospace, Menlo, monospace", "fontSize": "13px", "actorBkg": "#1f2c3d", "actorBorder": "#a8c5d9", "actorTextColor": "#eae5d6", "actorLineColor": "#6f97b3", "signalColor": "#6f97b3", "signalTextColor": "#6f97b3", "labelBoxBkgColor": "#161f2c", "labelBoxBorderColor": "#a8c5d9", "labelTextColor": "#eae5d6", "loopTextColor": "#6f97b3", "noteBkgColor": "#f5f2e8", "noteBorderColor": "#cdbb7a", "noteTextColor": "#1a2230", "activationBkgColor": "#a8c5d9", "activationBorderColor": "#6f97b3"}}}%%
 sequenceDiagram
     participant B as Browser
     participant DNS as Route 53
@@ -220,6 +241,7 @@ sequenceDiagram
 #### Diagram C — a capture becomes scores on every board
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "IBM Plex Mono, ui-monospace, Menlo, monospace", "fontSize": "13px", "actorBkg": "#1f2c3d", "actorBorder": "#a8c5d9", "actorTextColor": "#eae5d6", "actorLineColor": "#6f97b3", "signalColor": "#6f97b3", "signalTextColor": "#6f97b3", "labelBoxBkgColor": "#161f2c", "labelBoxBorderColor": "#a8c5d9", "labelTextColor": "#eae5d6", "loopTextColor": "#6f97b3", "noteBkgColor": "#f5f2e8", "noteBorderColor": "#cdbb7a", "noteTextColor": "#1a2230", "activationBkgColor": "#a8c5d9", "activationBorderColor": "#6f97b3"}}}%%
 sequenceDiagram
     participant X as Chrome extension
     participant API as API task
@@ -244,6 +266,7 @@ sequenceDiagram
 #### Diagram D — security boundaries
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "IBM Plex Mono, ui-monospace, Menlo, monospace", "fontSize": "13px", "primaryColor": "#1f2c3d", "primaryTextColor": "#eae5d6", "primaryBorderColor": "#a8c5d9", "lineColor": "#6f97b3", "secondaryColor": "#29394f", "tertiaryColor": "#f5f2e8", "clusterBkg": "#161f2c", "clusterBorder": "#6f97b3", "titleColor": "#eae5d6", "edgeLabelBackground": "#161f2c", "textColor": "#eae5d6"}}}%%
 flowchart LR
     Internet(("Internet"))
     subgraph PublicSG["Reachable from the internet"]
@@ -265,6 +288,20 @@ flowchart LR
     APIs --> DBs
     Exps --> DBs
     Ls --> DBs
+    classDef navy fill:#1f2c3d,stroke:#8b8577,stroke-width:1.5px,color:#eae5d6
+    classDef core fill:#1f2c3d,stroke:#a8c5d9,stroke-width:2.5px,color:#eae5d6
+    classDef store fill:#f5f2e8,stroke:#cdbb7a,stroke-width:2px,color:#1a2230
+    classDef queue fill:#eae5d6,stroke:#6f97b3,stroke-width:2px,color:#1a2230
+    classDef fail fill:#f5f2e8,stroke:#a14a3d,stroke-width:2px,color:#1a2230
+    classDef ext fill:#29394f,stroke:#8b8577,stroke-width:1.5px,stroke-dasharray:4 3,color:#eae5d6
+    class Internet ext
+    class ALBs,CFs navy
+    class APIs,Exps,Ls core
+    class DBs store
+    style PublicSG fill:#29394f,stroke:#a14a3d,color:#eae5d6
+    style TasksSG fill:#161f2c,stroke:#6f97b3,color:#eae5d6
+    style LambdaSG fill:#161f2c,stroke:#6f97b3,color:#eae5d6
+    style DbSG fill:#161f2c,stroke:#cdbb7a,color:#eae5d6
 ```
 
 Inside the database, a second set of boundaries: each login has a role that can touch only its own tables (§1.5.7). Inside the API, a third: user routes see only the caller's rows (row-level security), and API tokens are limited by scope (§1.5.6).
