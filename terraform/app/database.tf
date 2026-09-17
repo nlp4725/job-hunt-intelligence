@@ -1,5 +1,5 @@
 # RDS keeps the master (table owner) password in Secrets Manager itself
-# (manage_master_user_password): no password in Terraform state, no Lambda.
+# (manage_master_user_password): no password in Terraform state.
 
 resource "aws_db_subnet_group" "main" {
   name       = "jhi"
@@ -27,17 +27,19 @@ resource "aws_db_instance" "main" {
   db_name                     = "jhi"
   username                    = "jhi_owner"
   manage_master_user_password = true
-  db_subnet_group_name        = aws_db_subnet_group.main.name
-  vpc_security_group_ids      = [aws_security_group.db.id]
-  parameter_group_name        = aws_db_parameter_group.main.name
-  publicly_accessible         = false
-  multi_az                    = false
-  backup_retention_period     = 7
-  copy_tags_to_snapshot       = true
-  deletion_protection         = true
-  skip_final_snapshot         = false
-  final_snapshot_identifier   = "jhi-final"
-  auto_minor_version_upgrade  = true
+  # Lambda functions sign in with 15-minute IAM tokens instead of passwords (lambda.tf).
+  iam_database_authentication_enabled = true
+  db_subnet_group_name                = aws_db_subnet_group.main.name
+  vpc_security_group_ids              = [aws_security_group.db.id]
+  parameter_group_name                = aws_db_parameter_group.main.name
+  publicly_accessible                 = false
+  multi_az                            = false
+  backup_retention_period             = 7
+  copy_tags_to_snapshot               = true
+  deletion_protection                 = true
+  skip_final_snapshot                 = false
+  final_snapshot_identifier           = "jhi-final"
+  auto_minor_version_upgrade          = true
   lifecycle {
     prevent_destroy = true
   }

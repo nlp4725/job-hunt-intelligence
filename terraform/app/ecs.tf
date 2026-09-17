@@ -1,6 +1,7 @@
-# One image, three task definitions: the API (with a migrate container that
-# must succeed first) and two scheduled workers. No Lambda, no SQS: the queue
-# is the rescore_queue table and the workers are Fargate tasks on a schedule.
+# One image: the API task (with a migrate container that must succeed first)
+# and the scheduled expertise worker, which calls DeepSeek and so needs the
+# internet. Database-only work runs on Lambda (lambda.tf). No SQS: the queue is
+# the rescore_queue table.
 
 resource "aws_ecs_cluster" "main" {
   name = "jhi"
@@ -11,7 +12,7 @@ resource "aws_ecs_cluster" "main" {
 }
 
 resource "aws_cloudwatch_log_group" "tasks" {
-  for_each          = toset(["api", "migrate", "rescore", "expertise"])
+  for_each          = toset(["api", "migrate", "expertise"])
   name              = "/jhi/${each.key}"
   retention_in_days = 30
 }
@@ -36,7 +37,7 @@ locals {
   llm_secrets = [{ name = "DEEPSEEK_API_KEY", valueFrom = aws_secretsmanager_secret.deepseek.arn }]
   runtime     = { operating_system_family = "LINUX", cpu_architecture = "ARM64" }
 
-  logging = { for name in ["api", "migrate", "rescore", "expertise"] : name => {
+  logging = { for name in ["api", "migrate", "expertise"] : name => {
     logDriver = "awslogs"
     options = {
       awslogs-group         = aws_cloudwatch_log_group.tasks[name].name
@@ -243,11 +244,6 @@ resource "aws_ecs_service" "api" {
 
 locals {
   workers = {
-    rescore = {
-      command  = ["python", "-m", "cloud_api.rescore_worker", "--once"]
-      schedule = "rate(5 minutes)"
-      secrets  = local.owner_secrets
-    }
     expertise = {
       command  = ["python", "-m", "cloud_api.expertise_worker", "--once", "--limit", "50"]
       schedule = "rate(30 minutes)"

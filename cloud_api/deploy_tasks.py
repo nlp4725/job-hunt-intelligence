@@ -4,7 +4,8 @@
 
 Connects as the RDS master user (the table owner), runs Alembic to head, then
 creates or updates the two API logins with the passwords in Secrets Manager
-and grants each its role. If JHI_OWNER_EMAIL is set, makes sure that account
+and grants each its role, and the two Lambda logins (IAM authentication, no
+password). If JHI_OWNER_EMAIL is set, makes sure that account
 exists as an admin: a new row has no identity-provider subject, so the first
 Cognito sign-in with that email, once verified, claims it (cloud_api/auth/users.py).
 Safe to run on every deploy.
@@ -27,6 +28,8 @@ from cloud_api.settings import owner_database_url, required
 REPO = Path(__file__).resolve().parent.parent
 LOGINS = (("JHI_APP_DB_USER", "JHI_APP_DB_PASSWORD", "jhi_app"),
           ("JHI_ADMIN_DB_USER", "JHI_ADMIN_DB_PASSWORD", "jhi_admin_api"))
+# Lambda logins: no password, IAM database authentication (rds_iam exists only on RDS).
+IAM_LOGINS = (("jhi_rescore", "jhi_scorer"), ("jhi_admin_task", "jhi_importer"))
 
 
 def upgrade(owner_url: str) -> None:
@@ -59,6 +62,13 @@ def ensure_logins(owner_url: str) -> None:
             verb = "ALTER" if exists else "CREATE"
             conn.execute(sql.SQL(verb + " ROLE {} LOGIN PASSWORD {}").format(sql.Identifier(login), sql.Literal(password)))
             conn.execute(sql.SQL("GRANT {} TO {}").format(sql.Identifier(role), sql.Identifier(login)))
+        has_rds_iam = conn.execute("SELECT 1 FROM pg_roles WHERE rolname = 'rds_iam'").fetchone() is not None
+        for login, role in IAM_LOGINS:
+            if not conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (login,)).fetchone():
+                conn.execute(sql.SQL("CREATE ROLE {} LOGIN").format(sql.Identifier(login)))
+            conn.execute(sql.SQL("GRANT {} TO {}").format(sql.Identifier(role), sql.Identifier(login)))
+            if has_rds_iam:
+                conn.execute(sql.SQL("GRANT rds_iam TO {}").format(sql.Identifier(login)))
 
 
 def main(argv: list[str]) -> None:

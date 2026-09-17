@@ -45,7 +45,13 @@ def _snapshot(sqlite_path: Path, into: Path) -> None:
         target.close()
 
 
-def copy_sqlite_to_postgres(sqlite_path: Path, target_url: str) -> CopyResult:
+# Nasi's own resume text, career goals and chat history: never copied into the
+# shared cloud tables (the cloud keeps resumes per user, encrypted).
+PRIVATE_TABLES = frozenset({"resume", "career_goals", "chat_messages"})
+
+
+def copy_sqlite_to_postgres(sqlite_path: Path, target_url: str, exclude: frozenset[str] = frozenset()) -> CopyResult:
+    """`exclude`: table names to leave out (none of them may be a foreign-key parent of a copied table)."""
     sqlite_path = Path(sqlite_path)
     if not sqlite_path.is_file():
         raise FileNotFoundError(sqlite_path)
@@ -56,12 +62,13 @@ def copy_sqlite_to_postgres(sqlite_path: Path, target_url: str) -> CopyResult:
         source = create_engine(f"sqlite:///{snapshot}")
         target = create_engine(target_url, connect_args={"options": "-c timezone=UTC"})
         try:
+            tables = [t for t in Base.metadata.sorted_tables if t.name not in exclude]
             with source.connect() as src, target.begin() as dst:
-                for table in Base.metadata.sorted_tables:
+                for table in tables:
                     if dst.execute(select(func.count()).select_from(table)).scalar():
                         raise RuntimeError(f"Target table {table.name} is not empty: this copy only seeds an empty database.")
                 copied_ids: dict[str, set] = {}
-                for table in Base.metadata.sorted_tables:
+                for table in tables:
                     _copy_table(table, src, dst, copied_ids, result)
         finally:
             source.dispose()

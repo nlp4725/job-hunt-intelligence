@@ -43,10 +43,28 @@ def bootstrap():
     return _resources("bootstrap")
 
 
-def test_no_lambda_sqs_or_nat_gateway():
-    pattern = re.compile(r'^\s*(?:resource|data)\s+"(aws_lambda_\w+|aws_sqs_\w+|aws_nat_gateway|aws_lambda\w*)"', re.M)
+def test_no_sqs_and_no_nat_gateway():
+    pattern = re.compile(r'^\s*(?:resource|data)\s+"(aws_sqs_\w+|aws_nat_gateway)"', re.M)
     offenders = [f"{p.name}: {m}" for p in _tf_files() for m in pattern.findall(p.read_text())]
     assert offenders == []
+
+
+def test_lambdas_run_without_internet_access(app):
+    """Lambda is for database-only work: isolated subnets, and a security group
+    whose only ways out are Postgres and S3 (no 0.0.0.0/0)."""
+    function = app["aws_lambda_function.this"]
+    assert function["vpc_config"][0]["subnet_ids"] == "${aws_subnet.data[*].id}"
+    assert function["vpc_config"][0]["security_group_ids"] == ["${aws_security_group.lambda.id}"]
+    egress = {n: r for n, r in app.items() if n.startswith("aws_vpc_security_group_egress_rule.")
+              and r["security_group_id"] == "${aws_security_group.lambda.id}"}
+    assert set(egress) == {"aws_vpc_security_group_egress_rule.lambda_to_db", "aws_vpc_security_group_egress_rule.lambda_to_s3"}
+    assert not [r for r in egress.values() if "cidr_ipv4" in r]
+    assert app["aws_db_instance.main"]["iam_database_authentication_enabled"] is True
+
+
+def test_lambdas_sign_in_to_their_own_login_only(app):
+    policy = app["aws_iam_role_policy.lambda_db_connect"]["policy"]
+    assert "rds-db:connect" in policy and "dbuser:${aws_db_instance.main.resource_id}/${each.value.db_login}" in policy
 
 
 def test_database_is_private_encrypted_protected_and_tls_only(app):
@@ -115,9 +133,9 @@ def test_api_is_https_with_a_redirect_and_a_long_idle_timeout(app):
     assert app["aws_lb.api"]["idle_timeout"] >= 150
 
 
-def test_workers_are_scheduled_fargate_tasks(app):
-    target = app["aws_cloudwatch_event_target.worker"]
-    assert target["ecs_target"][0]["launch_type"] == "FARGATE"
+def test_workers_are_scheduled(app):
+    assert app["aws_cloudwatch_event_target.worker"]["ecs_target"][0]["launch_type"] == "FARGATE"   # expertise: needs DeepSeek
+    assert app["aws_cloudwatch_event_target.rescore"]["arn"] == '${aws_lambda_function.this["rescore"].arn}'   # database only
     assert app["aws_ecs_service.api"]["wait_for_steady_state"] is True
 
 

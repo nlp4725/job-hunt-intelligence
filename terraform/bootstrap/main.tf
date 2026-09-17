@@ -166,7 +166,8 @@ resource "aws_iam_role_policy" "deploy" {
         Effect = "Allow"
         Action = ["ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:CompleteLayerUpload",
           "ecr:DescribeImages", "ecr:DescribeRepositories", "ecr:GetDownloadUrlForLayer",
-        "ecr:InitiateLayerUpload", "ecr:PutImage", "ecr:UploadLayerPart", "ecr:ListTagsForResource"]
+          "ecr:InitiateLayerUpload", "ecr:PutImage", "ecr:UploadLayerPart", "ecr:ListTagsForResource",
+        "ecr:GetRepositoryPolicy", "ecr:SetRepositoryPolicy"] # Lambda container images from this repository
         Resource = aws_ecr_repository.cloud.arn
       },
       {

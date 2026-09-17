@@ -47,6 +47,8 @@ We build the design the way it should be reasoned about:
 
 Status markers used below: **Built** = code and Terraform exist (`terraform/`, `cloud_api/`); **Proposed** = recommended, not built yet; **Later** = only when the stated trigger happens.
 
+**Where Lambda is used (and where it isn't).** Two Lambda functions do the work that needs only the database: `jhi-rescore` scores newly captured jobs every 5 minutes, and `jhi-admin-task` runs admin commands against the private database. Everything that must reach the internet (DeepSeek, Cognito) or run long requests stays on Fargate: the API and the expertise worker. The reasoning is in §1.6.
+
 ### 1.1 Functional requirements (what the product does)
 
 | # | Who | Requirement | Where |
@@ -130,19 +132,21 @@ flowchart TB
     SiteS3[("S3: web app build")]
 
     subgraph VPC["VPC · us-east-1 · 2 Availability Zones"]
-        subgraph Public["Public subnets (no inbound except the ALB)"]
+        subgraph Public["Public subnets (internet access; no inbound except the ALB)"]
             ALB["Application Load Balancer<br/>HTTPS · health checks"]
             API["API on ECS Fargate<br/>Flask + gunicorn · stateless<br/>1..N tasks"]
-            ExpW["Expertise worker<br/>scheduled Fargate task"]
+            ExpW["Expertise worker<br/>scheduled Fargate task<br/>(calls DeepSeek)"]
         end
         subgraph Isolated["Isolated subnets (no internet route)"]
-            RDS[("RDS Postgres 18<br/>primary · backups · PITR")]
-            RescoreL["Rescore worker (Proposed: Lambda)<br/>every 5 min"]
-            AdminL["Admin tasks (Proposed: Lambda)<br/>data copy · seed · checks"]
+            RDS[("RDS Postgres 18<br/>primary · backups · PITR<br/>rescore_queue table")]
+            RescoreL["λ jhi-rescore (Lambda)<br/>every 5 min · IAM DB auth"]
+            AdminL["λ jhi-admin-task (Lambda)<br/>status · SQLite import"]
         end
     end
 
     ResS3[("S3: resumes<br/>KMS · private")]
+    ImpS3[("S3: imports<br/>one-time SQLite upload")]
+    Laptop["Nasi's terminal<br/>aws lambda invoke"]
     SM["Secrets Manager"]
     EB["EventBridge schedules"]
     CW["CloudWatch logs · alarms<br/>SNS email · Budgets"]
@@ -159,10 +163,12 @@ flowchart TB
     API --> ResS3
     API -- "seniority level" --> DeepSeek
     API -. "verify JWT keys" .-> Cognito
-    EB --> RescoreL --> RDS
+    API -- "capture: save job +<br/>queue it (one transaction)" --> RDS
+    EB -- "every 5 min" --> RescoreL -- "claim queued jobs,<br/>write scores" --> RDS
     EB --> ExpW --> RDS
     ExpW --> DeepSeek
-    AdminL --> RDS
+    Laptop --> AdminL --> RDS
+    AdminL --> ImpS3
     API --> SM
     API --> CW
 ```
@@ -363,14 +369,30 @@ Rule we follow: **don't guess indexes.** These exist because the queries exist. 
 - Storing files in Postgres (bloats backups, slows the database).
 - Serving resumes through CloudFront (a CDN caches copies at the edge; private per-user documents should not be cached).
 
-#### 1.5.9 Background work: queue table + scheduled workers — Built (rescore Lambda Proposed)
+#### 1.5.9 Background work: queue table + scheduled workers — Built
 
 **The problem.** A capture must answer the extension quickly, but it creates work for every user (§1.3 Q2). Doing that work inside the request would make captures slower as users grow and would fail the capture if scoring failed.
 
 **The design.**
 1. The capture route saves the job and inserts its id into **`rescore_queue`** in the **same transaction** as the job itself.
-2. A worker runs every 5 minutes. It claims up to 200 queued jobs with `FOR UPDATE SKIP LOCKED` (two workers never take the same job), scores them for every user in code, and deletes them from the queue in the same transaction.
-3. The expertise worker runs every 30 minutes and scores at most 50 jobs per paid member per run, best matches first.
+2. The **`jhi-rescore` Lambda** runs every 5 minutes (EventBridge). It claims up to 200 queued jobs with `FOR UPDATE SKIP LOCKED` (two runs never take the same job), scores them for every user in code (Skill Match + Seniority Fit, no LLM), writes `user_job_scores`, and deletes those jobs from the queue **in the same transaction**. If anything fails, nothing is deleted and the next run retries. It repeats batches until the queue is empty or a minute before its 5-minute timeout.
+3. The **expertise worker** (Fargate, because it calls DeepSeek) runs every 30 minutes and scores at most 50 jobs per paid member per run, best matches first.
+
+```mermaid
+sequenceDiagram
+    participant Ext as Chrome extension
+    participant API as API (Fargate)
+    participant DB as Postgres
+    participant EB as EventBridge
+    participant L as λ jhi-rescore
+    Ext->>API: POST /admin/captures (job)
+    API->>DB: BEGIN · insert job, skills, level · insert job id into rescore_queue · COMMIT
+    API-->>Ext: saved
+    EB->>L: every 5 minutes
+    L->>DB: BEGIN · SELECT job ids FROM rescore_queue FOR UPDATE SKIP LOCKED LIMIT 200
+    L->>DB: for each user: compute and upsert user_job_scores
+    L->>DB: DELETE those ids FROM rescore_queue · COMMIT
+```
 
 **Why a Postgres table instead of SQS (for now).** The queue entry and the job commit **atomically**: there is no moment where the job exists but the "score it" message was lost, or the message exists for a job that rolled back. With SQS we would need a second write after commit (and a retry path when it fails), or an outbox table anyway. At ~450 messages a day, Postgres handles this trivially.
 
@@ -380,10 +402,11 @@ Rule we follow: **don't guess indexes.** These exist because the queries exist. 
 
 **Trigger for SQS (Later):** several independent consumers of the same event (e.g. notifications + scoring + analytics), or event volume where polling becomes wasteful.
 
-**Proposed: rescore worker on Lambda.**
-- The rescore worker needs only the database (no internet), runs for seconds every 5 minutes, and suffers Fargate's 30–60 s cold start on every run. A **Lambda inside the VPC** fits exactly.
-- It connects with **IAM database authentication** (a short-lived token signed by its role), so it needs neither Secrets Manager network access nor a NAT gateway.
-- The expertise worker stays on Fargate because it must call DeepSeek on the internet.
+**Why the rescore worker is a Lambda.**
+- It needs only the database (no internet), runs for seconds every 5 minutes, and would pay Fargate's 30–60 s start-up on every run. A **Lambda inside the VPC's isolated subnets** fits exactly, and costs ~$0 at this volume.
+- It signs in with **IAM database authentication**: its AWS role signs a 15-minute token locally, so there is no password to store and no call to Secrets Manager (which would need internet or a paid endpoint).
+- It uses its own narrow database role, `jhi_scorer`: read jobs, profiles and confirmed resume skills; write scores; drain the queue. It can't read tracking, application history, expertise data or tokens.
+- Trade-offs: a Lambda can run at most 15 minutes (we stop at 5 and continue next run), and a burst of parallel runs would each open a database connection. EventBridge starts one run every 5 minutes, and `SKIP LOCKED` keeps any overlap safe.
 
 **Scaling the fan-out (the part that will actually grow).**
 - `user_job_scores` grows as **users × jobs**. At 1,000 users and ~180,000 jobs a year, that is ~180 M rows (~90 GB with the stored matched/missing skill lists), which is far larger than everything else combined.
@@ -396,7 +419,7 @@ Rule we follow: **don't guess indexes.** These exist because the queries exist. 
 
 #### 1.5.10 Scheduling: EventBridge — Built
 
-**What.** EventBridge rules (`rate(5 minutes)`, `rate(30 minutes)`) start the worker tasks.
+**What.** EventBridge rules start the background work: `rate(5 minutes)` invokes the `jhi-rescore` Lambda, and `rate(30 minutes)` starts the expertise worker's Fargate task.
 
 **Why.** Managed cron with IAM permissions and no always-on scheduler process (N7).
 
@@ -439,7 +462,8 @@ Rule we follow: **don't guess indexes.** These exist because the queries exist. 
 #### 1.5.13 Networking: VPC without NAT — Built
 
 **Layout.**
-- Two public subnets (ALB, API, expertise worker) and two isolated subnets (RDS, proposed Lambdas), across two Availability Zones.
+- Two public subnets (ALB, API, expertise worker) and two isolated subnets (RDS and both Lambda functions), across two Availability Zones.
+- The Lambdas' security group allows no inbound traffic and only two ways out: Postgres (port 5432) and S3 (through the gateway endpoint). A test fails if either Lambda ever gets a route to the internet.
 - A free S3 **gateway endpoint** lets private components reach S3 without the internet.
 
 **Why no NAT gateway.**
@@ -451,18 +475,20 @@ Rule we follow: **don't guess indexes.** These exist because the queries exist. 
 - Anything placed in an isolated subnet can reach only the database and S3, unless we add interface endpoints (~$7/month each) or NAT. That shapes where each future component may run (§1.6).
 - Public IPv4 addresses cost ~$3.65/month each.
 
-#### 1.5.14 Admin access to the private database — Proposed
+#### 1.5.14 Admin access to the private database — Built (Lambda) / Proposed (port forwarding)
 
 The admin role can **manage** RDS through the AWS API (snapshots, sizing) but can't **connect** to port 5432 from a laptop. That is intended: the database has no public address. Two approved ways in:
 
-- **Admin Lambda** (Proposed): a fixed list of named commands (copy the SQLite export from S3, seed the owner, count the queue), invoked with `aws lambda invoke`. It runs in the isolated subnet, and IAM decides who may call it.
+- **`jhi-admin-task` Lambda** (Built): a fixed list of named commands, never arbitrary SQL, invoked from a terminal with `aws lambda invoke`. IAM decides who may call it, and it signs in as the narrow `jhi_importer` role (shared job tables only, no per-user tables).
+  - `status`: job count, jobs in the last 24 h, jobs with a seniority level, queue depth.
+  - `import_sqlite`: the one-time seed. Upload a copy of the local SQLite file to the private imports bucket (`imports/…`, auto-deleted after a day), invoke the command. It copies the shared tables into the empty cloud database, **leaves out Nasi's private tables** (`resume`, `career_goals`, `chat_messages`) and deletes the upload.
 - **Session Manager port forwarding through an API task** (Proposed): `psql` on the Mac connects to `localhost:15432`, tunneled via ECS Exec. Nothing opens to the internet, access is IAM-controlled and logged, and there's no bastion server to patch.
 
 #### 1.5.15 Observability and cost guardrails — Built
 
 **What we have.**
 - CloudWatch Logs (30 days) per component.
-- Alarms by SNS email: API 5xx, unhealthy tasks, database CPU, low database storage.
+- Alarms by SNS email: API 5xx, unhealthy tasks, database CPU, low database storage, and errors in either Lambda function.
 - An AWS Budget at $75/month (80 % actual, 100 % forecast).
 
 **Proposed next.**
@@ -505,8 +531,8 @@ A recurring decision, so the rule is written down once.
 |---|---|---|
 | API | **Fargate** | Internet access (DeepSeek, Cognito keys), ~100 s requests, steady connections |
 | Expertise worker | **Fargate** | Calls DeepSeek; runs minutes |
-| Rescore worker | **Lambda (Proposed)** | Database only, seconds every 5 min, IAM DB auth, no cold-start penalty |
-| Admin tasks (data copy, seed, checks) | **Lambda (Proposed)** | Rare, short, private, IAM-invoked |
+| Rescore worker | **Lambda — Built** (`jhi-rescore`) | Database only, seconds every 5 min, IAM DB auth, no Fargate start-up delay |
+| Admin tasks (status, data import) | **Lambda — Built** (`jhi-admin-task`) | Rare, short, private, IAM-invoked |
 | Migrations | Fargate (inside the API task) | Must run before the new API version starts |
 | Resume parsing on upload | Later: Lambda on S3 event | Would need a KMS interface endpoint (~$7/month); not worth it until uploads are frequent |
 
@@ -520,7 +546,7 @@ A recurring decision, so the rule is written down once.
 | **Multi-AZ database** | 99.5 % target tolerates a rare multi-minute recovery; doubles DB cost | Daily active users depend on it, or we promise uptime | RDS Multi-AZ (automatic failover ~1–2 min) |
 | **Sharding** | 13–90 GB fits one Postgres instance easily. Sharding makes joins across users/jobs and every migration much harder, and is the hardest step to undo | A single instance (even large) can't hold `user_job_scores` after pruning + partitioning, far beyond 10,000 users | Shard key `user_id` with consistent hashing (Citus, or Aurora Limitless) |
 | **NoSQL** | No unstructured, high-volume data yet | Clickstream/analytics events, per-user UI preferences at high write volume | DynamoDB (on-demand) or S3 + Athena for analytics |
-| **SQS** | Queue table is transactional with the capture | Multiple consumers per event, or very high volume | SQS with dead-letter queue |
+| **SQS** | The `rescore_queue` table commits in the same transaction as the capture, and the rescore Lambda reads it every 5 minutes (§1.5.9) | Multiple consumers per event (e.g. notifications + scoring), or volume where polling wastes runs | SQS with a dead-letter queue, triggering the same Lambda directly |
 | **NAT gateway** | Public-subnet tasks + isolated subnets cover every need | A component needs the internet but must not have a public IP (e.g. compliance), or internet-bound Lambdas | NAT gateway (or a NAT instance to save cost) |
 | **WAF** | Low traffic; Cognito handles auth abuse | Scraping of the public stats/landing endpoints, bot sign-ups | AWS WAF on the ALB and CloudFront (rate-based rules), ~$6+/month |
 | **Second region** | Personal-scale product | Real SLA or regulatory need | Cross-region backups first, then warm standby |
@@ -533,7 +559,8 @@ A recurring decision, so the rule is written down once.
 | Application Load Balancer | ~$17 |
 | API: one Fargate task (0.5 vCPU, 1 GB, arm64) | ~$15 |
 | Public IPv4 addresses (ALB + tasks) | ~$7–11 |
-| Workers (scheduled Fargate; ~$0 if rescore moves to Lambda) | ~$1–3 |
+| Expertise worker (scheduled Fargate) | ~$1–2 |
+| Lambda: rescore every 5 min + admin tasks (within the free tier at this volume) | ~$0 |
 | S3, CloudFront, KMS, Secrets Manager, ECR, CloudWatch, Route 53 | ~$6–9 |
 | Cognito (free tier), EventBridge | ~$0 |
 | **Total** | **~$60–70** + DeepSeek (~$1.50 per collection day) |
@@ -1030,7 +1057,7 @@ Phases 1–5 are all local. Phase 4's prompt-parity eval and phase 5's isolation
 
 **Status (2026-09-16): phase 6 built** on `feat/phase5-auth`. 6A: `POST /api/v1/admin/captures` takes the extension's existing body, filters agencies, classifies the level once and queues the job; `cloud_api/rescore_worker.py` (owner) scores queued jobs for every user. 6B: `extension/cloud_sync.js` sends each capture to the cloud without waiting on it, queues it in `chrome.storage.local` when the cloud is unreachable or the token is rejected (401/403), retries in order on the next capture and every 5 minutes, and stays off until a URL and token are saved on the options page. **Paid expertise (backend):** migration `f1b3d5e7a924`, `/api/v1/me/expertise*`, `PUT /api/v1/admin/plans`, `cloud_api/expertise_worker.py` (§3.5). The worker and draft route call `judge/user_expertise_match.py` and `judge/expertise_profile.py`, which merge from the expertise work.
 
-**Status (2026-09-16): phase 9 infrastructure code written** on `feat/infra` (not deployed). Terraform (`terraform/`, see its README): API on Fargate behind an HTTPS load balancer, RDS Postgres 18 in isolated subnets, scheduled Fargate workers, S3 + KMS resumes, Cognito, CloudFront for the web app, Secrets Manager (generated passwords never enter Terraform state), alarms and a monthly budget. No Lambda, SQS or NAT gateway, enforced by `terraform/tests`. CI/CD in GitHub Actions (`.github/workflows/cloud.yml`): tests on every push; on `main` it builds the arm64 image, pushes it to ECR and runs `terraform apply` through keyless OIDC, once `AWS_ACCOUNT_ID` is set. Every API task runs migrations first. Needs before the first deploy: an AWS account (not the root user), a domain, and the one-time bootstrap in `terraform/README.md`.
+**Status (2026-09-16): phase 9 infrastructure code written** on `feat/infra` (not deployed). Terraform (`terraform/`, see its README): API on Fargate behind an HTTPS load balancer, RDS Postgres 18 in isolated subnets, the rescore worker and admin tasks as Lambda functions in the isolated subnets (IAM database authentication), the expertise worker as a scheduled Fargate task, S3 + KMS resumes, Cognito, CloudFront for the web app, Secrets Manager (generated passwords never enter Terraform state), alarms and a monthly budget. No SQS or NAT gateway, and no Lambda with internet access, enforced by `terraform/tests`. CI/CD in GitHub Actions (`.github/workflows/cloud.yml`): tests on every push; on `main` it builds the arm64 image, pushes it to ECR and runs `terraform apply` through keyless OIDC, once `AWS_ACCOUNT_ID` is set. Every API task runs migrations first. Needs before the first deploy: an AWS account (not the root user), a domain, and the one-time bootstrap in `terraform/README.md`.
 
 **Cost at this shape** (Nasi pays for all of it for now)
 
@@ -1135,7 +1162,7 @@ Only Skill Match is affected. Seniority and Expertise come from LLM calls and ne
 - **Seniority is per job.** The LLM classifies the level once; each user's fit is computed in code (§3.3).
 - **Nasi pays for LLM calls for now.** Free members trigger none. Paid members' expertise calls are capped (3 drafts a day, `--limit` jobs per worker run).
 - **Expertise Match is a paid-member feature** (2026-09-16), an optional onboarding step anyone can skip; shown beside the total, not added to it (§3.5).
-- **Host: AWS** (Cognito, RDS Postgres, S3, the API on Fargate behind an HTTPS load balancer, scheduled Fargate tasks for workers, Secrets Manager). **No Lambda, no SQS, no NAT gateway** (decided 2026-09-16). This replaces the Lambda + SQS layout in `multi_tenant_plan.md`.
+- **Host: AWS** (Cognito, RDS Postgres, S3, the API on Fargate behind an HTTPS load balancer, scheduled Fargate tasks for workers, Secrets Manager). **Lambda for database-only work (rescore worker, admin tasks) in isolated subnets; no SQS; no NAT gateway** (decided 2026-09-16, Lambda added 2026-09-17). This replaces the Lambda + SQS layout in `multi_tenant_plan.md`.
 - **Infrastructure as code: Terraform, deployed by GitHub Actions** (decided 2026-09-16; replaces the CDK in `multi_tenant_plan.md`).
 - **LinkedIn terms of service: OK to go.** A terms-of-use page and a privacy policy covering resumes still ship before launch.
 - **Open sign-up** at launch.

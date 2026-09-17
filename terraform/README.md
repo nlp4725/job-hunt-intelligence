@@ -3,7 +3,8 @@
 ```
 Internet ─► load balancer (HTTPS, api.<domain>) ─► API on Fargate ─► RDS Postgres (private, TLS only)
         ─► CloudFront (app.<domain>) ─► private S3 bucket (React build)
-Scheduled Fargate tasks: rescore worker every 5 min, expertise worker every 30 min
+Lambda (isolated subnets, IAM DB auth): jhi-rescore every 5 min, jhi-admin-task on demand
+Scheduled Fargate task: expertise worker every 30 min
 Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, monthly budget. Region us-east-1.
 ```
 
@@ -13,9 +14,11 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
 | `bootstrap/` | Terraform state bucket, `jhi-cloud` image registry, GitHub OIDC deploy role | You, once, from your machine. Its state file stays local |
 | `app/` | Everything else | GitHub Actions on every push to `main` (`.github/workflows/cloud.yml`) |
 
-**Not used: Lambda, SQS or NAT gateways.** `tests/test_terraform.py` fails if one is added.
-- **Queue:** the `rescore_queue` table.
-- **Workers:** Fargate tasks started by EventBridge schedules.
+**Lambda for database-only work; no SQS, no NAT gateway.** `tests/test_terraform.py` fails if SQS or NAT is added, or if a Lambda gets a route to the internet.
+- **Queue:** the `rescore_queue` table, written in the same transaction as each capture.
+- **Rescore worker:** the `jhi-rescore` Lambda, every 5 minutes, isolated subnets, IAM database authentication.
+- **Admin tasks:** the `jhi-admin-task` Lambda (`status`, `import_sqlite`), invoked by hand.
+- **Expertise worker:** a Fargate task on a 30-minute schedule (it calls DeepSeek, so it needs the internet).
 - **Web app upload:** `aws s3 sync` in CI.
 - **Database owner password:** RDS keeps it in Secrets Manager (`manage_master_user_password`).
 - **Other passwords and the resume key:** generated as ephemeral values and written with write-only attributes, so they never appear in Terraform state or plans.
@@ -71,7 +74,19 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
   AWS_PROFILE=jhi-admin terraform init -backend-config="bucket=jhi-tfstate-<ACCOUNT_ID>" -backend-config="key=app/terraform.tfstate" -backend-config="region=us-east-1"
   AWS_PROFILE=jhi-admin terraform plan -var domain=<domain> -var image_tag=<a pushed commit>
   ```
-- **Logs:** CloudWatch `/jhi/api`, `/jhi/migrate`, `/jhi/rescore`, `/jhi/expertise` (kept 30 days).
+- **Logs:** CloudWatch `/jhi/api`, `/jhi/migrate`, `/jhi/expertise`, `/aws/lambda/jhi-rescore`, `/aws/lambda/jhi-admin-task` (kept 30 days).
+- **Admin commands:**
+  ```bash
+  aws lambda invoke --function-name jhi-admin-task --payload '{"command":"status"}' --cli-binary-format raw-in-base64-out out.json && cat out.json
+  ```
+- **One-time data import** (after the first deploy, with an empty database):
+  ```bash
+  sqlite3 data/job_hunt.db ".backup /tmp/job_hunt_export.db"
+  aws s3 cp /tmp/job_hunt_export.db "s3://$(terraform -chdir=terraform/app output -raw import_bucket)/imports/job_hunt.db"
+  aws lambda invoke --function-name jhi-admin-task --cli-binary-format raw-in-base64-out \
+    --payload '{"command":"import_sqlite","s3_key":"imports/job_hunt.db"}' out.json && cat out.json
+  ```
+  Your private tables (`resume`, `career_goals`, `chat_messages`) are left out, and the upload is deleted after the import.
 - **Protected from `terraform destroy`:** the database, resume bucket, KMS key, resume key secret and user pool (`prevent_destroy`, plus deletion protection on RDS and Cognito).
 
 ## Cost at launch (approximate, us-east-1)
@@ -82,7 +97,8 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
 | Load balancer | ~$17 |
 | API task (0.5 vCPU, 1 GB, arm64, always on) | ~$15 |
 | Public IPv4 addresses (load balancer + tasks) | ~$7–11 |
-| Workers (short scheduled runs) | ~$1–3 |
+| Expertise worker (short scheduled Fargate runs) | ~$1–2 |
+| Lambda (rescore every 5 min, admin tasks) | ~$0 (free tier) |
 | S3, CloudFront, KMS, Secrets Manager, ECR, CloudWatch | ~$5–7 |
 | Cognito (under the free tier's monthly active users) | $0 |
 | **Total** | **~$60–70** + DeepSeek |
