@@ -22,16 +22,18 @@ export function Board({ me }: { me: Me }) {
   const [view, setView] = useState<View>("pipeline");
   const [search, setSearch] = useState("");
   const [workplace, setWorkplace] = useState("any");
+  const [days, setDays] = useState<number | null>(14);
   const [hideDismissed, setHideDismissed] = useState(true);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "total", dir: "desc" });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const paid = me.plan === "paid";
 
   useEffect(() => {
-    listJobs()
+    setJobs(null);
+    listJobs(days)
       .then((page) => setJobs(page.jobs))
       .catch((err: Error) => setError(err.message));
-  }, []);
+  }, [days]);
 
   async function track(job: BoardJob, changes: { applied?: boolean; not_interested?: boolean; note?: string }) {
     const previous = jobs;
@@ -122,7 +124,7 @@ export function Board({ me }: { me: Me }) {
         <div className="page-head">
           <div className="page-title-row">
             <h1>{view === "pipeline" ? "Job Pipeline" : "Applications"}</h1>
-            <span className="page-sub">ranked by your fit</span>
+            <span className="page-sub">ranked by your fit · {days ? `last ${days} days` : "all time"}</span>
           </div>
           <div className="kpis">
             {kpis.map((kpi) => (
@@ -142,6 +144,12 @@ export function Board({ me }: { me: Me }) {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
+          <select value={days ?? "all"} onChange={(event) => setDays(event.target.value === "all" ? null : Number(event.target.value))}>
+            <option value="14">Collected: last 2 weeks</option>
+            <option value="7">Last week</option>
+            <option value="30">Last 30 days</option>
+            <option value="all">All time</option>
+          </select>
           <select value={workplace} onChange={(event) => setWorkplace(event.target.value)}>
             <option value="any">Workplace: any</option>
             <option>Remote</option>

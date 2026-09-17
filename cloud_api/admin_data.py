@@ -6,14 +6,17 @@ scores users itself: the route publishes a rescore message after the commit
 (cloud_api/rescore.py) and the jhi-rescore Lambda scores it for every user.
 """
 
+from datetime import timedelta
+
 from sqlalchemy import text
 
 from analysis.title_filter import classify_track
 from db.classify_job_seniority import PROMPT_VERSION
 from cloud_api.observability import Timer, log_event, metric
+from db.board_filters import not_agency
 from db.cloud_models import PLANS, JobSeniority
 from db.job_writer import save_new_job
-from db.models import CollectionPage, ExtractionEvent, Job
+from db.models import CollectionPage, Company, ExtractionEvent, Job, utcnow
 from judge.agency_blocklist import AGENCY_COMPANY_NAME_SUBSTRINGS, is_agency_job
 from judge.seniority_fit import format_posting
 
@@ -160,3 +163,33 @@ def public_stats(db) -> dict:
         "companies": companies,
         "last_collected_at": totals["last_collected"].isoformat() if totals["last_collected"] else None,
     }
+
+
+RECENT_DAYS, RECENT_LIMIT = 14, 8
+
+
+def public_recent_jobs(db, days: int = RECENT_DAYS, limit: int = RECENT_LIMIT) -> list[dict]:
+    """The landing page's sample of the real board: the newest postings of the
+    last `days`, agencies, duplicates and expired ones left out (the same
+    agency filter the board uses). Public facts only (what the posting itself
+    says); scores are per person and never here."""
+    since = utcnow().replace(tzinfo=None) - timedelta(days=days)
+    rows = (db.query(Job.title, Job.company_name, Company.industry, Company.size, Job.workplace_type,
+                     Job.location, Job.posted_date, Job.first_seen_at, JobSeniority.level, JobSeniority.is_contract)
+            .outerjoin(Company, Company.id == Job.company_id)
+            .outerjoin(JobSeniority, JobSeniority.job_id == Job.id)
+            .filter(Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None), Job.title.isnot(None),
+                    Job.expired.isnot(True), Job.first_seen_at > since, not_agency())
+            .order_by(Job.first_seen_at.desc()).limit(limit).all())
+    return [{
+        "title": row.title,
+        "company": row.company_name,
+        "industry": row.industry,
+        "size": row.size,
+        "workplace_type": row.workplace_type,
+        "location": row.location,
+        "posted_date": row.posted_date,
+        "first_seen_at": row.first_seen_at.isoformat() if row.first_seen_at else None,
+        "level": row.level,
+        "is_contract": row.is_contract,
+    } for row in rows]

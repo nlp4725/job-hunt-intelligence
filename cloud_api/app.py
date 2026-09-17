@@ -162,6 +162,22 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
         app.config["PUBLIC_STATS"] = (now, stats)
         return jsonify(stats)
 
+    @app.get("/api/public/recent-jobs")
+    def public_recent_jobs():
+        """A sample of the real board for the landing page: recent postings,
+        public facts only. Agency, duplicate and expired jobs are left out."""
+        cached = app.config.get("PUBLIC_RECENT")
+        now = time.monotonic()
+        if cached and now - cached[0] < admin_data.PUBLIC_STATS_TTL:
+            return jsonify({"jobs": cached[1]})
+        db = current_app.config["ADMIN_SESSION"]()
+        try:
+            jobs = admin_data.public_recent_jobs(db)
+        finally:
+            db.close()
+        app.config["PUBLIC_RECENT"] = (now, jobs)
+        return jsonify({"jobs": jobs})
+
     @app.get("/api/v1/me")
     @require_user
     def me():
@@ -304,7 +320,10 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
     def job_board():
         limit = min(max(request.args.get("limit", 100, type=int), 1), 200)
         offset = max(request.args.get("offset", 0, type=int), 0)
-        return jsonify({"jobs": user_data.job_board(g.db, g.user, limit, offset), "limit": limit, "offset": offset})
+        days = request.args.get("days", type=int)           # omit for the whole corpus
+        days = min(max(days, 1), 3650) if days else None
+        jobs = user_data.job_board(g.db, g.user, limit, offset, days=days)
+        return jsonify({"jobs": jobs, "limit": limit, "offset": offset, "days": days})
 
     @app.put("/api/v1/me/tracking/<int:job_id>")
     @require_user

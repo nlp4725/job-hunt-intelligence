@@ -149,8 +149,10 @@ export type BoardJob = {
   company_applied_count: number;
 };
 
-export const listJobs = (limit = 200, offset = 0) =>
-  api<{ jobs: BoardJob[]; limit: number; offset: number }>(`/api/v1/jobs?limit=${limit}&offset=${offset}`);
+export const listJobs = (days: number | null = 14, limit = 200, offset = 0) =>
+  api<{ jobs: BoardJob[]; limit: number; offset: number; days: number | null }>(
+    `/api/v1/jobs?limit=${limit}&offset=${offset}${days ? `&days=${days}` : ""}`,
+  );
 
 export const saveTracking = (jobId: number, changes: Partial<Tracking>) =>
   api<Tracking>(`/api/v1/me/tracking/${jobId}`, { method: "PUT", body: JSON.stringify(changes) });
@@ -171,4 +173,24 @@ export async function getPublicStats(fetchImpl = fetch): Promise<PublicStats> {
   const response = await fetchImpl(`${BASE}/api/public/stats`);
   if (!response.ok) throw new ApiError(response.status, "could not load the numbers");
   return response.json();
+}
+
+export type PublicJob = {
+  title: string;
+  company: string | null;
+  industry: string | null;
+  size: string | null;
+  workplace_type: string | null;
+  location: string | null;
+  posted_date: string | null;
+  first_seen_at: string | null;
+  level: SeniorityLevel | null;
+  is_contract: boolean | null;
+};
+
+/** Recent real postings for the landing page. No token: public facts only. */
+export async function getRecentJobs(fetchImpl = fetch): Promise<PublicJob[]> {
+  const response = await fetchImpl(`${BASE}/api/public/recent-jobs`);
+  if (!response.ok) throw new ApiError(response.status, "could not load recent jobs");
+  return (await response.json()).jobs;
 }

@@ -268,11 +268,13 @@ def expertise_score_view(row: UserJobExpertise | None, active_version: int | Non
             "dream": row.dream_score, "evidence": row.evidence, "stale": row.profile_version != active_version}
 
 
-def job_board(db, user: User, limit: int = 100, offset: int = 0) -> list[dict]:
+def job_board(db, user: User, limit: int = 100, offset: int = 0, days: int | None = None) -> list[dict]:
     """Shared jobs with the caller's own scores and tracking. Never returns raw_text.
     Expertise is shown next to total_score, not added to it; it is null for
-    jobs not scored yet and for free plans."""
+    jobs not scored yet and for free plans. `days` keeps only postings first
+    seen that recently (the board defaults to the last two weeks)."""
     active_expertise = active_expertise_profile(db, user.id)
+    seen_since = (utcnow().replace(tzinfo=None) - timedelta(days=days)) if days else None
     applied_by_company = dict(
         db.query(Job.company_name, func.count(JobTracking.id))
         .join(JobTracking, JobTracking.job_id == Job.id)
@@ -286,7 +288,8 @@ def job_board(db, user: User, limit: int = 100, offset: int = 0) -> list[dict]:
             .outerjoin(UserJobScore, and_(UserJobScore.job_id == Job.id, UserJobScore.user_id == user.id))
             .outerjoin(JobTracking, and_(JobTracking.job_id == Job.id, JobTracking.user_id == user.id))
             .outerjoin(UserJobExpertise, and_(UserJobExpertise.job_id == Job.id, UserJobExpertise.user_id == user.id))
-            .filter(Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None), not_agency())
+            .filter(Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None), not_agency(),
+                    *( [Job.first_seen_at >= seen_since] if seen_since else [] ))
             .order_by(UserJobScore.total_score.desc().nullslast(), Job.first_seen_at.desc(), Job.id.desc())
             .limit(limit).offset(offset).all())
     board = []

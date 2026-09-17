@@ -185,6 +185,25 @@ class TestJobsBoard:
 
 
 @needs_pg
+class TestBoardWindow:
+    def test_days_keeps_only_recently_collected_postings(self, client, board, pg_engine):  # noqa: F811
+        from datetime import datetime
+
+        from db.models import Job
+
+        _onboard(client, A, "SKILLS\nPython, SQL\n", "entry")
+        with Session(pg_engine) as db, db.begin():   # collected long before the window
+            db.get(Job, board["3"]).first_seen_at = datetime(2026, 1, 2)
+
+        recent = client.get("/api/v1/jobs?days=14", headers=A).get_json()
+        everything = client.get("/api/v1/jobs", headers=A).get_json()
+
+        assert recent["days"] == 14 and everything["days"] is None
+        assert {job["job_id"] for job in recent["jobs"]} == {"1", "2"}
+        assert {job["job_id"] for job in everything["jobs"]} == {"1", "2", "3"}
+
+
+@needs_pg
 class TestTrackingAndApplications:
     def test_tracking_is_private_and_applied_records_an_event(self, client, board):
         saved = client.put(f"/api/v1/me/tracking/{board['1']}", json={"applied": True, "note": "a's note"}, headers=A)

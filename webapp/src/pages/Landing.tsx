@@ -69,7 +69,10 @@ export function Landing() {
 
       <section className="hero-demo">
         <DemoAnimation />
-        <p className="demo-caption">An example of how scoring looks. Your board is scored against your own resume.</p>
+        <p className="demo-caption">
+          Real postings from the last two weeks. Scores unlock when you upload your resume — every score is computed
+          against it.
+        </p>
       </section>
 
       <section className="hero-ticker-wrap">

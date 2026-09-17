@@ -492,6 +492,7 @@ td.center { text-align: center; }
 .demo-check { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: var(--surface-2); border: 1.5px solid var(--border-hi); }
 .demo-check.on { background: #15803d; border-color: #15803d; }
 .demo-dash { color: var(--border-hi); font-size: 11px; }
+.demo-lock { font-size: 11px; opacity: 0.5; }
 .demo-dots { display: inline-flex; gap: 3px; align-items: center; }
 .demo-dots span { width: 3px; height: 3px; border-radius: 50%; background: #15803d; display: inline-block; animation: pulse 0.8s ease infinite; }
 
