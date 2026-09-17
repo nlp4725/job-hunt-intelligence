@@ -1,5 +1,5 @@
 # Cloud API, workers and deploy task share this image; the ECS task definition
-# picks the command (infra/). Built for linux/arm64 (Fargate Graviton).
+# picks the command (terraform/app/ecs.tf). Built for linux/arm64 (Fargate Graviton).
 FROM python:3.13-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1

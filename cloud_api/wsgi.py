@@ -1,6 +1,6 @@
 """Production entry point: gunicorn "cloud_api.wsgi:app" (see Dockerfile).
 
-Environment (set by infra/):
+Environment (set by terraform/app/ecs.tf):
     AWS_REGION, DB_HOST, DB_PORT, DB_NAME
     JHI_APP_DB_USER / JHI_APP_DB_PASSWORD        login in the jhi_app role (user requests)
     JHI_ADMIN_DB_USER / JHI_ADMIN_DB_PASSWORD    login in the jhi_admin_api role (admin routes)

@@ -1,6 +1,6 @@
 """Production settings, read from environment variables. In AWS, ECS injects
 them: plain values from the task definition, passwords and keys from Secrets
-Manager (infra/). Nothing here has a default that could silently point
+Manager (terraform/app/ecs.tf). Nothing here has a default that could silently point
 production at the wrong place: a missing variable stops the process.
 """
 

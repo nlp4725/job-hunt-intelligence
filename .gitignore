@@ -53,7 +53,10 @@ tests_and_eval/fixtures/skills_gold/test_resume_skill_labels.md
 # Private working notes (career strategy, personal profile); the repo is public
 CONTEXT.md
 
-# CDK (infra/)
-infra/cdk.out/
-infra/outputs.json
-infra/cdk.context.json
+# Terraform (terraform/). Lock files are committed; bootstrap's local state is
+# kept on the machine that applied it, never committed.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+outputs.json
