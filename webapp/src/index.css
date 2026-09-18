@@ -619,3 +619,11 @@ a.hero-link { text-decoration: none; display: inline-flex; align-items: center; 
 .account-plan { font-size: 10px; color: var(--text-tertiary); }
 .chips.compact { gap: 5px; margin-bottom: 0; }
 .chips.compact .pill { font-size: 10.5px; }
+
+/* ── Extension panel (admins) ── */
+.extension-panel { padding: 24px 28px; max-width: 720px; overflow-y: auto; }
+.extension-panel h2 { font-size: 18px; font-weight: 600; margin: 0 0 6px; }
+.extension-steps { margin: 18px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 14px; font-size: 13px; }
+.copy-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.copy-row code { background: var(--surface-3); border: 1px solid var(--border); padding: 5px 8px; border-radius: 5px; font-size: 12px; }
+.copy-row code.token { word-break: break-all; max-width: 460px; }

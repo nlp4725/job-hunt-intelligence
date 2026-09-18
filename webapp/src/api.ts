@@ -205,3 +205,11 @@ export async function getRecentJobs(days = 14, limit = 8, fetchImpl = fetch): Pr
   if (!response.ok) throw new ApiError(response.status, "could not load recent jobs");
   return (await response.json()).jobs;
 }
+
+// --- admin ----------------------------------------------------------------
+
+export type CreatedToken = { id: number; label: string; scope: "collector" | "admin"; token: string };
+
+/** Admins only. The plaintext token is returned once and never stored. */
+export const createCollectorToken = (label: string) =>
+  api<CreatedToken>("/api/v1/admin/tokens", { method: "POST", body: JSON.stringify({ label, scope: "collector" }) });

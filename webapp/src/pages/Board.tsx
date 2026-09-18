@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { DetailPanel } from "../components/DetailPanel";
+import { ExtensionPanel } from "../components/ExtensionPanel";
 import { JobTable, type SortKey } from "../components/JobTable";
 import { listJobs, saveTracking, type BoardJob, type Me } from "../api";
 import { signOut } from "../auth";
 
-type View = "pipeline" | "applied";
+type View = "pipeline" | "applied" | "extension";
 
 const SORT_VALUE: Record<SortKey, (job: BoardJob) => number> = {
   total: (job) => job.scores?.total_score ?? -1,
@@ -95,6 +96,12 @@ export function Board({ me }: { me: Me }) {
           <span className="nav-label">Applied</span>
           <span className="nav-count mono">{appliedCount}</span>
         </button>
+        {me.role === "admin" && (
+          <button className={`nav-item${view === "extension" ? " active" : ""}`} onClick={() => setView("extension")}>
+            <span className="nav-icon">⇄</span>
+            <span className="nav-label">Extension</span>
+          </button>
+        )}
 
         <div className="sidebar-foot">
           <div className="divider" />
@@ -121,6 +128,11 @@ export function Board({ me }: { me: Me }) {
         </div>
       </aside>
 
+      {view === "extension" ? (
+        <div className="main">
+          <ExtensionPanel />
+        </div>
+      ) : (
       <div className="main">
         <div className="page-head">
           <div className="page-title-row">
@@ -191,6 +203,7 @@ export function Board({ me }: { me: Me }) {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
