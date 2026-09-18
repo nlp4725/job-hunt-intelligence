@@ -1,16 +1,8 @@
-import type { BoardJob, SeniorityLevel } from "../api";
+import type { BoardJob } from "../api";
 
 /** The board table, ported from the Figma Make dashboard. Score columns show
  *  this user's own scores; Expertise only appears on the paid plan. */
 export type SortKey = "total" | "skill" | "seniority" | "expertise";
-
-const LEVEL_LABELS: Record<SeniorityLevel, string> = {
-  intern: "Intern",
-  entry: "Entry",
-  mid_senior: "Mid–senior",
-  senior: "Senior",
-  staff_principal: "Staff",
-};
 
 const WORKPLACE: Record<string, string> = { Remote: "#7c3aed", Hybrid: "#2563eb", "On-site": "#059669" };
 
@@ -69,7 +61,6 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
           {header("Senr.", "seniority")}
           {paid && header("Exp.", "expertise")}
           {header("Job")}
-          {header("Level")}
           {header("Location")}
           {header("Workplace")}
           {header("Added")}
@@ -127,7 +118,6 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
                   </a>
                 </div>
               </td>
-              <td className="cell-industry">{job.level ? LEVEL_LABELS[job.level] : "—"}</td>
               <td className="cell-industry">{job.location ?? "—"}</td>
               <td>
                 {job.workplace_type ? (
@@ -148,7 +138,7 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
         })}
         {jobs.length === 0 && (
           <tr className="empty-row">
-            <td className="empty" colSpan={paid ? 12 : 11}>
+            <td className="empty" colSpan={paid ? 11 : 10}>
               No jobs match these filters.
             </td>
           </tr>

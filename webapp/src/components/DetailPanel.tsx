@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 
 import { totalColor } from "./JobTable";
-import type { BoardJob } from "../api";
+import type { BoardJob, SeniorityLevel } from "../api";
+
+const LEVELS: Record<SeniorityLevel, string> = {
+  intern: "Intern",
+  entry: "Entry",
+  mid_senior: "Mid–senior",
+  senior: "Senior",
+  staff_principal: "Staff / principal",
+};
 
 /** The board's detail panel, ported from the Figma Make dashboard: score with
  *  bars per signal, details, a saved note, and the actions. */
@@ -81,7 +89,7 @@ export function DetailPanel({
         <div>
           <p className="section-label">Details</p>
           {[
-            ["Level", job.level ?? "unknown"],
+            ["Seniority level", job.level ? LEVELS[job.level] : "not classified"],
             ["Location", job.location ?? "—"],
             ["Workplace", job.workplace_type ?? "—"],
             ["Added", job.first_seen_at ? new Date(job.first_seen_at + (job.first_seen_at.endsWith("Z") ? "" : "Z")).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—"],

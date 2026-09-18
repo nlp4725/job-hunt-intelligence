@@ -1,19 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { getPublicStats, getRecentJobs, type PublicJob, type PublicStats, type SeniorityLevel } from "../api";
+import { getPublicStats, getRecentJobs, type PublicJob, type PublicStats } from "../api";
 
 /** Recent postings, open to anyone: the real board without scores. A score is
  *  per person, so it appears only once you sign in and add a resume.
  *  Collection runs daily in the afternoon, and some days it doesn't run at
  *  all, so the window is "recent", never "today". */
-const LEVELS: Record<SeniorityLevel, string> = {
-  intern: "Intern",
-  entry: "Entry",
-  mid_senior: "Mid–senior",
-  senior: "Senior",
-  staff_principal: "Staff",
-};
 const WORKPLACE: Record<string, string> = { Remote: "#7c3aed", Hybrid: "#2563eb", "On-site": "#059669" };
 
 /** LinkedIn's own "posted" text is relative ("2 weeks ago"), which goes stale
@@ -123,7 +116,7 @@ export function PublicBoard() {
             <table className="demo-table public">
               <thead>
                 <tr>
-                  {["#", "Score", "Senr.", "Exp.", "Job", "Industry", "Size", "Workplace", "Location", "Level", "Added"].map((label) => (
+                  {["#", "Score", "Senr.", "Exp.", "Job", "Industry", "Size", "Workplace", "Location", "Added"].map((label) => (
                     <th key={label}>{label}</th>
                   ))}
                 </tr>
@@ -157,20 +150,19 @@ export function PublicBoard() {
                       )}
                     </td>
                     <td className="demo-industry">{job.location ?? "—"}</td>
-                    <td className="demo-industry">{job.level ? LEVELS[job.level] : "—"}</td>
                     <td className="mono demo-muted">{addedOn(job.first_seen_at)}</td>
                   </tr>
                 ))}
                 {jobs !== null && visible.length === 0 && (
                   <tr>
-                    <td className="empty" colSpan={11}>
+                    <td className="empty" colSpan={10}>
                       No postings match. Try a longer window.
                     </td>
                   </tr>
                 )}
                 {jobs === null && (
                   <tr>
-                    <td className="empty" colSpan={11}>
+                    <td className="empty" colSpan={10}>
                       <span className="pulse">Loading the board…</span>
                     </td>
                   </tr>
