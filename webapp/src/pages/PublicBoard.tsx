@@ -79,10 +79,6 @@ export function PublicBoard() {
       <div className="public-board">
         <div className="public-head">
           <h1>Recent postings</h1>
-          <p className="page-sub">
-            Every posting here was collected and screened by hand: agencies and reposts removed, seniority classified.
-            The first three columns are scored against your own resume — upload one to unlock them.
-          </p>
           <p className="freshness">{collectedLabel(stats)}</p>
           <div className="filter-bar plain">
             <input

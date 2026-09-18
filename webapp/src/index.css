@@ -5,15 +5,16 @@
    Screens added for the cloud product (sign-in, onboarding) reuse these
    classes rather than inventing a second look. */
 :root {
-  --canvas:    #fef9ee;
+  --canvas:    #ffffff;
   --surface-1: #ffffff;
-  --surface-2: #fffdf7;
-  --surface-3: #fef3d0;
-  --surface-4: #fde68a;
+  --surface-2: #fafaf9;
+  --surface-3: #f4f4f3;
+  --surface-4: #e8e7e4;
+  --grid-line: rgba(28, 16, 8, 0.05);
 
   --text-primary:   #1c1008;
-  --text-secondary: #7a6248;
-  --text-tertiary:  #a3845c;
+  --text-secondary: #5c5850;
+  --text-tertiary:  #8d887f;
 
   --accent:        #b45309;
   --accent-mid:    #92400e;
@@ -21,8 +22,8 @@
   --accent-dim:    #fde68a22;
   --accent-border: #fde68a99;
 
-  --border:    #f0dfa8;
-  --border-hi: #e0c878;
+  --border:    #e8e7e4;
+  --border-hi: #d5d3ce;
 
   --green:  #16a34a;
   --lime:   #65a30d;
@@ -40,7 +41,11 @@
 html, body, #root { height: 100%; margin: 0; }
 
 body {
-  background: var(--canvas);
+  background-color: var(--canvas);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
   color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-feature-settings: 'cv05' 1, 'ss01' 1;   /* Inter: single-storey l, contextual alternates */
@@ -107,7 +112,7 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ── Shell ── */
-.shell { display: flex; height: 100%; overflow: hidden; }
+.shell { display: flex; height: 100%; overflow: hidden; background: var(--surface-1); }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .body { flex: 1; display: flex; overflow: hidden; }
 
@@ -347,8 +352,8 @@ td.center { text-align: center; }
   min-height: 100%;
   background-color: var(--canvas);
   background-image:
-    linear-gradient(rgba(180, 83, 9, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(180, 83, 9, 0.06) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 40px 40px;
   display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto;
 }
@@ -461,8 +466,8 @@ td.center { text-align: center; }
   min-height: 100%;
   background-color: var(--canvas);
   background-image:
-    linear-gradient(rgba(180, 83, 9, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(180, 83, 9, 0.06) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 40px 40px;
   display: flex;
   flex-direction: column;
