@@ -42,9 +42,19 @@ def iam_database_url(user_var: str) -> str:
 def rescore(event, context) -> dict:
     """SQS batch: each message in its own transaction; failed ones are reported
     back so only they are retried (and moved to the dead-letter queue after 5
-    tries). Or {"type": "reconcile"} from the hourly schedule."""
+    tries). Or {"type": "reconcile"} from the hourly schedule, or
+    {"type": "readiness"} by hand to see why nobody is being scored."""
     engine = create_engine(iam_database_url("JHI_RESCORE_DB_USER"), connect_args={"options": "-c timezone=UTC"})
     try:
+        if (event or {}).get("type") == "readiness":
+            # Read-only: why the scorer has nobody to score. The reconcile's
+            # "0 stale, 0 missing" reads the same whether everyone is scored or
+            # nobody qualifies, and this tells the two apart.
+            from analysis.rescoring import readiness
+
+            with Session(engine) as db:
+                return readiness(db)
+
         if (event or {}).get("type") == "reconcile":
             with Session(engine) as db:
                 report = run_reconcile(db)

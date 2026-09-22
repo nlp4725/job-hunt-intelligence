@@ -104,3 +104,29 @@ def reconcile(db, recent_days: int = RECENT_DAYS) -> ReconcileReport:
             report.user_ids.append(user_id)
             db.commit()
     return report
+
+
+def readiness(db) -> dict:
+    """Why the scorer has nobody to score, as counts rather than a guess.
+
+    ready_user_ids is three joins and a NOT NULL, and when it returns nothing
+    the reconcile logs a cheerful "0 stale, 0 missing" that looks identical to
+    "everyone is scored". This counts each step of that chain so the gap is
+    visible: no account, no profile, a profile pointing at no resume, or a
+    resume whose skills were never confirmed. No emails, no resume content.
+    """
+    latest = (select(UserProfile.user_id, func.max(UserProfile.version).label("version"))
+              .group_by(UserProfile.user_id).subquery())
+    live_profiles = (db.query(UserProfile)
+                     .join(latest, (latest.c.user_id == UserProfile.user_id) & (latest.c.version == UserProfile.version))
+                     .join(User, User.id == UserProfile.user_id)
+                     .filter(User.deleted_at.is_(None)))
+    return {
+        "users": db.query(User).filter(User.deleted_at.is_(None)).count(),
+        "with_a_profile": live_profiles.count(),
+        "profile_points_at_a_resume": live_profiles.filter(UserProfile.resume_id.isnot(None)).count(),
+        "resume_skills_confirmed": live_profiles.join(UserResume, UserResume.id == UserProfile.resume_id)
+                                                .filter(UserResume.skills_confirmed.isnot(None)).count(),
+        "ready_to_score": len(ready_user_ids(db)),
+        "users_with_any_score": db.query(UserJobScore.user_id).distinct().count(),
+    }

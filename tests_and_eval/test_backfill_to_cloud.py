@@ -111,3 +111,37 @@ class TestBackfill:
         assert "resume" not in result.inserted
         with pg_engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM resume")).scalar() == 0
+
+
+@needs_pg
+class TestReadiness:
+    """The counts behind "0 stale, 0 missing": an empty scorer queue means
+    either everyone is scored or nobody qualifies, and those look the same."""
+
+    def test_counts_each_step_of_the_ready_chain(self, pg_engine, tmp_path):  # noqa: F811
+        from analysis.rescoring import readiness
+        from db.cloud_models import User, UserProfile, UserResume
+
+        _upgrade(PG_URL)
+        session = sessionmaker(bind=pg_engine)()
+        try:
+            signed_up = User(email="nobody@example.com", role="user")
+            half_way = User(email="halfway@example.com", role="user")
+            session.add_all([signed_up, half_way])
+            session.flush()
+            resume = UserResume(user_id=half_way.id, version=1, original_filename="cv.pdf")   # skills never confirmed
+            session.add(resume)
+            session.flush()
+            session.add(UserProfile(user_id=half_way.id, version=1, resume_id=resume.id, seniority_targets=["entry"]))
+            session.commit()
+
+            report = readiness(session)
+        finally:
+            session.close()
+
+        assert report["users"] == 2                        # both signed up
+        assert report["with_a_profile"] == 1               # only one got that far
+        assert report["profile_points_at_a_resume"] == 1
+        assert report["resume_skills_confirmed"] == 0      # the step that was never done
+        assert report["ready_to_score"] == 0               # so the scorer sees nobody
+        assert report["users_with_any_score"] == 0
