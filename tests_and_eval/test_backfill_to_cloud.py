@@ -145,3 +145,82 @@ class TestReadiness:
         assert report["resume_skills_confirmed"] == 0      # the step that was never done
         assert report["ready_to_score"] == 0               # so the scorer sees nobody
         assert report["users_with_any_score"] == 0
+
+
+@needs_pg
+class TestAdoptLocalScores:
+    """The owner's single-user screening becomes their per-user board rows, so a
+    board full of already-paid-for scoring works before any resume exists."""
+
+    def _owner_with_profile(self, session):
+        from db.cloud_models import User, UserProfile
+
+        owner = User(email="owner@example.com", role="admin")
+        session.add(owner)
+        session.flush()
+        session.add(UserProfile(user_id=owner.id, version=3, seniority_targets=["senior"]))
+        session.commit()
+        return owner.id
+
+    def test_adopts_screening_and_recomputes_the_total(self, pg_engine, tmp_path):  # noqa: F811
+        from db.adopt_local_scores import adopt_local_scores
+        from db.cloud_models import UserJobScore
+
+        _upgrade(PG_URL)
+        copy_sqlite_to_postgres(_local_db(tmp_path), PG_URL, exclude=PRIVATE_TABLES)
+        session = sessionmaker(bind=pg_engine)()
+        try:
+            owner_id = self._owner_with_profile(session)
+            # The seeded screening row: skill 3, and a local total of 11 that
+            # includes Expertise, which the cloud keeps in its own column.
+            session.execute(text("UPDATE screening_results SET seniority_score = 4, total_score = 11"))
+            session.commit()
+
+            report = adopt_local_scores(session)
+
+            assert report["adopted"] == 1 and report["user_id"] == owner_id
+            row = session.query(UserJobScore).one()
+            assert (row.skill_score, row.seniority_fit) == (3, 4)
+            assert row.total_score == 7                      # skill + seniority, not the local 11
+            assert row.profile_version == 3                  # so reconcile does not call them stale
+        finally:
+            session.close()
+
+    def test_never_overwrites_a_real_score_and_can_be_rerun(self, pg_engine, tmp_path):  # noqa: F811
+        from db.adopt_local_scores import adopt_local_scores
+        from db.cloud_models import UserJobScore
+
+        _upgrade(PG_URL)
+        copy_sqlite_to_postgres(_local_db(tmp_path), PG_URL, exclude=PRIVATE_TABLES)
+        session = sessionmaker(bind=pg_engine)()
+        try:
+            owner_id = self._owner_with_profile(session)
+            job_id = session.execute(text("SELECT job_id FROM screening_results")).scalar()
+            session.add(UserJobScore(user_id=owner_id, job_id=job_id, profile_version=3,
+                                     skill_score=5, seniority_fit=5, total_score=10))
+            session.commit()
+
+            first = adopt_local_scores(session)
+            second = adopt_local_scores(session)
+
+            assert first["adopted"] == 0 and second["adopted"] == 0
+            assert session.query(UserJobScore).one().total_score == 10   # the computed score stands
+        finally:
+            session.close()
+
+    def test_says_so_when_there_is_no_profile_to_attach_to(self, pg_engine, tmp_path):  # noqa: F811
+        from db.adopt_local_scores import adopt_local_scores
+        from db.cloud_models import User
+
+        _upgrade(PG_URL)
+        copy_sqlite_to_postgres(_local_db(tmp_path), PG_URL, exclude=PRIVATE_TABLES)
+        session = sessionmaker(bind=pg_engine)()
+        try:
+            session.add(User(email="owner@example.com", role="admin"))
+            session.commit()
+
+            report = adopt_local_scores(session)
+
+            assert report["adopted"] == 0 and "profile" in report["reason"]
+        finally:
+            session.close()

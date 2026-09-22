@@ -43,9 +43,19 @@ def rescore(event, context) -> dict:
     """SQS batch: each message in its own transaction; failed ones are reported
     back so only they are retried (and moved to the dead-letter queue after 5
     tries). Or {"type": "reconcile"} from the hourly schedule, or
-    {"type": "readiness"} by hand to see why nobody is being scored."""
+    {"type": "readiness"} by hand to see why nobody is being scored, or
+    {"type": "adopt_local_scores"} to take the owner's local screening as
+    their board scores."""
     engine = create_engine(iam_database_url("JHI_RESCORE_DB_USER"), connect_args={"options": "-c timezone=UTC"})
     try:
+        if (event or {}).get("type") == "adopt_local_scores":
+            # One-off: the owner's already-paid-for screening becomes their
+            # board rows, so the board works before a resume is uploaded.
+            from db.adopt_local_scores import adopt_local_scores
+
+            with Session(engine) as db:
+                return adopt_local_scores(db)
+
         if (event or {}).get("type") == "readiness":
             # Read-only: why the scorer has nobody to score. The reconcile's
             # "0 stale, 0 missing" reads the same whether everyone is scored or
