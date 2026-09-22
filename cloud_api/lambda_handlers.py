@@ -9,7 +9,7 @@ to Secrets Manager (which would need internet or a paid endpoint).
              rescore one user's board), and hourly {"type": "reconcile"}
     admin    invoked by hand:  aws lambda invoke --function-name jhi-admin-task \\
                                  --payload '{"command": "status"}' out.json
-             commands: status · import_sqlite (the one-time seed) · import_levels
+             commands: status · import_sqlite (the one-time seed) · backfill_sqlite (the delta after it) · import_levels
 """
 
 import json
@@ -126,8 +126,25 @@ def _import_sqlite(url: str, key) -> dict:
     return {"copied": result.copied, "skipped": result.skipped, "left_out": sorted(PRIVATE_TABLES)}
 
 
+def _backfill_sqlite(url: str, key) -> dict:
+    """Insert the rows a later SQLite export has and the cloud does not, leaving
+    everything already up there untouched. The follow-up to import_sqlite, for
+    collection that happened before (or outside) the extension's cloud copy."""
+    from db.backfill_to_cloud import backfill_sqlite_to_postgres
+    from db.copy_to_cloud import PRIVATE_TABLES
+
+    with tempfile.TemporaryDirectory() as tmp:
+        client, bucket, path = _s3_download(key, ".db", tmp)
+        result = backfill_sqlite_to_postgres(path, url, exclude=PRIVATE_TABLES)
+    client.delete_object(Bucket=bucket, Key=key)
+    return {"inserted": {t: n for t, n in result.inserted.items() if n},
+            "already_there": sum(result.already_there.values()),
+            "skipped": result.skipped, "left_out": sorted(PRIVATE_TABLES)}
+
+
 COMMANDS = {"status": lambda url, event: _status(url),
             "import_sqlite": lambda url, event: _import_sqlite(url, event.get("s3_key")),
+            "backfill_sqlite": lambda url, event: _backfill_sqlite(url, event.get("s3_key")),
             "import_levels": lambda url, event: _import_levels(url, event.get("s3_key"))}
 
 

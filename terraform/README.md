@@ -82,7 +82,7 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
   ```
 - **Dashboard:** `terraform output dashboard_url`.
 - **Dead-letter queue:** after fixing the cause, redrive `jhi-rescore-dlq` to `jhi-rescore` (SQS console → the DLQ → Start DLQ redrive).
-- **Extension token:** create it signed in as the owner (`POST /api/v1/admin/tokens` with `{"label": "extension"}`, scope `collector` by default).
+- **Extension token:** create it signed in as the owner, at `/admin/extension` in the web app (not linked from the sidebar — collection is the owner's errand, never a user-facing feature), or directly with `POST /api/v1/admin/tokens` and `{"label": "extension"}`, scope `collector` by default.
 - **Admin commands:**
   ```bash
   aws lambda invoke --function-name jhi-admin-task --payload '{"command":"status"}' --cli-binary-format raw-in-base64-out out.json && cat out.json
@@ -95,6 +95,14 @@ Also: S3 resume bucket (KMS), Cognito, Secrets Manager, CloudWatch alarms, month
     --payload '{"command":"import_sqlite","s3_key":"imports/job_hunt.db"}' out.json && cat out.json
   ```
   Your private tables (`resume`, `career_goals`, `chat_messages`) are left out, and the upload is deleted after the import.
+- **Catching the cloud up afterwards** (collection that happened before the extension's cloud copy was on): same export and upload, then `backfill_sqlite` instead — it inserts only the rows the cloud is missing and leaves everything else alone, so it is safe to re-run.
+  ```bash
+  sqlite3 data/job_hunt.db ".backup /tmp/job_hunt_export.db"
+  aws s3 cp /tmp/job_hunt_export.db "s3://$(terraform -chdir=terraform/app output -raw import_bucket)/imports/job_hunt.db"
+  aws lambda invoke --function-name jhi-admin-task --cli-binary-format raw-in-base64-out \
+    --payload '{"command":"backfill_sqlite","s3_key":"imports/job_hunt.db"}' out.json && cat out.json
+  ```
+  It matches rows by primary key, which holds only while every cloud row came from these imports. Once jobs are born in the cloud (captures posted straight to the API), it refuses with `IdsDiverged` rather than attaching rows to an id that means a different job up there — at that point the cloud is the source of truth and the copy runs the other way.
 - **Protected from `terraform destroy`:** the database, resume bucket, KMS key, resume key secret and user pool (`prevent_destroy`, plus deletion protection on RDS and Cognito).
 
 ## Cost at launch (approximate, us-east-1)
