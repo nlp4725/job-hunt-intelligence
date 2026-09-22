@@ -134,6 +134,7 @@ export type BoardJob = {
   company: string | null;
   location: string | null;
   workplace_type: string | null;
+  industry: string | null;
   posted_date: string | null;
   url: string;
   first_seen_at: string | null;
@@ -159,9 +160,9 @@ export type BoardJob = {
   company_applied_count: number;
 };
 
-export const listJobs = (days: number | null = 14, limit = 200, offset = 0) =>
-  api<{ jobs: BoardJob[]; limit: number; offset: number; days: number | null }>(
-    `/api/v1/jobs?limit=${limit}&offset=${offset}${days ? `&days=${days}` : ""}`,
+export const listJobs = (days: number | null = 14, sort: "fit" | "newest" = "fit", limit = 200, offset = 0) =>
+  api<{ jobs: BoardJob[]; limit: number; offset: number; days: number | null; sort: string }>(
+    `/api/v1/jobs?limit=${limit}&offset=${offset}${days ? `&days=${days}` : ""}${sort === "newest" ? "&sort=newest" : ""}`,
   );
 
 export const saveTracking = (jobId: number, changes: Partial<Tracking>) =>

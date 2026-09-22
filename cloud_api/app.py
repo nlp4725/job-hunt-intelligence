@@ -335,8 +335,9 @@ def create_app(database_url: str, verifier, *, auth_mode: str = "cognito", host:
         offset = max(request.args.get("offset", 0, type=int), 0)
         days = request.args.get("days", type=int)           # omit for the whole corpus
         days = min(max(days, 1), 3650) if days else None
-        jobs = user_data.job_board(g.db, g.user, limit, offset, days=days)
-        return jsonify({"jobs": jobs, "limit": limit, "offset": offset, "days": days})
+        sort = "newest" if request.args.get("sort") == "newest" else "fit"
+        jobs = user_data.job_board(g.db, g.user, limit, offset, days=days, sort=sort)
+        return jsonify({"jobs": jobs, "limit": limit, "offset": offset, "days": days, "sort": sort})
 
     @app.put("/api/v1/me/tracking/<int:job_id>")
     @require_user

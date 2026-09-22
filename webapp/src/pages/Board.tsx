@@ -13,6 +13,7 @@ const SORT_VALUE: Record<SortKey, (job: BoardJob) => number> = {
   skill: (job) => job.scores?.skill_score ?? -1,
   seniority: (job) => job.scores?.seniority_fit ?? -1,
   expertise: (job) => job.expertise?.expertise_score ?? -1,
+  added: (job) => (job.first_seen_at ? Date.parse(job.first_seen_at) : 0),
 };
 
 /** The board, ported from the Figma Make dashboard and wired to the API:
@@ -23,6 +24,7 @@ export function Board({ me }: { me: Me }) {
   const [view, setView] = useState<View>("pipeline");
   const [search, setSearch] = useState("");
   const [workplace, setWorkplace] = useState("any");
+  const [industry, setIndustry] = useState("any");
   const [days, setDays] = useState<number | null>(14);
   const [hideDismissed, setHideDismissed] = useState(true);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "total", dir: "desc" });
@@ -31,10 +33,13 @@ export function Board({ me }: { me: Me }) {
 
   useEffect(() => {
     setJobs(null);
-    listJobs(days)
+    // The page is 200 rows out of an ordering the server chooses, so sorting by
+    // date has to be asked for there — sorting here would only reorder the 200
+    // highest-scoring rows and still show nothing collected today.
+    listJobs(days, sort.key === "added" ? "newest" : "fit")
       .then((page) => setJobs(page.jobs))
       .catch((err: Error) => setError(err.message));
-  }, [days]);
+  }, [days, sort.key]);
 
   async function track(job: BoardJob, changes: { applied?: boolean; not_interested?: boolean; note?: string }) {
     const previous = jobs;
@@ -50,11 +55,23 @@ export function Board({ me }: { me: Me }) {
     }
   }
 
+  /** Industries present on the board, commonest first — a hardcoded list would
+   *  drift away from what collection actually brings in. */
+  const industries = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const job of jobs ?? []) {
+      if (job.industry) counts.set(job.industry, (counts.get(job.industry) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name]) => name);
+  }, [jobs]);
+
   const visible = useMemo(() => {
     const rows = (jobs ?? []).filter((job) => {
       if (view === "applied" && !job.tracking?.applied) return false;
       if (view === "pipeline" && hideDismissed && job.tracking?.not_interested) return false;
       if (workplace !== "any" && job.workplace_type !== workplace) return false;
+      if (industry === "software" && !/software|computer|information technology/i.test(job.industry ?? "")) return false;
+      if (industry !== "any" && industry !== "software" && job.industry !== industry) return false;
       if (search) {
         const text = `${job.title} ${job.company ?? ""}`.toLowerCase();
         if (!text.includes(search.toLowerCase())) return false;
@@ -63,7 +80,7 @@ export function Board({ me }: { me: Me }) {
     });
     const direction = sort.dir === "desc" ? -1 : 1;
     return rows.sort((a, b) => direction * (SORT_VALUE[sort.key](a) - SORT_VALUE[sort.key](b)));
-  }, [jobs, view, hideDismissed, workplace, search, sort]);
+  }, [jobs, view, hideDismissed, workplace, industry, search, sort]);
 
   const appliedCount = (jobs ?? []).filter((job) => job.tracking?.applied).length;
   const dismissed = (jobs ?? []).filter((job) => job.tracking?.not_interested).length;
@@ -146,8 +163,10 @@ export function Board({ me }: { me: Me }) {
             onChange={(event) => setSearch(event.target.value)}
           />
           <select value={days ?? "all"} onChange={(event) => setDays(event.target.value === "all" ? null : Number(event.target.value))}>
-            <option value="14">Collected: last 2 weeks</option>
+            <option value="1">Collected: last day</option>
+            <option value="3">Last 3 days</option>
             <option value="7">Last week</option>
+            <option value="14">Last 2 weeks</option>
             <option value="30">Last 30 days</option>
             <option value="all">All time</option>
           </select>
@@ -156,6 +175,13 @@ export function Board({ me }: { me: Me }) {
             <option>Remote</option>
             <option>Hybrid</option>
             <option>On-site</option>
+          </select>
+          <select value={industry} onChange={(event) => setIndustry(event.target.value)}>
+            <option value="any">Industry: any</option>
+            <option value="software">Software companies</option>
+            {industries.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
           </select>
           <label className="check">
             <input type="checkbox" checked={hideDismissed} onChange={() => setHideDismissed((value) => !value)} />

@@ -285,7 +285,8 @@ def expertise_score_view(row: UserJobExpertise | None, active_version: int | Non
             "dream": row.dream_score, "evidence": row.evidence, "stale": row.profile_version != active_version}
 
 
-def job_board(db, user: User, limit: int = 100, offset: int = 0, days: int | None = None) -> list[dict]:
+def job_board(db, user: User, limit: int = 100, offset: int = 0, days: int | None = None,
+              sort: str = "fit") -> list[dict]:
     """Shared jobs with the caller's own scores and tracking. Never returns raw_text.
     Expertise is shown next to total_score, not added to it; it is null for
     jobs not scored yet and for free plans. `days` keeps only postings first
@@ -298,7 +299,7 @@ def job_board(db, user: User, limit: int = 100, offset: int = 0, days: int | Non
         .filter(JobTracking.user_id == user.id, JobTracking.applied.is_(True))
         .group_by(Job.company_name).all())
     rows = (db.query(Job.id, Job.job_id, Job.title, Job.company_name, Job.location, Job.workplace_type,
-                     Job.posted_date, Job.url, Job.first_seen_at, JobSeniority.level, JobSeniority.is_contract,
+                     Job.posted_date, Job.url, Job.first_seen_at, Company.industry, JobSeniority.level, JobSeniority.is_contract,
                      UserJobScore, JobTracking, UserJobExpertise)
             .outerjoin(Company, Company.id == Job.company_id)
             .outerjoin(JobSeniority, JobSeniority.job_id == Job.id)
@@ -307,7 +308,8 @@ def job_board(db, user: User, limit: int = 100, offset: int = 0, days: int | Non
             .outerjoin(UserJobExpertise, and_(UserJobExpertise.job_id == Job.id, UserJobExpertise.user_id == user.id))
             .filter(Job.duplicate_of_job_id.is_(None), Job.raw_text.isnot(None), not_agency(),
                     *( [Job.first_seen_at >= seen_since] if seen_since else [] ))
-            .order_by(UserJobScore.total_score.desc().nullslast(), Job.first_seen_at.desc(), Job.id.desc())
+            .order_by(*((Job.first_seen_at.desc(), Job.id.desc()) if sort == "newest" else
+                        (UserJobScore.total_score.desc().nullslast(), Job.first_seen_at.desc(), Job.id.desc())))
             .limit(limit).offset(offset).all())
     board = []
     for r in rows:
@@ -315,6 +317,7 @@ def job_board(db, user: User, limit: int = 100, offset: int = 0, days: int | Non
         board.append({
             "id": r.id, "job_id": r.job_id, "title": r.title, "company": r.company_name, "location": r.location,
             "workplace_type": r.workplace_type, "posted_date": r.posted_date, "url": r.url,
+            "industry": r.industry,
             "first_seen_at": r.first_seen_at.isoformat() if r.first_seen_at else None,
             "level": r.level, "is_contract": r.is_contract,
             "scores": None if score is None else {

@@ -251,6 +251,27 @@ class TestBoardWindow:
         assert {job["job_id"] for job in recent["jobs"]} == {"1", "2"}
         assert {job["job_id"] for job in everything["jobs"]} == {"1", "2", "3"}
 
+    def test_sort_newest_pages_by_collection_date_not_by_fit(self, client, board, pg_engine):  # noqa: F811
+        """A page is `limit` rows out of an ordering, so the ordering decides what
+        a small page can show at all: by fit, everything collected today sits
+        behind higher-scoring older jobs and never appears."""
+        from datetime import datetime
+
+        from db.models import Job
+
+        _onboard(client, A, "SKILLS\nPython, SQL\n", "entry")
+        with Session(pg_engine) as db, db.begin():
+            db.get(Job, board["1"]).first_seen_at = datetime(2026, 9, 1)     # scores well, collected earliest
+            db.get(Job, board["2"]).first_seen_at = datetime(2026, 9, 5)
+            db.get(Job, board["3"]).first_seen_at = datetime(2026, 9, 20)    # scores poorly, collected last
+
+        by_fit = client.get("/api/v1/jobs?limit=1", headers=A).get_json()
+        by_date = client.get("/api/v1/jobs?limit=1&sort=newest", headers=A).get_json()
+
+        assert by_fit["sort"] == "fit" and by_date["sort"] == "newest"
+        assert by_fit["jobs"][0]["job_id"] == "1"        # the best match
+        assert by_date["jobs"][0]["job_id"] == "3"       # the latest collected
+
 
 @needs_pg
 class TestTrackingAndApplications:

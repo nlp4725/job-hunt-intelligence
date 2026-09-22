@@ -627,3 +627,25 @@ a.hero-link { text-decoration: none; display: inline-flex; align-items: center; 
 .copy-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .copy-row code { background: var(--surface-3); border: 1px solid var(--border); padding: 5px 8px; border-radius: 5px; font-size: 12px; }
 .copy-row code.token { word-break: break-all; max-width: 460px; }
+
+/* Score columns carry one or two digits, so they only need room for the pill.
+   Marked by class, not position: on a free plan there is no Exp column and a
+   position rule would narrow Job instead. */
+.table-wrap th.cell-score,
+.table-wrap td.cell-score {
+  width: 52px;
+  min-width: 52px;
+  padding-left: 6px;
+  padding-right: 6px;
+  text-align: center;
+}
+.table-wrap th.cell-rank,
+.table-wrap td.cell-rank { width: 34px; min-width: 34px; }
+.cell-industry {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+.cell-location { white-space: nowrap; }

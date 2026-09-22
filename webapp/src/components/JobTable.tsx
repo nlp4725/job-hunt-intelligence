@@ -2,7 +2,7 @@ import type { BoardJob } from "../api";
 
 /** The board table, ported from the Figma Make dashboard. Score columns show
  *  this user's own scores; Expertise only appears on the paid plan. */
-export type SortKey = "total" | "skill" | "seniority" | "expertise";
+export type SortKey = "total" | "skill" | "seniority" | "expertise" | "added";
 
 const WORKPLACE: Record<string, string> = { Remote: "#7c3aed", Hybrid: "#2563eb", "On-site": "#059669" };
 
@@ -40,10 +40,10 @@ type Props = {
 };
 
 export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApplied }: Props) {
-  const header = (label: string, key?: SortKey) => (
+  const header = (label: string, key?: SortKey, extra?: string) => (
     <th
       key={label}
-      className={key ? `sortable${sort.key === key ? " sorted" : ""}` : undefined}
+      className={[key ? `sortable${sort.key === key ? " sorted" : ""}` : "", extra ?? ""].join(" ").trim() || undefined}
       onClick={key ? () => onSort(key) : undefined}
     >
       {label}
@@ -55,15 +55,16 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
     <table>
       <thead>
         <tr>
-          {header("#")}
-          {header("Score", "total")}
-          {header("Skill", "skill")}
-          {header("Senr.", "seniority")}
-          {paid && header("Exp.", "expertise")}
+          {header("#", undefined, "cell-rank")}
+          {header("Score", "total", "cell-score")}
+          {header("Skill", "skill", "cell-score")}
+          {header("Senr.", "seniority", "cell-score")}
+          {paid && header("Exp.", "expertise", "cell-score")}
           {header("Job")}
+          {header("Industry")}
           {header("Location")}
           {header("Workplace")}
-          {header("Added")}
+          {header("Added", "added")}
           {header("Applied")}
           {header("Status")}
         </tr>
@@ -78,8 +79,8 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
               className={`${selectedId === job.id ? "selected" : ""}${dim ? " dim" : ""}`}
               onClick={() => onSelect(job)}
             >
-              <td className="mono cell-muted">{index + 1}</td>
-              <td>
+              <td className="mono cell-muted cell-rank">{index + 1}</td>
+              <td className="cell-score">
                 {scores?.total_score === null || scores === null ? (
                   <span className="demo-dash">—</span>
                 ) : (
@@ -88,9 +89,9 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
                   </span>
                 )}
               </td>
-              <td><Score value={scores?.skill_score ?? null} /></td>
-              <td><Score value={scores?.seniority_fit ?? null} /></td>
-              {paid && <td><Score value={job.expertise ? Math.round(job.expertise.expertise_score) : null} /></td>}
+              <td className="cell-score"><Score value={scores?.skill_score ?? null} /></td>
+              <td className="cell-score"><Score value={scores?.seniority_fit ?? null} /></td>
+              {paid && <td className="cell-score"><Score value={job.expertise ? Math.round(job.expertise.expertise_score) : null} /></td>}
               <td>
                 <div className="job-title-row">
                   <div style={{ minWidth: 0 }}>
@@ -118,7 +119,8 @@ export function JobTable({ jobs, paid, selectedId, sort, onSort, onSelect, onApp
                   </a>
                 </div>
               </td>
-              <td className="cell-industry">{job.location ?? "—"}</td>
+              <td className="cell-industry" title={job.industry ?? undefined}>{job.industry ?? "—"}</td>
+              <td className="cell-location">{job.location ?? "—"}</td>
               <td>
                 {job.workplace_type ? (
                   <span className="demo-pill" style={{ "--c": WORKPLACE[job.workplace_type] ?? "#7a6248" } as React.CSSProperties}>
