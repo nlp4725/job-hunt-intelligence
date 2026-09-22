@@ -13,6 +13,7 @@ Postgres tests need JHI_TEST_POSTGRES_URL.
 """
 
 import io
+from datetime import timedelta
 from urllib.parse import urlparse
 
 import pytest
@@ -22,6 +23,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
+from db.models import utcnow
 from tests_and_eval.test_cloud_db import PG_URL, needs_pg, pg_engine  # noqa: F401  (fixture)
 from tests_and_eval.test_cloud_isolation import admin_url, app_url  # noqa: F401  (fixtures)
 
@@ -269,8 +271,12 @@ class TestTrackingAndApplications:
 
     def test_later_stages_and_bad_input(self, client, board):
         client.put(f"/api/v1/me/tracking/{board['1']}", json={"applied": True}, headers=A)
+        # The applied event is stamped now, and events read back in occurred_at
+        # order, so a later stage has to be dated after it. A fixed date here
+        # passed until the wall clock caught up with it, then flipped the order.
+        interviewed_at = (utcnow() + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S")
         added = client.post(f"/api/v1/me/applications/{board['1']}/events",
-                            json={"stage": "interview", "occurred_at": "2026-09-20T15:00:00", "note": "round 1"}, headers=A)
+                            json={"stage": "interview", "occurred_at": interviewed_at, "note": "round 1"}, headers=A)
         assert added.status_code == 201
         stages = client.get("/api/v1/me/applications", headers=A).get_json()["applications"][0]["events"]
         assert [e["stage"] for e in stages] == ["applied", "interview"]
